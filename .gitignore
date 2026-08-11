@@ -1,0 +1,46 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.env
+backend/staticfiles/
+backend/media/
+backend/db.sqlite3
+
+# Node
+node_modules/
+apps/*/node_modules/
+packages/*/node_modules/
+
+# Next.js
+apps/*/.next/
+apps/*/.env.local
+apps/*/.env*.local
+apps/*/out/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+build/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Turbo
+.turbo/

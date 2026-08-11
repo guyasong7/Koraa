@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand palette (Purple from Dashboard) */
+  --brand-50:  #faf5ff;
+  --brand-100: #f3e8ff;
+  --brand-200: #e9d5ff;
+  --brand-300: #d8b4fe;
+  --brand-400: #c084fc;
+  --brand-500: #a855f7;
+  --brand-600: #9333ea;
+  --brand-700: #7e22ce;
+  --brand-800: #6b21a8;
+  --brand-900: #581c87;
+
+  /* Accent (White) */
+  --accent-400: #f8fafc;
+  --accent-500: #ffffff;
+  --accent-600: #e2e8f0;
+
+  /* Surfaces */
+  --background: #f8fafc; /* surface-950 in dashboard */
+  --surface: #ffffff; /* surface-900 in dashboard */
+  --border: #cbd5e1; /* surface-600 in dashboard */
+  
+  /* Text */
+  --text-primary: #0f1117;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display { font-family: "Outfit", sans-serif; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  padding: 24px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 0;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1;
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  outline: none;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
+  color: #fff;
+  box-shadow: 0 4px 24px rgba(168, 85, 247, 0.25);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--brand-400), var(--brand-500));
+  box-shadow: 0 8px 32px rgba(168, 85, 247, 0.35);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  padding: 12px 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.input:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.12);
+}
+.input::placeholder { color: var(--text-muted); }
