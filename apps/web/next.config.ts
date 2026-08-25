@@ -3,10 +3,10 @@ import path from "path";
 
 const MONOREPO_ROOT = path.resolve(__dirname, "../../");
 
-// Cloudflare Pages sets CF_PAGES=1 during its build.
-const isCFPages = !!process.env.CF_PAGES;
-// Vercel sets VERCEL=1. Both cloud hosts manage their own output tracing.
-const isCloud = isCFPages || !!process.env.VERCEL;
+// Vercel sets VERCEL=1 during its build. On Vercel, standalone output is not
+// needed — Vercel uses its own serverless function tracing mechanism, and
+// forcing standalone here breaks the build pipeline.
+const isVercel = !!process.env.VERCEL;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -31,32 +31,30 @@ const nextConfig: NextConfig = {
     pollIntervalMs: 1000,
   },
   // Emits .next/standalone with only the traced runtime dependencies, so the
-  // container does not need node_modules or the monorepo around it.
-  // Disabled on cloud hosts (Vercel / CF Pages) because each has its own
-  // output tracing mechanism and forcing standalone breaks their pipelines.
-  output: isCloud ? undefined : "standalone",
-  // Traced from the monorepo root so that hoisted workspace dependencies are
+  // Docker container does not need node_modules or the full monorepo around it.
+  // Disabled on Vercel, which manages its own output tracing for serverless fns.
+  output: isVercel ? undefined : "standalone",
+  // Traced from the monorepo root so hoisted workspace dependencies are
   // included in the standalone bundle. Only needed for Docker deploys.
-  outputFileTracingRoot: isCloud ? undefined : MONOREPO_ROOT,
+  outputFileTracingRoot: isVercel ? undefined : MONOREPO_ROOT,
   // The proxy rewrites storefront hosts onto /store/<slug>; nothing in the app
   // reflects the Host header into a response, and nginx sets it explicitly.
   poweredByHeader: false,
   images: {
-    // Cloudflare Pages has no image-optimisation infrastructure, so we ship
-    // the originals and let the browser handle them. On every other host the
-    // full optimisation pipeline is active.
-    ...(isCFPages
-      ? { unoptimized: true }
-      : {
-          // Required from Next 16 — the default narrowed to [75] so that an
-          // arbitrary ?q= cannot be used to make the optimizer do unbounded work.
-          qualities: [75, 90],
-          // AVIF first — roughly 20-30 % smaller than WebP on these photographs.
-          formats: ["image/avif", "image/webp"],
-          // Every image under public/ is part of a deploy; only a new build
-          // changes it, and a new build changes its URL.
-          minimumCacheTTL: 60 * 60 * 24 * 30,
-        }),
+    // Required from Next 16 — the default narrowed to [75] so that an
+    // arbitrary ?q= cannot be used to make the optimizer do unbounded work.
+    // 75 for photographs, 90 for the hero strip: those eight images are the
+    // first thing anyone sees and 4:5 crops of market stalls show ringing
+    // around the stall edges at 75.
+    qualities: [75, 90],
+    // AVIF first. It is roughly 20-30% smaller than WebP on these photographs
+    // and every browser that matters in Cameroon has had it since 2021;
+    // anything older falls through to WebP, then to the original JPEG.
+    formats: ["image/avif", "image/webp"],
+    // Next 16 raised the default from 60s to 4h. Left explicit and longer:
+    // every image under public/ is part of a deploy, so the only thing that
+    // changes one is a new build, and a new build changes its URL.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   // NOTE on experimental.inlineCss: tried and reverted, deliberately. It does
   // remove the two render-blocking stylesheet requests, but this app's CSS is
@@ -67,16 +65,5 @@ const nextConfig: NextConfig = {
   // worth revisiting only if the CSS gets much smaller, or once the flight
   // payload stops carrying its own copy.
 };
-
-// @cloudflare/next-on-pages wraps the config when building for CF Pages.
-// The import is a no-op on every other host so it is safe to always apply.
-import { setupDevPlatform } from "@cloudflare/next-on-pages/next-dev";
-if (process.env.NODE_ENV === "development") {
-  // This is intentionally not awaited — it registers Cloudflare bindings into
-  // the dev server in the background. The `void` suppresses the TS warning.
-  void setupDevPlatform().catch(() => {
-    // Not running in a Cloudflare context; ignore.
-  });
-}
 
 export default nextConfig;

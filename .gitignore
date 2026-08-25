@@ -63,3 +63,4 @@ storefront_customization_plan.md
 # Agent workspace
 .claude/
 .gemini/
+apps/web/.wrangler/
