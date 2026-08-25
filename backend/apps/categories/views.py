@@ -3,16 +3,17 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import NotFound
 from drf_spectacular.utils import extend_schema
 
-from apps.stores.models import Store
+from apps.stores.access import accessible_stores
 from .models import Category
 from .serializers import CategorySerializer
 
 
 def get_store_for_merchant(user, store_pk):
-    try:
-        return Store.objects.get(pk=store_pk, merchant__user=user)
-    except Store.DoesNotExist:
+    """The store if the user owns it or holds an accepted invite to it."""
+    store = accessible_stores(user).filter(pk=store_pk).first()
+    if store is None:
         raise NotFound("Store not found.")
+    return store
 
 
 @extend_schema(tags=["categories"])

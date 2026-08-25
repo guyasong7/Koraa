@@ -6,6 +6,15 @@ from django.utils.translation import gettext_lazy as _
 from .models import User, EmailVerificationOTP, PasswordResetToken
 
 
+from apps.merchants.models import Merchant
+
+class MerchantInline(admin.StackedInline):
+    model = Merchant
+    can_delete = False
+    verbose_name_plural = _("Merchant Profile & Subscription")
+    fk_name = "user"
+    fields = ("business_name", "business_type", "tier", "tier_expires_at", "is_verified")
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = ("email", "full_name", "role", "is_verified", "is_active", "date_joined")
@@ -13,6 +22,7 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ("email", "full_name", "phone")
     ordering = ("-date_joined",)
     readonly_fields = ("id", "date_joined", "last_login_ip")
+    inlines = [MerchantInline]
 
     fieldsets = (
         (None, {"fields": ("id", "email", "password")}),

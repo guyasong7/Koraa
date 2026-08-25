@@ -1,0 +1,62 @@
+{% extends "emails/base_email.html" %}
+
+{% comment %}
+The merchant's copy of an enquiry somebody sent through their form.
+
+The answers are rendered with the labels the merchant wrote, in the order they
+asked — a table of `field_3: Saturday` is unreadable, and the labels are stored
+on the submission for exactly this reason.
+
+Reply-to is set to the sender, so the merchant answers their customer by hitting
+Reply. The button goes to the dashboard, not to a mailto: a merchant reading this
+on a phone should not have to find the enquiry again to see the rest of them.
+{% endcomment %}
+
+{% block title %}New enquiry — {{ store.name }}{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 6px;">You have a new enquiry</h1>
+<p class="muted" style="margin-bottom: 24px;">
+    {{ store.name }} · {{ submission.created_at|date:"j F Y, H:i" }}
+</p>
+
+<p>
+    {% if submission.sender_name %}<strong>{{ submission.sender_name }}</strong>{% else %}Someone{% endif %}
+    filled in the enquiry form on your storefront.
+</p>
+
+<table class="lines" style="margin: 26px 0 0;">
+    <tbody>
+        {% for answer in answers %}
+        <tr>
+            <td style="width: 38%; color: #64748b; font-size: 13px;">{{ answer.label }}</td>
+            <td style="color: #0f172a;">{{ answer.value|linebreaksbr }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if submission.sender_email or submission.sender_phone %}
+<div class="panel">
+    <p style="margin: 0 0 6px;"><strong>Getting back to them</strong></p>
+    <p class="muted" style="margin: 0;">
+        {% if submission.sender_email %}
+            Reply to this email, or write to
+            <a href="mailto:{{ submission.sender_email }}" style="color: #7c3aed;">{{ submission.sender_email }}</a>.
+        {% else %}
+            They did not leave an email address.
+        {% endif %}
+        {% if submission.sender_phone %}<br>Phone: {{ submission.sender_phone }}{% endif %}
+    </p>
+</div>
+{% else %}
+<p class="muted">
+    They left no email address or phone number, so there is no way to reply to
+    this one. Consider marking those fields required in your form.
+</p>
+{% endif %}
+
+<p style="text-align: center; margin: 28px 0 8px;">
+    <a class="cta" href="{{ enquiries_url }}">See all enquiries</a>
+</p>
+{% endblock %}

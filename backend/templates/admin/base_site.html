@@ -1,0 +1,180 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ title }} | Koraa Admin{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+    :root {
+        --primary: #7c3aed; /* var(--brand-600) */
+        --primary-fg: #ffffff;
+        --secondary: #6d28d9;
+        --accent: #8b5cf6;
+        --header-color: #ffffff;
+        --header-branding-color: var(--primary);
+        --header-bg: var(--primary);
+        --header-link-color: #ffffff;
+        --breadcrumbs-bg: #f3f4f6;
+        --breadcrumbs-fg: #4b5563;
+        --breadcrumbs-link-fg: var(--primary);
+        --breadcrumbs-link-fg-hover: var(--secondary);
+        --link-fg: var(--primary);
+        --link-hover-color: var(--secondary);
+        --link-selected-fg: #ffffff;
+        --button-bg: var(--primary);
+        --button-hover-bg: var(--secondary);
+        --default-button-bg: var(--primary);
+        --default-button-hover-bg: var(--secondary);
+        --object-tools-bg: var(--primary);
+        --object-tools-hover-bg: var(--secondary);
+        --object-tools-fg: #ffffff;
+        --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        --font-family-headers: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+        font-family: var(--font-family-primary);
+        color: #1f2937;
+        background-color: #f9fafb;
+    }
+
+    #header {
+        background: var(--header-bg);
+        color: var(--header-color);
+        padding: 15px 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    #branding h1 {
+        font-family: var(--font-family-headers);
+        font-weight: 800;
+        font-size: 24px;
+        color: var(--header-color);
+        margin: 0;
+        letter-spacing: -0.5px;
+    }
+
+    #branding h1 a:link, #branding h1 a:visited {
+        color: var(--header-color);
+    }
+
+    div.breadcrumbs {
+        background: var(--breadcrumbs-bg);
+        color: var(--breadcrumbs-fg);
+        font-size: 13px;
+        padding: 10px 20px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    div.breadcrumbs a {
+        color: var(--breadcrumbs-link-fg);
+        font-weight: 500;
+    }
+
+    a:link, a:visited {
+        color: var(--link-fg);
+    }
+
+    a:hover {
+        color: var(--link-hover-color);
+    }
+
+    .module h2, .module caption, .inline-group h2 {
+        background: var(--primary);
+        color: #fff;
+        font-family: var(--font-family-headers);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        padding: 8px 12px;
+    }
+
+    .button, input[type=submit], input[type=button], .submit-row input, a.button {
+        background: var(--button-bg);
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-family: var(--font-family-primary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .button:hover, input[type=submit]:hover, input[type=button]:hover {
+        background: var(--button-hover-bg);
+    }
+
+    .button.default, input[type=submit].default, .submit-row input.default {
+        background: var(--default-button-bg);
+    }
+
+    .button.default:hover, input[type=submit].default:hover {
+        background: var(--default-button-hover-bg);
+    }
+
+    .object-tools a.addlink, .object-tools a.changelink, .object-tools a.viewsitelink {
+        background: var(--object-tools-bg);
+        color: var(--object-tools-fg);
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .object-tools a:hover {
+        background: var(--object-tools-hover-bg);
+    }
+
+    /* Forms & Inputs */
+    input[type=text], input[type=password], input[type=email], input[type=url], input[type=number], input[type=tel], textarea, select, .vTextField {
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-family: var(--font-family-primary);
+    }
+    
+    input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, input[type=url]:focus, input[type=number]:focus, input[type=tel]:focus, textarea:focus, select:focus, .vTextField:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+        outline: none;
+    }
+
+    /* Tables */
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    thead th {
+        background-color: #f3f4f6;
+        color: #374151;
+        font-weight: 600;
+        font-family: var(--font-family-headers);
+        border-bottom: 2px solid #d1d5db;
+    }
+
+    tbody tr:nth-child(even) {
+        background-color: #f9fafb;
+    }
+
+    tbody tr:hover {
+        background-color: #f3f4f6;
+    }
+
+    /* Sidebar/Nav */
+    #nav-sidebar {
+        background-color: #ffffff;
+        border-right: 1px solid #e5e7eb;
+    }
+    
+    .app-dict {
+        font-family: var(--font-family-primary);
+    }
+</style>
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">Koraa Admin</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

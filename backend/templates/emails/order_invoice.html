@@ -1,0 +1,112 @@
+{% extends "emails/base_email.html" %}
+
+{% comment %}
+The shopper's copy of what they bought.
+
+Two brands, in the order the shopper experienced them: the shop they bought
+from at the top, Koraa in the footer as the platform that carried it. A shop
+that has not uploaded a logo gets its name set as type — the same fallback
+the storefront navbar makes, rather than a broken image.
+
+Wider than the other emails (640px): an invoice has a line-items table in it,
+and at 560px a three-column table with a name in it wraps every row.
+{% endcomment %}
+
+{% block title %}Invoice {{ reference }} — {{ store.name }}{% endblock %}
+{% block width %}640px{% endblock %}
+
+{% block header %}
+{% if store_logo %}
+    <a href="{{ store_url }}" style="text-decoration: none;">
+        <img src="{{ store_logo }}" alt="{{ store.name }}" class="logo">
+    </a>
+{% else %}
+    <a href="{{ store_url }}" style="text-decoration: none; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
+        {{ store.name }}
+    </a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 6px;">Invoice {{ reference }}</h1>
+<p class="muted" style="margin-bottom: 24px;">
+    {{ order.created_at|date:"j F Y" }} ·
+    {% if is_paid %}Paid in full{% else %}Awaiting payment{% endif %}
+</p>
+
+<p>Hi {{ order.customer_name }},</p>
+
+<p>
+    {% if is_paid %}
+        Thank you for your order from <strong>{{ store.name }}</strong>. Payment
+        has gone through — here is your receipt.
+    {% else %}
+        Here is your invoice from <strong>{{ store.name }}</strong>. It will be
+        marked paid as soon as your payment clears.
+    {% endif %}
+</p>
+
+<table class="lines" style="margin: 28px 0 0;">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th class="num">Qty</th>
+            <th class="num">Price</th>
+            <th class="num">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for line in lines %}
+        <tr>
+            <td>{{ line.name }}</td>
+            <td class="num">{{ line.quantity }}</td>
+            <td class="num">{{ currency }} {{ line.price|floatformat:0 }}</td>
+            <td class="num">{{ currency }} {{ line.total|floatformat:0 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="3" style="border-bottom: none; padding-top: 14px; font-weight: 700; color: #0f172a;">
+                Total
+            </td>
+            <td class="num" style="border-bottom: none; padding-top: 14px; font-weight: 700; font-size: 17px; color: #0f172a;">
+                {{ currency }} {{ total|floatformat:0 }}
+            </td>
+        </tr>
+    </tfoot>
+</table>
+
+{% if not is_paid and order.payment_link %}
+<p style="text-align: center; margin: 28px 0;">
+    <a class="cta" href="{{ order.payment_link }}">Complete payment</a>
+</p>
+{% endif %}
+
+<div class="panel">
+    <p style="margin: 0 0 6px;"><strong>Delivering to</strong></p>
+    <p class="muted" style="margin: 0;">
+        {{ order.customer_name }}<br>
+        {{ order.shipping_address|linebreaksbr }}<br>
+        {{ order.city }}{% if order.postal_code %}, {{ order.postal_code }}{% endif %}
+        {% if order.customer_phone %}<br>{{ order.customer_phone }}{% endif %}
+    </p>
+</div>
+
+<p class="muted">
+    Questions about this order? Reply to this email{% if store.email %} or write
+    to <a href="mailto:{{ store.email }}" style="color: #7c3aed;">{{ store.email }}</a>{% endif %}{% if store.phone %},
+    or call {{ store.phone }}{% endif %}.
+</p>
+{% endblock %}
+
+{% block footer %}
+<p style="margin: 0 0 10px; font-size: 13px;">
+    <a href="{{ store_url }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ store.name }}</a>
+    · &copy; {% now "Y" %}
+</p>
+<a href="{{ koraa_url }}" style="text-decoration: none; color: #94a3b8; font-size: 12px;">
+    <img src="{{ koraa_url }}/koraa-logo.png" alt="Koraa" style="height: 18px; width: auto; vertical-align: middle; opacity: 0.75;">
+    <span style="vertical-align: middle; margin-left: 6px;">Built with Koraa</span>
+</a>
+{% endblock %}

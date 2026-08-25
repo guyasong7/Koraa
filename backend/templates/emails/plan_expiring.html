@@ -1,0 +1,34 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Your Koraa plan expires soon{% endblock %}
+
+{% block content %}
+<h1>Your {{ plan_name }} plan expires in {{ days_left }} day{{ days_left|pluralize }}</h1>
+
+<p>Hi {{ name }},</p>
+
+<p>
+    Your Koraa <strong>{{ plan_name }}</strong> plan runs until
+    <strong>{{ expires_at|date:"j F Y" }}</strong>. Renew before then and nothing
+    about your shop changes.
+</p>
+
+<div class="panel">
+    <p style="margin: 0 0 6px;"><strong>What happens if it lapses</strong></p>
+    <p class="muted" style="margin: 0;">
+        Your storefronts stay online, but your account drops to the Free plan:
+        one store, up to 50 products, and Free-plan limits on staff accounts and
+        analytics history. Nothing is deleted — renewing at any time restores
+        your {{ plan_name }} allowances immediately.
+    </p>
+</div>
+
+<p style="text-align: center; margin: 28px 0;">
+    <a class="cta" href="{{ billing_url }}">Renew {{ plan_name }}</a>
+</p>
+
+<p class="muted">
+    Renewal is {{ price|floatformat:0 }} XAF for another year, payable with MTN
+    MoMo or Orange Money.
+</p>
+{% endblock %}

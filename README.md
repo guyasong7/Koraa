@@ -83,6 +83,23 @@ cp ../../backend/.env.example .env
 docker compose up -d
 ```
 
+### 5. Production
+
+Deploying is a separate stack — gunicorn, nginx with TLS, and Celery, brought up
+from `infrastructure/docker/docker-compose.prod.yml`. It needs a wildcard
+certificate issued before first boot, so follow the runbook rather than reusing
+the commands above:
+
+**→ [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**
+
+```bash
+cp .env.prod.example .env.prod                      # then fill both in
+cp backend/.env.prod.example backend/.env.prod
+./infrastructure/docker/init-letsencrypt.sh         # once per host, before `up`
+docker compose -f infrastructure/docker/docker-compose.prod.yml \
+  --env-file .env.prod up -d --build
+```
+
 ---
 
 ## API Endpoints (Phase 1)

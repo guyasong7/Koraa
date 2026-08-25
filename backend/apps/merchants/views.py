@@ -1,15 +1,30 @@
 """Merchants views."""
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q, Sum
+from django.db.models.functions import Coalesce
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-from .models import Merchant, MerchantIdentity
-from apps.stores.models import Store
+from .models import Merchant, MerchantIdentity, MerchantStaff
+from apps.orders.models import Order
 from apps.products.models import Product
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .serializers import MerchantSerializer, MerchantCreateSerializer, MerchantUpdateSerializer, MerchantIdentitySerializer
+from django.contrib.auth import get_user_model
+from apps.merchants.utils_helpers import get_active_merchant, require_own_merchant
+from apps.stores.access import accessible_stores
+from .serializers import (
+    MerchantSerializer, MerchantCreateSerializer, 
+    MerchantUpdateSerializer, MerchantIdentitySerializer,
+    MerchantStaffSerializer, MerchantPayoutAccountSerializer
+)
+
+User = get_user_model()
 
 
 class IsMerchantOwner(permissions.BasePermission):
@@ -35,8 +50,8 @@ class MerchantProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         try:
-            return self.request.user.merchant
-        except Merchant.DoesNotExist:
+            return get_active_merchant(self.request.user)
+        except Exception:
             from rest_framework.exceptions import NotFound
             raise NotFound("Merchant profile not found. Please complete onboarding.")
 
@@ -67,30 +82,60 @@ class MerchantCreateView(generics.CreateAPIView):
 @permission_classes([permissions.IsAuthenticated])
 def merchant_dashboard_stats(request):
     """
-    GET /merchants/stats/ — Get dashboard statistics (stores, products, orders, revenue)
-    """
-    try:
-        merchant = request.user.merchant
-    except Merchant.DoesNotExist:
-        return Response({"detail": "Merchant profile not found."}, status=status.HTTP_404_NOT_FOUND)
+    GET /merchants/stats/ — Dashboard totals across every store the caller can open
 
-    total_stores = Store.objects.filter(merchant=merchant).count()
-    total_products = Product.objects.filter(store__merchant=merchant).count()
-    
-    # Orders are not yet implemented, return 0
-    total_orders = 0
-    total_revenue = 0.00
+    Scoped to accessible stores rather than to a merchant account. A teammate
+    invited to one shop sees that shop's orders and revenue; they do not see
+    the rest of the owner's business, which is what scoping by merchant did.
+    """
+    stores = accessible_stores(request.user)
+    if not stores.exists():
+        return Response({
+            "total_stores": 0,
+            "total_products": 0,
+            "total_orders": 0,
+            "paid_orders": 0,
+            "pending_orders": 0,
+            "total_revenue": 0.0,
+            "revenue_this_month": 0.0,
+        })
+
+    total_stores = stores.count()
+    total_products = Product.objects.filter(store__in=stores).count()
+
+    # Orders exist — these used to be hardcoded to 0, so every merchant's
+    # dashboard reported no sales no matter how much they had sold.
+    orders = Order.objects.filter(store__in=stores)
+    paid_orders = orders.filter(payment_status=Order.PaymentStatus.PAID)
+
+    total_orders = orders.count()
+    total_revenue = paid_orders.aggregate(
+        total=Coalesce(Sum("total_amount"), Decimal("0"))
+    )["total"]
+
+    month_start = timezone.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    revenue_this_month = paid_orders.filter(
+        created_at__gte=month_start
+    ).aggregate(total=Coalesce(Sum("total_amount"), Decimal("0")))["total"]
 
     return Response({
         "total_stores": total_stores,
         "total_products": total_products,
         "total_orders": total_orders,
-        "total_revenue": total_revenue,
+        "paid_orders": paid_orders.count(),
+        "pending_orders": orders.filter(
+            payment_status=Order.PaymentStatus.PENDING
+        ).count(),
+        "total_revenue": float(total_revenue),
+        "revenue_this_month": float(revenue_this_month),
     })
 
 @extend_schema(tags=["merchants"])
-class MerchantIdentityUploadView(generics.UpdateAPIView):
+class MerchantIdentityUploadView(generics.RetrieveUpdateAPIView):
     """
+    GET  /merchants/identity/ — Retrieve current identity verification status
     PATCH /merchants/identity/ — Upload identity documents or update phone/location status
     """
     serializer_class = MerchantIdentitySerializer
@@ -98,8 +143,8 @@ class MerchantIdentityUploadView(generics.UpdateAPIView):
 
     def get_object(self):
         try:
-            merchant = self.request.user.merchant
-        except Merchant.DoesNotExist:
+            merchant = get_active_merchant(self.request.user)
+        except Exception:
             from rest_framework.exceptions import NotFound
             raise NotFound("Merchant profile not found.")
         
@@ -107,4 +152,202 @@ class MerchantIdentityUploadView(generics.UpdateAPIView):
         # Ensure the merchant can be used for permission check
         identity.user = merchant.user
         return identity
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+
+        front_uploaded  = 'id_document' in self.request.FILES
+        back_uploaded   = 'id_document_back' in self.request.FILES
+        selfie_uploaded = 'selfie_with_id' in self.request.FILES
+
+        # If any document is uploaded, set the status to Pending Review
+        if front_uploaded or back_uploaded or selfie_uploaded:
+            instance.verification_status = "Pending"
+            instance.face_match_status = "Pending"
+            instance.warnings = []
+            # We don't change id_document_verified here (it remains False until manually approved)
+            instance.save()
+
+
+
+@extend_schema(tags=["merchants"])
+class MerchantTeamView(generics.ListCreateAPIView):
+    """
+    GET  /merchants/team/ - Invites you sent, or (if you have no account of
+                            your own) the invites you have received
+    POST /merchants/team/ - Invite someone to ONE of your stores
+                            Body: {email, role, store_id}
+    """
+    serializer_class = MerchantStaffSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return MerchantStaff.objects.none()
+        own = getattr(self.request.user, "merchant", None)
+        if own is None:
+            # A teammate has no team of their own. Answering with their
+            # employer's roster — which get_active_merchant would have done —
+            # hands them every other member's email address.
+            return MerchantStaff.objects.filter(
+                user=self.request.user
+            ).select_related("store", "merchant")
+        return MerchantStaff.objects.filter(merchant=own).select_related("store", "user")
+
+    def create(self, request, *args, **kwargs):
+        # Inviting is an account-level act, so it needs the caller's own
+        # merchant. get_active_merchant would have resolved a teammate to
+        # their employer and let them invite people onto someone else's shop.
+        merchant = require_own_merchant(request.user)
+
+        email = request.data.get("email")
+        role = request.data.get("role", MerchantStaff.Role.MANAGER)
+        store_id = request.data.get("store_id") or request.data.get("store")
+
+        if not email:
+            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not store_id:
+            return Response(
+                {"error": "Choose which store to share."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if role not in MerchantStaff.Role.values:
+            return Response({"error": "Unknown role."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Scoped to the owner's own stores, so an owner cannot hand out access
+        # to a shop that is merely shared with them.
+        try:
+            store = merchant.stores.filter(id=store_id).first()
+        except (DjangoValidationError, ValueError):
+            return Response({"error": "Not a valid store id."}, status=status.HTTP_400_BAD_REQUEST)
+        if store is None:
+            return Response({"error": "Store not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            user_to_invite = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "No Koraa account found with this email. They must register first."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if user_to_invite == request.user:
+            return Response({"error": "You cannot invite yourself."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # One row per person per store, so the same teammate can be invited
+        # to a second shop without disturbing the first.
+        staff, created = MerchantStaff.objects.get_or_create(
+            merchant=merchant,
+            user=user_to_invite,
+            store=store,
+            defaults={"role": role, "status": MerchantStaff.Status.PENDING},
+        )
+
+        if not created:
+            if staff.status == MerchantStaff.Status.ACCEPTED:
+                return Response(
+                    {"error": f"{email} already has access to {store.name}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Re-send invite if previously rejected or still pending
+            staff.role = role
+            staff.status = MerchantStaff.Status.PENDING
+            staff.save(update_fields=["role", "status"])
+
+        # Create in-app notification for the invitee
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            recipient=user_to_invite,
+            sender=request.user,
+            type=Notification.Type.TEAM_INVITE,
+            title=f"You've been invited to help run {store.name}",
+            body=(
+                f"{request.user.full_name or request.user.email} has invited you to "
+                f"manage {store.name} as {role}. Accept and the store appears in "
+                f"your dashboard."
+            ),
+            data={
+                "staff_id": str(staff.id),
+                "merchant_id": str(merchant.id),
+                "merchant_name": merchant.business_name,
+                "store_id": str(store.id),
+                "store_name": store.name,
+                "role": role,
+            },
+        )
+
+        return Response(
+            MerchantStaffSerializer(staff).data, status=status.HTTP_201_CREATED
+        )
+
+
+@extend_schema(tags=["merchants"])
+class MerchantTeamDetailView(generics.DestroyAPIView):
+    """
+    DELETE /merchants/team/<id>/ - Revoke a member or invite, or leave a team
+    """
+    queryset = MerchantStaff.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return MerchantStaff.objects.none()
+        # Rows the caller may act on: those on their own account, plus their
+        # own memberships, which they can drop to leave a team.
+        scope = Q(user=self.request.user)
+        own = getattr(self.request.user, "merchant", None)
+        if own is not None:
+            scope |= Q(merchant=own)
+        return MerchantStaff.objects.filter(scope)
+
+    def perform_destroy(self, instance):
+        own = getattr(self.request.user, "merchant", None)
+        is_owner = own is not None and instance.merchant_id == own.id
+        if not is_owner and instance.user_id != self.request.user.id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the store owner can remove a team member.")
+        instance.delete()
+
+
+@extend_schema(tags=["merchants"])
+class MerchantPayoutAccountListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /merchants/payouts/ - List payout accounts
+    POST /merchants/payouts/ - Add a payout account
+    """
+    serializer_class = MerchantPayoutAccountSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            from .models import MerchantPayoutAccount
+            return MerchantPayoutAccount.objects.none()
+        merchant = get_active_merchant(self.request.user)
+        from .models import MerchantPayoutAccount
+        return MerchantPayoutAccount.objects.filter(merchant=merchant)
+
+    def perform_create(self, serializer):
+        merchant = get_active_merchant(self.request.user)
+        # If this is the first payout account, set it as default
+        from .models import MerchantPayoutAccount
+        is_default = not MerchantPayoutAccount.objects.filter(merchant=merchant).exists()
+        serializer.save(merchant=merchant, is_default=is_default)
+
+
+@extend_schema(tags=["merchants"])
+class MerchantPayoutAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET, PUT, PATCH, DELETE /merchants/payouts/<id>/
+    """
+    serializer_class = MerchantPayoutAccountSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            from .models import MerchantPayoutAccount
+            return MerchantPayoutAccount.objects.none()
+        merchant = get_active_merchant(self.request.user)
+        from .models import MerchantPayoutAccount
+        return MerchantPayoutAccount.objects.filter(merchant=merchant)
+
 

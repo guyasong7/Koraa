@@ -1,0 +1,10 @@
+# Optional imaging extras — automatic background removal for product photos.
+#
+# Kept separate from requirements.txt because onnxruntime is ~200MB and would
+# triple the container image. apps/products/views.py imports rembg lazily and
+# saves the original image if the import fails, so the platform runs fine
+# without these; product photos simply keep their background.
+#
+#   pip install -r requirements.txt -r requirements-imaging.txt
+rembg>=2.0.62
+onnxruntime>=1.18.1

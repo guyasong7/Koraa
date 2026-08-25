@@ -23,6 +23,12 @@ apps/*/out/
 .env
 .env.local
 .env.*.local
+# Production secrets, read by infrastructure/docker/docker-compose.prod.yml.
+.env.prod
+backend/.env.prod
+apps/web/.env.prod
+# TLS material mounted into the nginx container.
+infrastructure/docker/certs/
 
 # Build artifacts
 dist/
@@ -44,3 +50,16 @@ npm-debug.log*
 
 # Turbo
 .turbo/
+
+# Debug / scratch files — not for version control
+backend/debug_500.html
+backend/dummy.jpg
+backend/test_deepseek.py
+backend/test_didit.py
+fix_*.py
+light_theme.py
+storefront_customization_plan.md
+
+# Agent workspace
+.claude/
+.gemini/

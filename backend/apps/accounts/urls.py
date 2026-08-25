@@ -12,6 +12,8 @@ from .views import (
     PasswordResetConfirmView,
     ChangePasswordView,
     MeView,
+    SocialAuthView,
+    ReferralStatsView,
 )
 
 urlpatterns = [
@@ -34,4 +36,10 @@ urlpatterns = [
 
     # User profile
     path("me/", MeView.as_view(), name="auth-me"),
+    
+    # Social Auth
+    path("social/", SocialAuthView.as_view(), name="auth-social"),
+    
+    # Referrals
+    path("referrals/", ReferralStatsView.as_view(), name="auth-referrals"),
 ]

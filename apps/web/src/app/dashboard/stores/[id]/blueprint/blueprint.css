@@ -1,0 +1,580 @@
+/* ─── Blueprint — guided storefront setup ──────────────────────────
+   Every colour, radius and shadow here is a token from globals.css. The
+   wizard sits inside Koraa's own chrome, so it has to read as part of the
+   dashboard rather than as a themed island — that means no local hex
+   values and no gradients.
+
+   The one exception is inside .bp-swatch and .bp-specimen, where the
+   merchant's *storefront* colours and fonts are rendered as inline styles
+   from the catalogue. Those are content, not chrome.
+   ──────────────────────────────────────────────────────────────── */
+
+/* The wizard is a full-screen takeover, not a page inside the dashboard
+   shell. It sits under app/dashboard/, so it inherits that layout's fixed
+   sidebar (z-index 40), sticky header (30) and 32/40px content padding —
+   a 100vh flex row inside that box double-scrolls and loses 300px of
+   preview to chrome. Fixed + inset:0 puts the wizard above the shell at
+   every breakpoint without restructuring the route, which is also what
+   the flow wants: one decision at a time, nothing else on screen. The AI
+   widget still floats above at 9999, as it does over the editor. */
+.bp {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+/* ─── Left panel — the question ─────────────────────────────────── */
+
+.bp-panel {
+  width: 460px;
+  flex-shrink: 0;
+  background: var(--surface-900);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.bp-head {
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.bp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: 14px;
+}
+
+.bp-back:hover {
+  color: var(--text-primary);
+}
+
+/* Progress: one segment per step, filled up to the current one. Reads as
+   a position rather than a percentage, which is what a 6-step wizard
+   actually needs. */
+.bp-rail {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.bp-seg {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: var(--surface-700);
+  transition: background var(--duration-base) var(--ease-out);
+}
+
+.bp-seg.done {
+  background: var(--brand-solid);
+}
+
+.bp-step {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-text);
+  margin-bottom: 6px;
+}
+
+.bp-q {
+  font-family: var(--font-outfit), var(--font-inter), system-ui, sans-serif;
+  font-size: 1.375rem;
+  font-weight: 650;
+  line-height: 1.28;
+  letter-spacing: -0.018em;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.bp-sub {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.bp-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 28px 28px;
+}
+
+.bp-foot {
+  padding: 16px 28px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  background: var(--surface-900);
+}
+
+.bp-foot .bp-spacer {
+  flex: 1;
+}
+
+/* ─── Option cards ──────────────────────────────────────────────── */
+
+.bp-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.bp-grid.cols-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* A single shared card shell. Selection is carried by a 2px brand border
+   and a brand tint — not by a checkmark alone, so it survives being
+   scanned at a glance, and not by colour alone, so the border weight
+   still distinguishes it without hue. */
+.bp-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px;
+  background: var(--surface-900);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    background var(--duration-base) var(--ease-out);
+}
+
+.bp-card:hover {
+  border-color: var(--border-strong);
+}
+
+.bp-card.on {
+  border-color: var(--brand-solid);
+  background: var(--brand-tint);
+}
+
+.bp-card-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.bp-card-mood {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.bp-tick {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Palette swatch ────────────────────────────────────────────── */
+
+/* The five colours shown at their real relative weight: the primary gets
+   the widest bar because it is what the shop will mostly be. A row of
+   five equal chips implies five equal decisions, which is not how the
+   palette is used. */
+.bp-swatch {
+  display: flex;
+  height: 46px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+
+.bp-swatch span {
+  display: block;
+  height: 100%;
+}
+
+/* ─── Type specimen ─────────────────────────────────────────────── */
+
+/* Renders the pairing in the pairing — the only honest way to preview a
+   typeface is to set the preview in it. */
+.bp-specimen {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bp-specimen-h {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.bp-specimen-p {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ─── Style-kit sketch ──────────────────────────────────────────── */
+
+/* A miniature of what the kit does: a button at its real radius next to
+   two cards at their real proportion. Naming a kit "Editorial" says
+   nothing; showing a square button beside a tall card does. */
+.bp-kit {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 62px;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: var(--surface-850);
+  border-radius: var(--radius-md);
+}
+
+.bp-kit-btn {
+  padding: 6px 14px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+  white-space: nowrap;
+}
+
+.bp-kit-cards {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.bp-kit-card {
+  background: var(--surface-900);
+  border: 1px solid var(--border-strong);
+}
+
+/* ─── Section rows ──────────────────────────────────────────────── */
+
+.bp-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  background: var(--surface-900);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    background var(--duration-base) var(--ease-out);
+}
+
+.bp-row:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.bp-row.on {
+  border-color: var(--brand-solid);
+  background: var(--brand-tint);
+}
+
+.bp-row:disabled {
+  cursor: default;
+}
+
+.bp-row-txt {
+  flex: 1;
+  min-width: 0;
+}
+
+.bp-box {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-brand-solid);
+}
+
+.bp-box.on {
+  background: var(--brand-solid);
+  border-color: var(--brand-solid);
+}
+
+.bp-lock {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ─── Review list ───────────────────────────────────────────────── */
+
+.bp-review {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.bp-review-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-900);
+  border-bottom: 1px solid var(--border);
+}
+
+.bp-review-row:last-child {
+  border-bottom: none;
+}
+
+.bp-review-k {
+  width: 92px;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bp-review-v {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 550;
+  color: var(--text-primary);
+}
+
+.bp-edit {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--brand-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.bp-edit:hover {
+  text-decoration: underline;
+}
+
+.bp-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--surface-850);
+  border-radius: var(--radius-lg);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.bp-err {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  color: var(--danger-text);
+  font-size: 0.8125rem;
+}
+
+/* ─── Right panel — preview ─────────────────────────────────────── */
+
+.bp-preview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 24px 0;
+  overflow: hidden;
+}
+
+.bp-devices {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 16px;
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.bp-device {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 9px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast);
+}
+
+.bp-device:hover {
+  color: var(--text-primary);
+}
+
+.bp-device.on {
+  background: var(--brand-tint);
+  color: var(--brand-text);
+}
+
+.bp-frame {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.bp-frame.tablet {
+  width: 768px;
+}
+
+.bp-frame.mobile {
+  width: 390px;
+}
+
+.bp-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* ─── Full-screen states ────────────────────────────────────────── */
+
+/* Fixed for the same reason .bp is: otherwise the loading state renders
+   inside the dashboard shell and then jumps when the wizard takes over. */
+.bp-center {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────
+   Under 1100px the preview stops being useful next to a 460px panel, so
+   it moves below the question rather than being squeezed. Below 720px the
+   panel goes full-width and the preview is dropped entirely — a
+   storefront preview in a 340px column is not a preview.
+   ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  /* Stacked, so the whole wizard becomes one scrolling column. The panel
+     stops being its own scroll container — nested scroll areas inside a
+     page that also scrolls is the fastest way to trap a thumb. */
+  .bp {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .bp-panel {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+  }
+
+  .bp-body {
+    overflow: visible;
+  }
+
+  /* The footer stays reachable without scrolling to the bottom of a long
+     option list. */
+  .bp-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+  }
+
+  .bp-preview {
+    height: 70vh;
+    flex: none;
+    padding: 18px 16px 0;
+  }
+
+  .bp-frame.tablet,
+  .bp-frame.mobile {
+    width: 100%;
+    max-width: 768px;
+  }
+}
+
+@media (max-width: 720px) {
+  .bp-head,
+  .bp-body,
+  .bp-foot {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .bp-grid.cols-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-preview {
+    display: none;
+  }
+}

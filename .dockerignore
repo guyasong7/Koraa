@@ -1,0 +1,39 @@
+# Build context for apps/web/Dockerfile, which builds from the monorepo root.
+# Without this the context includes node_modules, .git and backend/media (~58MB)
+# and the build is slow enough to look broken.
+
+# Dependencies — reinstalled from the lockfile inside the image.
+node_modules
+**/node_modules
+
+# Build output — rebuilt inside the image. Copying a host .next in would
+# shadow the container's build with artifacts from a different platform.
+**/.next
+**/out
+**/dist
+**/build
+.turbo
+**/.turbo
+**/tsconfig.tsbuildinfo
+
+# The web image does not need the backend.
+backend
+infrastructure
+docs
+packages
+
+# Secrets. NEXT_PUBLIC_* values are passed as --build-arg instead, so no env
+# file ever needs to enter the image.
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+.git
+.gitignore
+**/*.log
+.vscode
+.idea
+.DS_Store
+Thumbs.db

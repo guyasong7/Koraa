@@ -13,10 +13,16 @@ from apps.stores.models import Store
 User = get_user_model()
 
 
-def create_merchant_user(email, password="Koraa@2024!"):
+def create_merchant_user(email, password="Koraa@2024!", *, is_verified=True):
     user = User.objects.create_user(email=email, full_name="Test", password=password)
     merchant = Merchant.objects.create(
-        user=user, business_name=f"Business {email}", country="CM"
+        user=user,
+        business_name=f"Business {email}",
+        country="CM",
+        # Creating a store is gated on identity verification, so the useful
+        # default is a merchant who has already been through it. Tests about
+        # the gate itself pass is_verified=False.
+        is_verified=is_verified,
     )
     return user, merchant
 
@@ -47,6 +53,20 @@ class TestStoreCreation:
         assert response.data["name"] == "My Fashion Shop"
         assert "slug" in response.data
         assert response.data["status"] == "draft"
+
+    def test_create_store_requires_a_verified_identity(self, client):
+        """The KYC gate, which is the reason a bare merchant now gets a 403."""
+        user, merchant = create_merchant_user(
+            "unverified@koraa.test", is_verified=False
+        )
+        token = get_tokens(client, "unverified@koraa.test")
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        response = client.post("/api/v1/stores/", {
+            "name": "Unverified Shop", "currency": "XAF", "country": "CM",
+        }, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not Store.objects.filter(merchant=merchant).exists()
 
     def test_create_store_requires_merchant(self, client):
         """User without merchant profile cannot create a store."""

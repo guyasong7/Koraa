@@ -2,7 +2,7 @@
   "name": "koraa",
   "version": "0.1.0",
   "private": true,
-  "description": "Koraa — Template-driven ecommerce storefront SaaS for African businesses",
+  "description": "Koraa — Template-driven ecommerce storefront SaaS for Cameroonian businesses",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -13,10 +13,10 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "format": "prettier --write .",
-    "dashboard:dev": "npm run dev --workspace=apps/dashboard",
-    "dashboard:build": "npm run build --workspace=apps/dashboard",
-    "storefront:dev": "npm run dev --workspace=apps/storefront",
-    "landing:dev": "npm run dev --workspace=apps/landing",
+    "web:dev": "npm run dev --workspace=apps/web",
+    "web:build": "npm run build --workspace=apps/web",
+    "web:start": "npm run start --workspace=apps/web",
+    "web:typecheck": "npm run typecheck --workspace=apps/web",
     "backend:start": "bash -c 'cd backend && .venv/bin/python manage.py runserver'",
     "backend:migrate": "bash -c 'cd backend && .venv/bin/python manage.py migrate'",
     "backend:makemigrations": "bash -c 'cd backend && .venv/bin/python manage.py makemigrations'",

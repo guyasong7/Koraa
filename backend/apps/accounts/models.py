@@ -53,6 +53,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     full_name = models.CharField(_("full name"), max_length=255, blank=True)
     phone = models.CharField(_("phone number"), max_length=20, blank=True)
     avatar = models.ImageField(_("avatar"), upload_to="avatars/", blank=True, null=True)
+
+    # Personal identity fields
+    date_of_birth = models.DateField(_("date of birth"), null=True, blank=True)
+    gender = models.CharField(
+        _("gender"),
+        max_length=20,
+        blank=True,
+        choices=[("male", _("Male")), ("female", _("Female")), ("other", _("Other")), ("prefer_not_to_say", _("Prefer not to say"))],
+    )
+    id_card_number = models.CharField(_("ID card / passport number"), max_length=50, blank=True)
+    city = models.CharField(_("city"), max_length=100, blank=True)
     role = models.CharField(
         _("role"),
         max_length=20,
@@ -69,10 +80,20 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
 
+    # Referral Program
+    referral_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
+
     objects = UserManager()
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["full_name"]
+
+    def save(self, *args, **kwargs):
+        if not self.referral_code:
+            import string
+            # Generate a 6-character random referral code
+            self.referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("user")
@@ -185,6 +206,31 @@ class PasswordResetToken(models.Model):
                 is_used=False,
                 expires_at__gt=timezone.now(),
             )
-            return obj
         except cls.DoesNotExist:
             return None
+        return obj
+
+
+class Referral(models.Model):
+    """
+    Tracks user referrals and their status.
+    """
+    class Status(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        COMPLETED = "completed", _("Completed")
+        
+    referrer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="referrals_made")
+    referred_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="referred_by")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    reward_amount = models.IntegerField(default=0, help_text="Amount earned from this referral")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = ("referrer", "referred_user")
+
+    def __str__(self):
+        return f"{self.referrer.email} referred {self.referred_user.email} ({self.status})"
+

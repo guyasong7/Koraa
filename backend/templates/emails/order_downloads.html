@@ -1,0 +1,76 @@
+{% extends "emails/base_email.html" %}
+
+{% comment %}
+The buyer's links to the files they just paid for.
+
+This email *is* the product. There are no shopper accounts on a Koraa
+storefront, so the tokens in these links are the only way back to the files —
+which is why the message says so plainly rather than assuming the buyer will
+work it out, and why the links are the first thing under the greeting instead
+of below a summary of the order.
+
+Two-branded like the invoice, and in the same order: the shop the buyer knows
+at the top, Koraa in the footer as the platform that carried it.
+{% endcomment %}
+
+{% block title %}Your downloads from {{ store.name }}{% endblock %}
+
+{% block header %}
+{% if store_logo %}
+    <a href="{{ store_url }}" style="text-decoration: none;">
+        <img src="{{ store_logo }}" alt="{{ store.name }}" class="logo">
+    </a>
+{% else %}
+    <a href="{{ store_url }}" style="text-decoration: none; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
+        {{ store.name }}
+    </a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 6px;">Your {% if downloads|length == 1 %}download{% else %}downloads{% endif %} are ready</h1>
+<p class="muted" style="margin-bottom: 24px;">Order {{ reference }} · {{ order.created_at|date:"j F Y" }}</p>
+
+<p>Hi {{ order.customer_name }},</p>
+
+<p>
+    Payment has gone through — thank you. Here
+    {% if downloads|length == 1 %}is your file{% else %}are your files{% endif %}
+    from <strong>{{ store.name }}</strong>.
+</p>
+
+{% for item in downloads %}
+<div class="panel" style="margin: 18px 0;">
+    <p style="margin: 0 0 4px; font-weight: 700; color: #0f172a;">{{ item.name }}</p>
+    <p class="muted" style="margin: 0 0 14px;">
+        {% if item.file_count %}{{ item.file_count }} file{{ item.file_count|pluralize }}{% endif %}
+        {% if item.remaining is not None %}{% if item.file_count %} · {% endif %}{{ item.remaining }} download{{ item.remaining|pluralize }} left{% endif %}
+        {% if item.expires_at %}<br>Available until {{ item.expires_at|date:"j F Y" }}{% endif %}
+    </p>
+    <a class="cta" href="{{ item.url }}">Get {% if item.file_count == 1 %}the file{% else %}the files{% endif %}</a>
+</div>
+{% endfor %}
+
+<p class="muted" style="margin-top: 26px;">
+    <strong style="color: #334155;">Keep this email.</strong> These links are how
+    you get back to your {% if downloads|length == 1 %}file{% else %}files{% endif %} —
+    there is no account to sign in to. Do not forward them: whoever holds a link
+    can download from it.
+</p>
+
+<p class="muted">
+    Trouble downloading? Reply to this email{% if store.email %} or write to
+    <a href="mailto:{{ store.email }}" style="color: #7c3aed;">{{ store.email }}</a>{% endif %}.
+</p>
+{% endblock %}
+
+{% block footer %}
+<p style="margin: 0 0 10px; font-size: 13px;">
+    <a href="{{ store_url }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ store.name }}</a>
+    · &copy; {% now "Y" %}
+</p>
+<a href="{{ koraa_url }}" style="text-decoration: none; color: #94a3b8; font-size: 12px;">
+    <img src="{{ koraa_url }}/koraa-logo.png" alt="Koraa" style="height: 18px; width: auto; vertical-align: middle; opacity: 0.75;">
+    <span style="vertical-align: middle; margin-left: 6px;">Built with Koraa</span>
+</a>
+{% endblock %}

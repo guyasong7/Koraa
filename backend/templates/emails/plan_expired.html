@@ -1,0 +1,32 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Your Koraa plan has expired{% endblock %}
+
+{% block content %}
+<h1>Your {{ plan_name }} plan has expired</h1>
+
+<p>Hi {{ name }},</p>
+
+<p>
+    Your Koraa <strong>{{ plan_name }}</strong> plan ended on
+    <strong>{{ expires_at|date:"j F Y" }}</strong>, so your account is now on the
+    <strong>Free</strong> plan.
+</p>
+
+<div class="panel">
+    <p style="margin: 0 0 6px;"><strong>Your shop is still online</strong></p>
+    <p class="muted" style="margin: 0;">
+        Nothing has been deleted. Free-plan limits now apply — one store, up to
+        50 products, one staff account, 30 days of analytics — so anything above
+        those limits is read-only until you renew.
+    </p>
+</div>
+
+<p style="text-align: center; margin: 28px 0;">
+    <a class="cta" href="{{ billing_url }}">Reactivate {{ plan_name }}</a>
+</p>
+
+<p class="muted">
+    Renewing takes a minute and restores your allowances straight away.
+</p>
+{% endblock %}

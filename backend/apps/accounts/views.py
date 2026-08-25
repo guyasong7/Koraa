@@ -17,6 +17,7 @@ Endpoints:
 
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
 from django.conf import settings
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -24,6 +25,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse
+import logging
+
+from .firebase import verify_firebase_id_token
 
 from .models import EmailVerificationOTP, PasswordResetToken
 from .serializers import (
@@ -36,9 +40,12 @@ from .serializers import (
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
     ChangePasswordSerializer,
+    SocialAuthSerializer,
 )
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Registration ─────────────────────────────────────────────────────────────
@@ -52,7 +59,18 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        referral_code = serializer.validated_data.pop("referral_code", None)
         user = serializer.save()
+
+        # Handle referral
+        if referral_code:
+            try:
+                referrer = User.objects.get(referral_code=referral_code)
+                if referrer != user:
+                    from .models import Referral
+                    Referral.objects.create(referrer=referrer, referred_user=user, status="pending")
+            except User.DoesNotExist:
+                pass
 
         # Auto-send verification OTP
         otp, _ = EmailVerificationOTP.generate(user)
@@ -71,12 +89,17 @@ class RegisterView(generics.CreateAPIView):
         )
 
     def _send_verification_email(self, user, otp):
+        html_message = render_to_string("emails/verify_email.html", {
+            "otp": otp,
+            "dashboard_url": settings.KORAA_DASHBOARD_URL.rstrip("/")
+        })
         send_mail(
             subject="Verify your Koraa account",
             message=f"Your verification code is: {otp}\n\nThis code expires in 10 minutes.",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
             fail_silently=True,
+            html_message=html_message,
         )
 
 
@@ -139,12 +162,17 @@ class RequestEmailOTPView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer._user
         otp, _ = EmailVerificationOTP.generate(user)
+        html_message = render_to_string("emails/verify_email.html", {
+            "otp": otp,
+            "dashboard_url": settings.KORAA_DASHBOARD_URL.rstrip("/")
+        })
         send_mail(
             subject="Your Koraa verification code",
             message=f"Your code is: {otp}\n\nExpires in 10 minutes.",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
             fail_silently=True,
+            html_message=html_message,
         )
         return Response({"message": "Verification code sent."})
 
@@ -168,7 +196,14 @@ class VerifyEmailOTPView(APIView):
 
 @extend_schema(tags=["auth"])
 class PasswordResetRequestView(APIView):
-    """Initiate password reset — sends token via email."""
+    """
+    Initiate a Django-side password reset — sends a token via email.
+
+    Note: the web app signs in through Firebase, so a Firebase-backed account
+    must reset via /auth/forgot-password (Firebase's own flow) instead. This
+    endpoint exists for accounts that authenticate against Django directly,
+    such as staff using the API without Firebase.
+    """
     permission_classes = [permissions.AllowAny]
     serializer_class = PasswordResetRequestSerializer
 
@@ -178,15 +213,34 @@ class PasswordResetRequestView(APIView):
         email = serializer.validated_data["email"]
         try:
             user = User.objects.get(email=email)
-            raw_token, _ = PasswordResetToken.generate(user)
-            reset_url = f"{settings.KORAA_DASHBOARD_URL}/reset-password?token={raw_token}"
-            send_mail(
-                subject="Reset your Koraa password",
-                message=f"Click to reset your password:\n\n{reset_url}\n\nExpires in 1 hour.",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=True,
-            )
+            if not user.has_usable_password():
+                # Social/Firebase account — a Django token would set a password
+                # that login never checks, so point them at the flow that works.
+                send_mail(
+                    subject="Reset your Koraa password",
+                    message=(
+                        "Your Koraa account signs in with Google or with an email "
+                        "password managed by Firebase.\n\n"
+                        f"Reset it here: {settings.KORAA_DASHBOARD_URL.rstrip('/')}"
+                        "/auth/forgot-password\n"
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=True,
+                )
+            else:
+                raw_token, _ = PasswordResetToken.generate(user)
+                reset_url = (
+                    f"{settings.KORAA_DASHBOARD_URL.rstrip('/')}"
+                    f"/auth/reset-password?token={raw_token}"
+                )
+                send_mail(
+                    subject="Reset your Koraa password",
+                    message=f"Click to reset your password:\n\n{reset_url}\n\nExpires in 1 hour.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=True,
+                )
         except User.DoesNotExist:
             pass  # Prevent email enumeration
         return Response({"message": "If an account exists, a reset link has been sent."})
@@ -242,3 +296,121 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+# ─── Social Authentication ────────────────────────────────────────────────────
+
+@extend_schema(tags=["auth"])
+class SocialAuthView(APIView):
+    """Authenticate with Google or Apple ID token."""
+    permission_classes = [permissions.AllowAny]
+    serializer_class = SocialAuthSerializer
+
+    def post(self, request):
+        serializer = SocialAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        provider = serializer.validated_data["provider"]
+        token = serializer.validated_data["id_token"]
+        provided_name = serializer.validated_data.get("full_name", "")
+
+        email = None
+        full_name = None
+
+        try:
+            # Verify the Firebase ID token against Google's public certificates.
+            # This completely avoids the need for a Firebase Admin Service
+            # Account JSON. See apps/accounts/firebase.py for why the fetch is
+            # cached — google-auth re-downloads those certificates on every
+            # call, which used to put a round trip to Google in front of every
+            # Google sign-in.
+            decoded_token = verify_firebase_id_token(token)
+            email = decoded_token.get("email")
+            full_name = decoded_token.get("name") or provided_name
+            email_verified = decoded_token.get("email_verified", False)
+        except Exception as exc:
+            # The reason a token failed — wrong audience, bad signature, past
+            # its `exp` — is diagnostic information about our verification
+            # setup, not something an unauthenticated caller should be told.
+            # It goes to the logs; the client gets one flat answer.
+            logger.warning("Firebase token verification failed: %s", exc)
+            return Response(
+                {"error": "Invalid or expired sign-in token. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        if not email:
+            return Response({"error": "Email not provided by provider."}, status=status.HTTP_400_BAD_REQUEST)
+
+        referral_code = serializer.validated_data.get("referral_code", "")
+
+        # Get or create user
+        user, created = User.objects.get_or_create(email=email)
+        if created:
+            user.full_name = full_name or email.split("@")[0]
+            user.is_verified = email_verified
+            user.set_unusable_password()
+            user.save()
+
+            # Handle referral
+            if referral_code:
+                try:
+                    referrer = User.objects.get(referral_code=referral_code)
+                    if referrer != user:
+                        from .models import Referral
+                        Referral.objects.create(referrer=referrer, referred_user=user, status="pending")
+                except User.DoesNotExist:
+                    pass
+        else:
+            # If they had no name previously, update it
+            if not user.full_name and full_name:
+                user.full_name = full_name
+                user.save(update_fields=["full_name"])
+            # Ensure social accounts are verified if the token says so
+            if email_verified and not user.is_verified:
+                user.is_verified = True
+                user.save(update_fields=["is_verified"])
+            
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "message": "Login successful.",
+            "user": UserProfileSerializer(user).data,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }, status=status.HTTP_200_OK)
+
+
+# ─── Referrals ────────────────────────────────────────────────────────────────
+
+@extend_schema(tags=["auth"])
+class ReferralStatsView(APIView):
+    """
+    GET /auth/referrals/
+    Get the authenticated user's referral code, link, and list of referred users.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from .models import Referral
+        from .serializers import ReferralSerializer
+        
+        user = request.user
+        if not user.referral_code:
+            # Generate if missing for some reason
+            user.save()
+            
+        referrals = Referral.objects.filter(referrer=user).order_by("-created_at")
+        serializer = ReferralSerializer(referrals, many=True)
+        
+        total_earned = sum(r.reward_amount for r in referrals if r.status == "completed")
+        
+        base_url = settings.KORAA_DASHBOARD_URL.rstrip("/")
+        referral_link = f"{base_url}/auth/register?ref={user.referral_code}"
+        
+        return Response({
+            "referral_code": user.referral_code,
+            "referral_link": referral_link,
+            "total_referred": referrals.count(),
+            "total_earned": total_earned,
+            "referrals": serializer.data
+        })
+

@@ -1,0 +1,2921 @@
+/* ═══════════════════════════════════════════════════════════════
+   Landing page
+
+   Structure is square on purpose: the feature, step and pricing grids
+   are hairline grids (1px gap over a border-coloured background), and
+   rounded cells with 1px gaps read as broken. Controls — buttons,
+   pills, the billing switch — take the radius tokens. Square
+   architecture, soft controls.
+
+   Every colour comes from a token in globals.css so the page works in
+   both themes. Layout is class-driven — no inline styles patched over
+   with !important.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* The fixed navbar's height, as a token rather than as the number 64 written
+   out in five places. It grows with the viewport because the logo does, and
+   three separate rules have to clear it: the landing hero, the domains hero,
+   and the mobile sheet's top inset. */
+/* Every --lp-* token lives here rather than on `.lp`, and that placement is
+   load-bearing rather than tidiness. `.lp` is the div *inside* <main>; the
+   navbar and the footer are siblings of <main>, so they were never inside it
+   and inherited none of this. The footer asked for `background: var(--lp-ink)`
+   and got an invalid value — so the ink panel it was designed as rendered as
+   the bare body colour, its white-on-ink text came out dark, and worst of all
+   `.lp-wrap` resolved `max-width: var(--lp-max)` and `padding: var(--lp-gutter)`
+   to nothing, which is why the footer ran the full width of the window with
+   its last column clipped off the right edge. The navbar had the matching
+   half of the bug: it set its own `padding: 0 24px` instead of using the
+   wrap, so the logo sat 24px from the window while the content below it
+   started at the 1200px column — the two were never on the same grid. */
+:root {
+  --lnav-h: clamp(64px, 55.6px + 2.25vw, 90px);
+  /* Full logo, ~3.94:1. At the top of the range that is 220px wide, which
+     still leaves the centred menu its room; at the bottom it sits beside a
+     44px burger inside a 375px phone. */
+  --logo-h: clamp(32px, 27px + 1.88vw, 56px);
+
+  --lp-gutter: 24px;
+  --lp-max: 1200px;
+  --lp-ink: #0a0a0b;
+
+  /* Text on the dark panels. Fixed values, because the panels are dark
+     in both themes — but measured against --lp-ink, not guessed:
+       dim     0.62 alpha -> 7.8:1  body copy
+       faint   0.50 alpha -> 5.3:1  fine print, still normal text
+       line    0.14 alpha -> 1.4:1  decorative dividers only
+       control 0.38 alpha -> 3.4:1  interactive borders (needs 3:1)
+     --lp-on-ink-faint was 0.38, which is 3.5:1 — below the 4.5:1 that
+     normal text requires, and it was carrying the hero note, the
+     featured plan's billing line and the whole footer baseline. */
+  --lp-on-ink: #ffffff;
+  --lp-on-ink-dim: rgba(255, 255, 255, 0.62);
+  --lp-on-ink-faint: rgba(255, 255, 255, 0.5);
+  --lp-on-ink-line: rgba(255, 255, 255, 0.14);
+  --lp-on-ink-control: rgba(255, 255, 255, 0.38);
+
+  /* The catalogue card's ground. A real ochre, not the fill token: this
+     is a large field carrying white body copy, so it is pinned to a dark
+     enough stop that white clears 4.5:1 in both themes rather than
+     following --brand-solid down to --brand-400 on dark where it would
+     not. --brand-700 (#8a4310) puts white at 7.3:1.
+
+     The gradient is the only decoration — a lift toward --brand-600 at
+     the top so the flat field has some depth, resolving into the solid
+     stop before the copy starts. On-brand text alphas are measured
+     against the darker of the two stops, the one under the copy. */
+  --lp-brand-panel: linear-gradient(
+    160deg,
+    var(--brand-600) 0%,
+    var(--brand-700) 46%
+  );
+  --lp-on-brand: #ffffff;
+  --lp-on-brand-dim: rgba(255, 255, 255, 0.74);
+  --lp-on-brand-line: rgba(255, 255, 255, 0.18);
+}
+
+.lp {
+  background: var(--surface-900);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+/* In dark mode the ink panels and the page surface are both near-black
+   — #0a0a0b against #141414 is 1.06:1, so the whole dark-panel device
+   collapses into one flat field. Luminance can't separate them at that
+   end of the range, so the panels take a hairline edge instead.
+
+   The hero and the payments section used to be in this list. They're
+   light surfaces now — the closing CTA is the only dark panel left, so
+   it's the only one that needs the edge. */
+.dark .lp-cta,
+.dark .lfoot {
+  border-top: 1px solid var(--border-strong);
+}
+
+.dark .lp-plan--featured {
+  outline: 1px solid var(--border-strong);
+  outline-offset: -1px;
+}
+
+/* The catalogue card drops a stop on dark. #a8530f → #8a4310 against a
+   #141414 ground is a bright warm block in a near-black page and reads
+   as lit from behind; a stop deeper sits in the page instead of hovering
+   over it, and white only gains contrast going down the ramp (9.4:1 on
+   #6b330c). Same two-stop gradient, same relationship between them. */
+.dark {
+  --lp-brand-panel: linear-gradient(
+    160deg,
+    var(--brand-700) 0%,
+    var(--brand-800) 46%
+  );
+}
+
+.lp-wrap {
+  max-width: var(--lp-max);
+  margin: 0 auto;
+  padding-left: var(--lp-gutter);
+  padding-right: var(--lp-gutter);
+}
+
+.lp-section {
+  padding: 96px 0;
+}
+
+.lp-section--tight {
+  padding: 64px 0;
+}
+
+/* Display type — Outfit, tight tracking, never bolder than 600 */
+.lp-display {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  margin: 0;
+}
+
+/* The whole scale moved up one step. It was set for a dense product UI,
+   not a marketing page read at arm's length on a phone: body copy sat at
+   15px, plan features and the facts strip at 14px and 13px, and the
+   result read as fine print. Nothing here is smaller than 15px now, and
+   body copy is 17px. */
+.lp-h1 {
+  font-size: clamp(2.875rem, 6.8vw, 4.75rem);
+}
+
+.lp-h2 {
+  font-size: clamp(2.125rem, 4.2vw, 3.125rem);
+}
+
+.lp-h3 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.lp-eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-text);
+  margin: 0 0 16px;
+}
+
+.lp-lead {
+  font-size: 1.1875rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 58ch;
+}
+
+.lp-body {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────── */
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 26px;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 550;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 50px;
+  transition: background var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.lp-btn--primary {
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+}
+
+.lp-btn--primary:hover {
+  background: var(--brand-solid-hover);
+}
+
+.lp-btn--outline {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.lp-btn--outline:hover {
+  border-color: var(--text-primary);
+  background: var(--surface-850);
+}
+
+/* On dark panels */
+.lp-btn--on-ink {
+  background: var(--lp-on-ink);
+  color: var(--lp-ink);
+}
+
+.lp-btn--on-ink:hover {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+/* Border is --lp-on-ink-control, not --lp-on-ink-line: this is an
+   interactive control, so its boundary needs 3:1. The divider token is
+   1.4:1, which left the button edge almost invisible on the hero. */
+.lp-btn--ghost-ink {
+  background: transparent;
+  color: var(--lp-on-ink);
+  border-color: var(--lp-on-ink-control);
+}
+
+.lp-btn--ghost-ink:hover {
+  border-color: var(--lp-on-ink);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Focus ring has to invert on the dark panels — the global violet ring
+   is only 2.4:1 against --lp-ink. */
+.lp-btn--on-ink:focus-visible,
+.lp-btn--ghost-ink:focus-visible {
+  outline: 2px solid var(--lp-on-ink);
+  outline-offset: 2px;
+}
+
+.lp-btn--ghost {
+  background: var(--surface-850);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.lp-btn--ghost:hover {
+  background: var(--surface-800);
+  border-color: var(--border-strong);
+}
+
+/* Disabled reads as disabled — muted, no pointer, no hover response.
+   The old markup styled an "Unavailable" button to look live. */
+.lp-btn:disabled,
+.lp-btn[aria-disabled="true"] {
+  background: var(--surface-800);
+  color: var(--text-disabled);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.lp-btn--sm {
+  padding: 9px 18px;
+  min-height: 40px;
+  font-size: 0.9375rem;
+}
+
+.lp-btn--lg {
+  padding: 17px 34px;
+  min-height: 58px;
+  font-size: 1.0625rem;
+}
+
+/* ─── Utilities ───────────────────────────────────────────────── */
+.lp-center {
+  text-align: center;
+}
+
+.lp-center .lp-lede,
+.lp-center .lp-lead {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lp-lede {
+  font-size: 1.1875rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: 52ch;
+  margin: 16px 0 36px;
+}
+
+.lp-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--brand-tint);
+  border: 1px solid var(--brand-tint-border);
+  color: var(--brand-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Visible to screen readers, not to sighted users. Used for form labels
+   where the visual design carries the meaning through position. */
+.lp-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Hero
+
+   Copy on the left of a warm field, photographs on the right: two
+   columns of portraits, offset from each other, bleeding off the top
+   and bottom edges and drifting slowly in opposite directions.
+
+   The photographs replaced a 2386x1117 dashboard screenshot that used
+   to sit centred beneath the copy. Two reasons. It was illegible at
+   anything under a full-width column — the sidebar labels landed at
+   about 7px on a phone — and more to the point, nobody is buying the
+   dashboard. The people in these photographs are who this is for.
+
+   The field itself is `--surface-900`, which is already warm: bone-50
+   on the light theme, indigo-900 on the dark one. No new colour is
+   introduced here, so the hero reads the same as every other section.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lp-hero {
+  /* How much of the viewport the photographs take. Not a fraction of
+     .lp-wrap: the strip runs to the window's edge, past the content
+     column, which is what makes it read as continuing rather than as a
+     panel placed beside the copy.
+
+     Where it stops on the way left is the nav's business. The bar's link
+     row is centred, and its last link — Domains — ends a flat 228px right
+     of centre at every width this strip is shown at: the root font size
+     that sets those links is itself capped (`clamp(1rem, 0.9rem + 0.32vw,
+     1.125rem)` tops out around 1125px), so the row stops growing while
+     the window keeps going. That makes `50vw - 228px` the line the strip
+     may run up to, and `--mosaic-clear` adds the air that keeps it from
+     touching.
+
+     `max()` rather than replacing the clamp: the calc is only the wider
+     of the two above about 1624px, and below that the clamp still governs.
+     Written this way the strip gains width on the screens where it was
+     stopping short and loses none on the screens where it wasn't. */
+  --mosaic-clear: 252px; /* 228px to the nav's last link, plus 24px of air */
+  --mosaic-w: max(
+    clamp(300px, 38vw, 560px),
+    calc(50vw - var(--mosaic-clear))
+  );
+  --mosaic-gap: clamp(12px, 1.4vw, 20px);
+
+  position: relative;
+  background: var(--surface-900);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* One very quiet wash behind the copy so the panel doesn't read as
+   empty. 5% brand at the top-right only — no radial blobs. */
+.lp-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    145deg,
+    transparent 45%,
+    color-mix(in srgb, var(--brand-500) 5%, transparent) 100%
+  );
+}
+
+.lp-hero__inner {
+  position: relative;
+  z-index: 2;
+  /* Top/bottom padding unchanged. Left is zeroed so the copy block
+     starts at the window edge and overlaps the flourish beneath it.
+     The lp-wrap's right padding is kept so the text doesn't run into
+     the photograph strip on the right. */
+  padding: calc(var(--lnav-h) + 76px) 0 96px;
+  padding-left: 0;
+}
+
+.lp-hero__copy {
+  /* Whichever is tighter: a comfortable measure, or half the content
+     column. The second clause is what keeps the copy clear of the
+     photographs on a 1024px laptop, where the strip starts at 62% of
+     the window and the wrap has no side margin left to give. */
+  max-width: min(34rem, 52%);
+  margin: 0;
+  text-align: left;
+}
+
+/* Smaller than `.lp-h1`'s 4.75rem cap, which was set when the headline
+   had the full content width and was centred in it. In a column just
+   over half that wide, 85px type sets at about seven characters a line
+   and the headline becomes six lines of two words. */
+.lp-hero h1 {
+  max-width: none;
+  margin: 0;
+  font-size: clamp(2.625rem, 4.4vw, 3.75rem);
+  color: var(--text-primary);
+}
+
+.lp-hero__sub {
+  margin: 24px 0 0;
+  max-width: 44ch;
+  font-size: 1.1875rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.lp-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 36px;
+  justify-content: flex-start;
+}
+
+.lp-hero__note {
+  margin: 20px 0 0;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+/* ─── Hero payment rails ──────────────────────────────────────────
+   The networks' own lockups, sitting under the note. No pill or border
+   around them the way `.lp-rail` has: those live in a comparison row
+   further down the page where a frame separates one rail from the next,
+   whereas here there are two marks against open paper and a box would
+   only add furniture. A plain `ul` because it is a list of two things,
+   with the bullets off.
+
+   Taller than `.lp-rail__logo`'s 26px — the hero is the first thing
+   loaded and has the room, and MTN's lockup rewards it. `width: auto`
+   for the same reason as everywhere else: the two marks' ratios differ.
+   ───────────────────────────────────────────────────────────────── */
+.lp-hero__rails {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 26px;
+}
+
+.lp-hero__rails-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lp-hero__rails-list {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-hero__rail {
+  display: inline-flex;
+  align-items: center;
+}
+
+.lp-hero__rail-logo {
+  height: 32px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ─── Hero photographs ────────────────────────────────────────────
+   Anchored to the right edge and taller than the section, so .lp-hero's
+   overflow crops both ends. Between the two of them the columns need to
+   overflow at every viewport, which they do by construction: four 4:5
+   portraits stacked is a little over five times the column's width.
+
+   z-index 1, between the wash and the copy — nothing overlaps at wide
+   sizes, but the copy has to win if a long translation ever pushes it
+   under the strip.
+   ───────────────────────────────────────────────────────────────── */
+.lp-hero__mosaic {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: var(--mosaic-w);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mosaic-gap);
+  align-items: start;
+  padding-right: var(--mosaic-gap);
+  overflow: hidden;
+  pointer-events: none;
+  /* Both ends dissolve instead of being guillotined by the crop. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14%,
+    #000 86%,
+    transparent 100%
+  );
+}
+
+/* The left edge melts into the field rather than butting against the
+   copy. A gradient overlay rather than a second mask composited with
+   the first — `mask-composite` is the fussier route for no gain, and
+   this one is just the field colour fading out. */
+.lp-hero__mosaic::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: clamp(48px, 22%, 130px);
+  background: linear-gradient(to right, var(--surface-900), transparent);
+}
+
+/* Offset so the two columns don't line up into a grid of eight. The
+   offsets are negative and unequal, which is also what puts the first
+   photograph of each column above the section's top edge. */
+.lp-hero__col:first-child {
+  margin-top: calc(var(--mosaic-gap) * -3);
+}
+
+.lp-hero__col:last-child {
+  margin-top: calc(var(--mosaic-gap) * -11);
+}
+
+/* `margin-bottom` on the photographs, not `gap` on the column. The
+   marquee loops by translating exactly half the column's height, and
+   that only lands on the next copy's first photograph if every
+   photograph contributes the same height + spacing. With `gap` the
+   column is 8h + 7g tall while the loop distance is 4h + 4g — half a
+   gap out, and the seam shows once a cycle. */
+.lp-hero__col img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  margin-bottom: var(--mosaic-gap);
+  border-radius: var(--radius-xl);
+  background: var(--surface-850);
+}
+
+/* Frame zero of the down-moving column, declared here for exactly the
+   reason `[data-hero]`'s closed states are: the first paint has to already
+   be frame zero. The mosaic is visible in the server HTML now (see the
+   note on `[data-hero="mosaic"]`), and the marquee below starts this
+   column at `yPercent: -50` the instant it runs — so without this the
+   column would render at 0 and then snap up half its own height, around
+   1344px at 1440px wide, the moment GSAP hydrates.
+
+   Visually identical to 0: each column is rendered twice and half its
+   height is exactly four photograph slots, by the same height + spacing
+   invariant the note above relies on — so -50% shows the second copy
+   where the first was.
+
+   `nth-child(even)` mirrors `up = i % 2 === 0` in LandingMotion. */
+.lp-hero__col:nth-child(even) {
+  transform: translateY(-50%);
+}
+
+/* ─── The marked phrase ───────────────────────────────────────────
+   A design-tool selection box around one phrase of the headline: a
+   hairline rectangle with a handle at each corner. It says "this is
+   the thing you are configuring", which is the whole proposition.
+
+   Both halves are gated on --frame-o so the box can arrive after the
+   headline has finished landing — see LandingMotion. It has to be a
+   custom property rather than the pseudo-elements' own opacity because
+   GSAP cannot address a pseudo-element directly.
+   ───────────────────────────────────────────────────────────────── */
+.lp-mark {
+  --frame-o: 0;
+  /* A selection box broken across two lines is not a selection box. */
+  white-space: nowrap;
+  position: relative;
+}
+
+.lp-mark::before,
+.lp-mark::after {
+  content: "";
+  position: absolute;
+  opacity: var(--frame-o);
+  pointer-events: none;
+}
+
+.lp-mark::before {
+  inset: -0.04em -0.14em;
+  border: 2px solid var(--brand-500);
+}
+
+/* The handles, as four background layers on one box inset half a handle
+   further out than the frame — so each square straddles its corner
+   instead of sitting inside it. */
+.lp-mark::after {
+  --handle: 9px;
+  inset: calc(-0.04em - var(--handle) / 2) calc(-0.14em - var(--handle) / 2);
+  background-image: linear-gradient(var(--brand-500) 0 0),
+    linear-gradient(var(--brand-500) 0 0), linear-gradient(var(--brand-500) 0 0),
+    linear-gradient(var(--brand-500) 0 0);
+  background-size: var(--handle) var(--handle);
+  background-repeat: no-repeat;
+  background-position: left top, right top, left bottom, right bottom;
+}
+
+/* ─── Hero motion ─────────────────────────────────────────────────
+   The opening states live here, not in `LandingMotion.tsx`.
+
+   The page is server-rendered, so its HTML paints before any of GSAP
+   exists. Hiding these elements from JS would therefore show the
+   finished hero at full size and then yank it back to the start of the
+   animation on hydration — the animation would run, but only after
+   spoiling its own reveal. Declaring the closed state in CSS means the
+   very first paint is already frame zero.
+
+   Three things have to un-hide this, or the copy is gone for good:
+   `LandingMotion` on the happy path, its `prefers-reduced-motion`
+   branch, and the `<noscript>` block in `layout.tsx`. The navbar's logo
+   is in the list because it animates too, and the navbar is in the
+   layout — so it has to un-hide on `/domains`, which has no hero.
+   ───────────────────────────────────────────────────────────────── */
+[data-hero],
+[data-draw],
+.lnav__logo path {
+  opacity: 0;
+}
+
+[data-hero="sub"],
+[data-hero="actions"],
+[data-hero="note"],
+[data-hero="rails"] {
+  transform: translateY(18px);
+}
+
+/* Exempt from the `opacity: 0` above, deliberately. This element holds the
+   page's LCP image, and Chrome does not record a paint-timing candidate for
+   anything at effective opacity 0 — it records it at the moment it becomes
+   visible instead. Revealing the photographs from JS therefore charged the
+   entire hydration cost to LCP: measured at 4.24s of render delay against a
+   0ms load time, on an image that had finished downloading by 500ms. The
+   strip paints with the server HTML now, and only its scale is animated.
+
+   The settle has to stay inward (1.04 -> 1). A transform does not stop the
+   pixel being painted, so the element is a candidate from the first frame
+   either way — but LCP is only re-reported for a *larger* candidate, so
+   shrinking emits one entry at first paint and never revises. Scaling up
+   from below 1 would re-arm it every frame and pin LCP to the end of the
+   tween, which is the bug this comment exists to stop being reintroduced.
+
+   One declaration on the existing equal-specificity rule, rather than
+   `[data-hero]:not([data-hero="mosaic"])` on the rule above: that compound
+   is (0,2,0) and would outrank the `prefers-reduced-motion` override below
+   at (0,1,0) whatever the source order, stranding the headline and copy at
+   opacity 0 for reduced-motion and no-JS readers. */
+[data-hero="mosaic"] {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+/* ─── Scroll rise ─────────────────────────────────────────────────
+   Same contract as [data-hero], one section further down the page:
+   closed in CSS so the first paint is frame zero, opened by the
+   ScrollTrigger in `LandingMotion` when the section arrives.
+
+   Only inside the payments and catalogue sections, and only on
+   elements that are grid items or children of one — nothing in a
+   hairline grid, because a transform on one of those cells tears the
+   border-coloured gap open beneath it.
+
+   This has three un-hide paths for the same reason [data-hero] does,
+   and a fourth consideration of its own: an element below the fold
+   whose trigger never fires would stay hidden forever, so the
+   trigger is on the *group* and starts at 78% of the viewport —
+   comfortably before the group's own copy is on screen. */
+[data-rise] {
+  opacity: 0;
+  transform: translateY(34px);
+}
+
+/* SplitText's line masks are sized to the line box, and .lp-display runs
+   a 1.08 line-height — tight enough that descenders sit on the mask edge
+   and get sheared off as the line travels through it. */
+.lp-line {
+  padding-bottom: 0.1em;
+}
+
+/* The logo's wave, oversized behind the hero and drawn in by DrawSVG.
+   The alpha is in the colour rather than on the element, because the
+   element's own opacity is what the timeline animates 0 -> 1.
+
+   Bottom left, under the empty field beneath the buttons: the top right
+   is where the photographs are now, and atmosphere behind a photograph
+   is atmosphere nobody sees. Weaker than it was, too — it is much
+   closer to the copy here than it was up in the corner. */
+.lp-hero__flourish {
+  position: absolute;
+  z-index: 0;
+  bottom: -32%;
+  left: -14%;
+  width: clamp(320px, 40vw, 640px);
+  height: auto;
+  pointer-events: none;
+  color: color-mix(in srgb, var(--brand-500) 22%, transparent);
+}
+
+/* Someone who has asked for less motion gets the composed page, not the
+   animation at zero duration — and this branch is what covers them
+   before hydration, since GSAP's own reduced-motion branch cannot run
+   any earlier than the JS does. */
+@media (prefers-reduced-motion: reduce) {
+  [data-hero],
+  [data-draw],
+  [data-rise],
+  .lnav__logo path {
+    opacity: 1;
+    transform: none;
+  }
+
+  .lp-mark {
+    --frame-o: 1;
+  }
+}
+
+/* ─── Pointer-tracked cards ───────────────────────────────────────
+   `data-hot` and the --mx / --my coordinates are set by LandingMotion
+   on pointerenter/pointermove; the look of it stays here.
+
+   Deliberately a wash and not a lift. Every card grid on this page is a
+   hairline grid — 1px gaps over a border-coloured background — so
+   translating a cell tears a 6px border-coloured gap open beneath it.
+   The light follows the cursor instead, which suits square architecture
+   better than a card peeling up off the page.
+   ───────────────────────────────────────────────────────────────── */
+.lp-feature,
+.lp-plan,
+.lp-facts__item {
+  position: relative;
+  /* So the negative-z pseudo paints over the cell's own background
+     instead of disappearing behind the grid. */
+  isolation: isolate;
+}
+
+.lp-feature::after,
+.lp-plan::after,
+.lp-facts__item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--duration-slow, 260ms) var(--ease-out);
+  background: radial-gradient(
+    22rem circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--brand-500) 13%, transparent),
+    transparent 68%
+  );
+}
+
+/* The featured plan sits on ink, where 13% of a mid ochre is nothing.
+   It gets the bright end of the ramp instead. */
+.lp-plan--featured::after {
+  background: radial-gradient(
+    22rem circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--brand-400) 20%, transparent),
+    transparent 68%
+  );
+}
+
+[data-hot]::after {
+  opacity: 1;
+}
+
+/* ─── Photo mount ─────────────────────────────────────────────────
+   The showcase's photograph. This used to be a browser frame — chrome
+   bar, traffic lights, a fake koraa.africa address — wrapped around a
+   dashboard capture. Both dashboard PNGs are gone, and chrome around a
+   photograph would assert it is a screenshot of the catalogue, which it
+   is not. What is left is a mount: hairline edge, soft shadow.
+   ───────────────────────────────────────────────────────────────── */
+.lp-frame {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface-900);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.lp-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ─── Facts strip ─────────────────────────────────────────────────
+   Was three white-on-ink cells inside the dark hero. Now a light band
+   directly under it, on the same hairline-grid technique as every other
+   grid on the page.
+   ───────────────────────────────────────────────────────────────── */
+.lp-facts {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.lp-facts__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+}
+
+.lp-facts__item {
+  background: var(--surface);
+  padding: 30px 28px;
+}
+
+.lp-facts__value {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 2.25rem;
+  font-weight: 550;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+
+.lp-facts__label {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 32ch;
+}
+
+/* ─── Section heading block ───────────────────────────────────── */
+.lp-head {
+  max-width: 640px;
+  margin-bottom: 56px;
+}
+
+.lp-head--center {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.lp-head p {
+  margin-top: 16px;
+}
+
+.lp-head--center .lp-lead {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ─── Feature grid ────────────────────────────────────────────── */
+.lp-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.lp-feature {
+  background: var(--surface-900);
+  padding: 36px 32px;
+}
+
+.lp-feature__icon {
+  color: var(--brand-text);
+  margin-bottom: 20px;
+  display: block;
+}
+
+.lp-feature h3 {
+  margin: 0 0 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Card panels — the catalogue and the payments pair
+
+   These two were full-bleed bands: `background: var(--surface)` from
+   edge to edge with a hairline above and below, stacked straight onto
+   each other and onto the facts strip, which is the same colour again.
+   Three fields of one colour in a row read as a single long surface with
+   two rules drawn across it, so neither section had a shape of its own.
+
+   They are cards now — inset on the page column, rounded, each on its
+   own ground — and the pair is mirrored: the catalogue sets its copy on
+   the left, payments sets it on the right, so the figure changes sides
+   between them. `.lp-section`'s 96px is left to do the spacing, so the
+   gap between the two cards is the page's own rhythm rather than a
+   margin invented here.
+
+   `LandingMotion` drifts `[data-drift]` on scroll. The drift is purely
+   additive — everything below is the resting layout, correct with no JS
+   at all — which is the opposite contract from `[data-rise]`, where CSS
+   hides and GSAP reveals. A parallax that has to run before the section
+   is readable is a parallax that breaks the page when it doesn't.
+   ═══════════════════════════════════════════════════════════════ */
+.lp-panelsec {
+  /* No ground and no rules of its own any more: the card is the surface.
+     Deliberately no `overflow` either — the old `.lp-pay` carried
+     `hidden`, and an ancestor with `hidden` is a scroll container, which
+     is what makes an in-page `#payments` jump scroll the wrong box. The
+     drift is smaller than this section's own padding, so there is
+     nothing to contain. */
+  position: relative;
+}
+
+/* Full-width variant: the panel runs to the window's edges minus the
+   standard gutter, with no max-width cap. The `lp-wrap` is omitted from
+   the inner markup; the section itself supplies the horizontal breathing
+   room. The rise wrapper inside needs its own initial hidden state
+   because its tagName is `div`, not a figure — the group machinery
+   treats it as copy and animates it with the copy stagger. A 50px lift
+   (vs. the normal 34px) gives the whole-card entrance more presence. */
+.lp-panelsec--full {
+  padding-left: var(--lp-gutter);
+  padding-right: var(--lp-gutter);
+}
+
+[data-rise-card] > [data-rise] {
+  opacity: 0;
+  transform: translateY(50px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-rise-card] > [data-rise] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   The card deck — the catalogue and payments cards stack up
+   ───────────────────────────────────────────────────────────────
+   The two panels below are dealt onto each other on the way down:
+   the catalogue is held under the nav while the payments card climbs
+   up and covers it, leaving a step of the card beneath showing, and
+   the pair then scrolls away as one deck.
+
+   `LandingMotion` writes the transforms. Everything here is the part
+   that has to be true before it runs — and, as with the drift, the
+   resting layout with no JS at all is the finished layout: nothing
+   below hides a card or moves it.
+
+   The order the cards overlap in is document order. Both sections are
+   positioned with `z-index: auto`, so the payments card paints over the
+   catalogue card because it comes second in `page.tsx` — which is also
+   the order they are read in, so there is nothing to keep in sync.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* The run-out: the scroll the deck needs to finish and let go before the
+   section after it arrives. Pricing paints over these cards by document
+   order, so without something to travel through here its heading would
+   slide up across a card that is still being held.
+
+   Flat at every breakpoint, and given a height only by `LandingMotion`,
+   only while a deck is actually being dealt. A media query could gate it
+   on the width, but not on whether the top card fits the window — and a
+   spacer standing at 60vh with no deck to run out is just a hole in the
+   page. Empty and decorative: it exists to be travelled. */
+.lp-stack-end {
+  height: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) and (min-width: 1081px) {
+  [data-stack-item] .lp-panel {
+    will-change: transform;
+    /* A covering card has to separate from the one under it, and with
+       every card at full width this shadow is the only thing that does
+       it — the deck used to shrink the covered card too, which read as
+       depth but also made the two cards visibly different sizes. So it
+       is drawn a little heavier than a card would need on its own, and
+       upward as well as down: these panels carry a hairline border, and
+       against the ochre card that border is invisible. */
+    box-shadow:
+      0 -22px 48px -28px rgba(24, 18, 8, 0.62),
+      0 30px 70px -30px rgba(24, 18, 8, 0.34);
+  }
+}
+
+
+.lp-panel {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  /* Same 16px the auth cards use. The padding is fluid because at
+     1200px the card wants to breathe and at 700px that same 64px is a
+     quarter of the column. */
+  border-radius: var(--radius-2xl);
+  padding: clamp(28px, 3.4vw, 60px);
+}
+
+/* The columns. `min-width: 0` on both because each is a grid child of a
+   `minmax(0, …)` track holding text that must be allowed to wrap rather
+   than set the track's floor. */
+.lp-panel__copy,
+.lp-panel__fig {
+  min-width: 0;
+}
+
+/* The mirror. Two declarations, and only these two — the copy stays
+   first in the DOM in both sections, so which side of the card a thing
+   is drawn on never changes the order it is read in. `grid-row: 1` on
+   the figure is what keeps it on the first row after being moved out of
+   document order; without it the explicit column on the copy leaves the
+   figure to auto-place onto a second row. */
+.lp-panel--swap .lp-panel__copy {
+  grid-column: 2;
+}
+
+.lp-panel--swap .lp-panel__fig {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+/* ─── The brand card ──────────────────────────────────────────────
+   The catalogue's ground. This rebinds the semantic tokens for the
+   subtree instead of restating a colour on each of the eight rules
+   inside it — which is the whole point of having a semantic layer:
+   `.lp-h2` already asks for `--text-primary`, `.lp-lead` for
+   `--text-secondary`, `.lp-frame` for `--border`, so pointing those at
+   on-brand values here is all it takes for the section to invert.
+
+   Fixed values, not `--brand-solid`. That token is `--brand-600`
+   (#a8530f, white at 5.4:1) on light and flips to `--brand-400`
+   (#d97b2b) on dark, where white lands at about 2.9:1 — the card would
+   have failed contrast in exactly one of the two themes. This is an ink
+   field like the footer: it sets its own colour and does not theme,
+   apart from sitting a stop deeper on dark so it doesn't glow against
+   near-black.
+   ───────────────────────────────────────────────────────────────── */
+.lp-panel--brand {
+  --text-primary: var(--lp-on-brand);
+  --text-secondary: var(--lp-on-brand-dim);
+  --text-muted: var(--lp-on-brand-dim);
+  /* The eyebrow and the list ticks read this. Left as white they would
+     be the same colour as the body copy and stop being accents, so they
+     take the pale end of the ochre ramp instead — 6.9:1 on this ground,
+     and still legible as a highlight. */
+  --brand-text: var(--brand-100);
+  --border: var(--lp-on-brand-line);
+  /* `.lp-frame`'s mount colour. Barely visible — the photo covers it —
+     but a bone-white sliver along a rounded edge on an ochre card reads
+     as a rendering fault. */
+  --surface-900: color-mix(in srgb, #ffffff 12%, transparent);
+
+  background: var(--lp-brand-panel);
+  border-color: transparent;
+  color: var(--lp-on-brand);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Showcase — copy beside the catalogue photograph
+   ═══════════════════════════════════════════════════════════════ */
+.lp-showcase__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(36px, 4vw, 60px);
+  align-items: center;
+}
+
+.lp-showcase__list {
+  margin-bottom: 0;
+}
+
+/* On the grid rather than on the section: the old `.lp-showcase` class
+   went with the full-bleed band, and the grid is the element that
+   survived the change. */
+.lp-showcase__grid .lp-lead {
+  margin: 20px 0 36px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Payments
+
+   Rebranded off the dark panel and off the stock MTN MoMo photograph.
+   The photo was a licensed-looking marketing still that said nothing
+   about Koraa; the figure is now a rendering of the actual checkout —
+   which is both honest and themeable.
+   ═══════════════════════════════════════════════════════════════ */
+.lp-pay__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+  gap: clamp(36px, 4.6vw, 68px);
+  align-items: center;
+}
+
+.lp-pay__lead {
+  color: var(--text-secondary);
+  margin: 20px 0 36px;
+  font-size: 1.1875rem;
+  line-height: 1.65;
+  max-width: 48ch;
+}
+
+.lp-pay__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lp-pay__list li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.lp-pay__check {
+  color: var(--brand-text);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.lp-pay__list strong {
+  display: block;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+}
+
+.lp-pay__list span {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.lp-pay__rails {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.lp-pay__rails-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.lp-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  /* Tighter on the mark's side than the label's: the badge is a solid
+     block of colour and reads as heavier than the text does, so equal
+     padding leaves it looking crowded against the pill's left edge. */
+  padding: 7px 15px 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-900);
+  font-size: 0.9375rem;
+  font-weight: 550;
+  color: var(--text-primary);
+}
+
+/* The network's own mark, from `RailLogos.tsx`. Sized by height and
+   left to find its own width, because MTN's lockup is 395x264 and the
+   drawn Orange square is 64x36 — the two ratios no longer agree.
+
+   26px, not the 22px this was when both marks were flat badges: MTN's
+   official lockup carries its own "Mobile Money" wordmark and a phone
+   illustration, and below about this height the red line collapses into
+   a smear. No colour of our own on either — the fills are the networks'
+   and are fixed on both themes. */
+.lp-rail__logo {
+  height: 26px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ─── Checkout figure ─────────────────────────────────────────── */
+.lp-pay__figure {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface-900);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  max-width: 380px;
+  width: 100%;
+  /* Centred with a margin rather than `justify-self`, because the figure
+     is no longer the grid child — `.lp-panel__fig` is, so that it can
+     carry the scroll drift without fighting this element's `[data-rise]`
+     entrance. Box alignment does not reach a grandchild. */
+  margin-inline: auto;
+  font-size: 0.9375rem;
+  user-select: none;
+  /* Stands ~95% taller than the height its own content asks for, so the
+     checkout illustration carries comparable visual weight to the
+     catalogue photograph in the mirrored section above. The figure is a
+     flex column and `.lp-co__methods` takes up the slack, so the added
+     height becomes breathing room around the rail rows rather than a void
+     beneath the card's last line. The natural height is a measurement,
+     not arithmetic: if the card gains or loses a row, correct
+     `--lp-co-natural` and leave the calc alone. */
+  --lp-co-natural: 400px;
+  --lp-co-grow: 1.95;
+  min-height: calc(var(--lp-co-natural) * var(--lp-co-grow));
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-co__head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.lp-co__store {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.lp-co__url {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.lp-co__body {
+  padding: 18px 20px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-co__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+
+.lp-co__methods {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* The one flexible block in the card, so the height added by
+     `--lp-co-grow` lands here; the rails stay optically centred in
+     whatever space that leaves instead of clinging to the label above. */
+  flex: 1;
+  justify-content: center;
+}
+
+.lp-co__method {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* The chosen rail carries a border and a check, not just a fill. */
+.lp-co__method[data-on] {
+  border-color: var(--brand-solid);
+  background: var(--brand-tint);
+}
+
+.lp-co__radio {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-strong);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp-co__method[data-on] .lp-co__radio {
+  border-color: var(--brand-solid);
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+}
+
+/* The network's mark inside the checkout illustration. Larger than the
+   footer's, because here it is doing the work of telling the two rows
+   apart at a glance rather than decorating a label. */
+.lp-co__logo {
+  height: 26px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+
+.lp-co__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.lp-co__total span {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.lp-co__total b {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 550;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.lp-co__pay {
+  margin-top: 14px;
+  width: 100%;
+  padding: 13px;
+  border-radius: var(--radius-lg);
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+  font-size: 0.9375rem;
+  font-weight: 550;
+  text-align: center;
+}
+
+.lp-co__foot {
+  margin: 14px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+/* ─── Pricing ─────────────────────────────────────────────────── */
+/* Shown only when `/payments/plans/` was unreachable at render time — a
+   build with no backend listening, or a backend restart between
+   revalidations. It replaces the whole table rather than half-filling it,
+   because a pricing page with a gap in it reads worse than one that admits
+   it and points at the screen holding the live numbers. */
+.lp-plans-fallback {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 56px 32px;
+  text-align: center;
+}
+
+.lp-plans-fallback p {
+  margin: 0 auto 28px;
+  max-width: 46ch;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+/* ─── Billing-cycle toggle ────────────────────────────────────────
+   Switches the table between the annual price and the same price shown
+   per month. A view, not a purchase option — `_pricing.tsx` explains why
+   that distinction matters here and why the disclosure line under each
+   amount stays put.
+
+   Built on the page's hairline grid like `.lp-plans` under it: one
+   1px-gap track on a border-coloured bed, so the two segments read as
+   cells of the same table rather than a floating pill.
+   ───────────────────────────────────────────────────────────────── */
+.lp-cycle {
+  /* Block-level grid, so `width: fit-content` plus auto inline margins
+     centre it under the heading. An `inline-grid` would not: auto margins
+     do not centre an inline-level box. */
+  display: grid;
+  grid-auto-flow: column;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  width: fit-content;
+  margin: 0 auto 28px;
+}
+
+.lp-cycle__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 22px;
+  border: none;
+  background: var(--surface-900);
+  color: var(--text-secondary);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition:
+    background var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+}
+
+.lp-cycle__opt:hover:not([data-on]) {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.lp-cycle__opt[data-on] {
+  background: var(--lp-ink);
+  color: var(--lp-on-ink);
+}
+
+/* Keyboard focus has to survive the ink fill, which is why this is an
+   outline offset inward rather than a ring outside the cell. */
+.lp-cycle__opt:focus-visible {
+  outline: 2px solid var(--brand-solid);
+  outline-offset: -2px;
+}
+
+/* "2 months free" — the reason the yearly view is the default. Tinted on
+   the light cell, knocked back on the ink one so it stays secondary to
+   the word it qualifies. */
+.lp-cycle__save {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  background: var(--brand-tint);
+  color: var(--brand-solid);
+  white-space: nowrap;
+}
+
+.lp-cycle__opt[data-on] .lp-cycle__save {
+  background: color-mix(in srgb, var(--lp-on-ink) 16%, transparent);
+  color: var(--lp-on-ink);
+}
+
+.lp-plans {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.lp-plan {
+  background: var(--surface-900);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-plan--featured {
+  background: var(--lp-ink);
+  color: var(--lp-on-ink);
+}
+
+.lp-plan__badge {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-400);
+  margin: 0 0 12px;
+  min-height: 1em;
+}
+
+.lp-plan__name {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+}
+
+.lp-plan__for {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  margin: 0 0 24px;
+}
+
+.lp-plan--featured .lp-plan__for {
+  color: var(--lp-on-ink-faint);
+}
+
+.lp-plan__price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.lp-plan__amount {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 2.5rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.lp-plan__unit {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+.lp-plan--featured .lp-plan__unit {
+  color: var(--lp-on-ink-faint);
+}
+
+.lp-plan__billed {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  margin: 0 0 24px;
+  min-height: 1.2em;
+}
+
+.lp-plan--featured .lp-plan__billed {
+  color: var(--lp-on-ink-faint);
+}
+
+.lp-plan__features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.lp-plan__features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.lp-plan--featured .lp-plan__features li {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.lp-plan__features svg {
+  color: var(--brand-text);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.lp-plan--featured .lp-plan__features svg {
+  color: var(--brand-400);
+}
+
+.lp-plan .lp-btn {
+  width: 100%;
+}
+
+/* ─── Trust row ───────────────────────────────────────────────── */
+.lp-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  justify-content: center;
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.lp-trust span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+/* ─── FAQ ─────────────────────────────────────────────────────── */
+.lp-faq {
+  max-width: 780px;
+  margin: 0 auto;
+  border-top: 1px solid var(--border);
+}
+
+.lp-faq__item {
+  border-bottom: 1px solid var(--border);
+}
+
+.lp-faq__q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px 0;
+  font: inherit;
+  font-size: 1.1875rem;
+  font-weight: 500;
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  text-align: left;
+  color: var(--text-primary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.lp-faq__q:hover {
+  color: var(--brand-text);
+}
+
+.lp-faq__icon {
+  color: var(--brand-text);
+  flex-shrink: 0;
+}
+
+.lp-faq__a {
+  overflow: hidden;
+}
+
+.lp-faq__a p {
+  padding: 0 0 26px;
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 66ch;
+}
+
+/* ─── Closing CTA ─────────────────────────────────────────────── */
+.lp-cta {
+  background: var(--lp-ink);
+  color: var(--lp-on-ink);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Was a purple radial glow bleeding up from the bottom edge. A single
+   hairline rule above the heading does the same job of marking this as
+   the closing panel, without the airport-lounge lighting. */
+.lp-cta::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 220px);
+  height: 1px;
+  background: var(--lp-on-ink-control);
+  pointer-events: none;
+}
+
+.lp-cta__inner {
+  position: relative;
+  z-index: 1;
+}
+
+.lp-cta h2 {
+  color: var(--lp-on-ink);
+  max-width: 22ch;
+  margin: 0 auto;
+}
+
+.lp-cta p {
+  color: var(--lp-on-ink-dim);
+  margin: 20px auto 36px;
+  max-width: 46ch;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.lp-cta__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Navbar
+
+   One colour set, not two. The bar used to be transparent over a dark
+   hero and solid below it, which meant every child needed a
+   `.lnav--solid` override and the logo needed a brightness(0) invert(1)
+   filter to survive on black. The hero is light now, so `--solid` only
+   controls one thing: whether the hairline at the bottom is drawn.
+
+   Three-column grid, not a flex row with `margin-left: auto`. The menu
+   is meant to be centred on the *bar*, and flex with auto margins
+   centres it in the space the brand and the actions happen to leave —
+   which is off-centre by half the difference between them, and moves
+   every time a label changes. `1fr auto 1fr` puts the middle column in
+   the true centre regardless of what flanks it.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lnav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--lnav-h);
+  display: flex;
+  align-items: center;
+  /* Translucent + blur so content scrolling underneath stays legible
+     without the bar going opaque and heavy. */
+  background: color-mix(in srgb, var(--surface-900) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--duration-base) var(--ease-out),
+    background var(--duration-base) var(--ease-out);
+}
+
+/* The bar spans the window — it has to, it is the blurred plate — but its
+   contents sit on the page's column, so the logo starts exactly where the
+   hero headline and the footer logo start. Previously `.lnav` was itself the
+   grid with `padding: 0 24px`, which put the brand 24px from the window edge
+   while every section below it began at the 1200px column: at 1440px that is
+   a 120px disagreement between the bar and the page under it. */
+.lnav__inner {
+  width: 100%;
+  padding: 0 var(--lp-gutter);
+  display: grid;
+  /* The centre track is `auto` and the flanks are equal fractions, so the
+     link row is centred on the column rather than on whatever space the
+     brand and the actions happen to leave. */
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+}
+
+.lnav--solid {
+  background: color-mix(in srgb, var(--surface-900) 92%, transparent);
+  border-bottom-color: var(--border);
+}
+
+.lnav__brand {
+  display: flex;
+  align-items: center;
+  /* Explicit columns, not auto-placement: the menu is display:none below
+     768px, and auto-placement would then drop the actions into column 2
+     and pull them toward the middle of the bar. */
+  grid-column: 1;
+  justify-self: start;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+/* Brand-coloured, at last. The logo shipped as a black PNG that dark mode
+   recoloured with `brightness(0) invert(1)` — a filter whose only two
+   possible outputs are black and white, which is exactly why this was the
+   one element on the site that could not carry the brand. It is vector
+   artwork now, so `color` is all it takes: --brand-solid is ochre #a8530f
+   on paper (5.2:1 on the bar) and #d97b2b on the dark theme (5.9:1). */
+.lnav__logo {
+  height: var(--logo-h);
+  width: auto;
+  display: block;
+  color: var(--brand-solid);
+}
+
+.lnav__links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-column: 2;
+  gap: 6px;
+}
+
+.lnav__link {
+  position: relative;
+  padding: 8px 14px;
+  font-size: 1.0625rem;
+  /* "Light bold" — 550 is a real instance on a variable face, and it reads
+     as weighted without the shouty density of 700 at this size. */
+  font-weight: 550;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.lnav__link:hover {
+  color: var(--text-primary);
+}
+
+/* The hover pill is gone. A rounded grey block behind one item in a
+   centred row breaks the rhythm of the row; a rule that grows from the
+   centre of the label doesn't, and it points at the word rather than
+   boxing it. */
+.lnav__rule {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brand-solid);
+  transform: scaleX(0);
+  transform-origin: 50% 50%;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.lnav__link:hover .lnav__rule,
+.lnav__link:focus-visible .lnav__rule {
+  transform: scaleX(1);
+}
+
+.lnav__actions {
+  display: flex;
+  align-items: center;
+  grid-column: 3;
+  justify-self: end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.lnav__signin {
+  display: inline-flex;
+  align-items: center;
+  /* Same box as the CTA beside it. As bare text with 8px of padding it was
+     a 36px control sitting next to a 46px one, so the two shared no edge
+     and the pair read as misaligned even though both were centred. */
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: var(--radius-lg);
+  font-size: 1.0625rem;
+  font-weight: 550;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: color var(--duration-base) var(--ease-out),
+    background var(--duration-base) var(--ease-out);
+}
+
+.lnav__signin:hover {
+  color: var(--text-primary);
+  background: var(--surface-850);
+}
+
+.lnav__cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 24px;
+  font-size: 1.0625rem;
+  font-weight: 550;
+  text-decoration: none;
+  border-radius: var(--radius-lg);
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background var(--duration-base) var(--ease-out);
+}
+
+.lnav__cta:hover {
+  background: var(--brand-solid-hover);
+}
+
+.lnav__burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  /* 44px minimum — this is the only nav control on mobile. */
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-primary);
+  padding: 0;
+}
+
+.lnav__burger:hover {
+  background: var(--surface-850);
+}
+
+/* ─── Mobile sheet ────────────────────────────────────────────── */
+.lnav-sheet {
+  position: fixed;
+  inset: var(--lnav-h) 0 0;
+  z-index: 99;
+  background: var(--surface-900);
+  /* Same gutter as the bar above it, so the sheet's rows start under the
+     logo rather than 8px off it. */
+  padding: 12px var(--lp-gutter) calc(32px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.lnav-sheet a {
+  text-decoration: none;
+}
+
+.lnav-sheet__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* 60px row — comfortably past the 44px minimum, and the whole row is
+     the target rather than just the text. */
+  min-height: 60px;
+  padding: 0 4px;
+  font-size: 1.25rem;
+  font-weight: 550;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.lnav-sheet__link:active {
+  background: var(--surface-850);
+}
+
+.lnav-sheet__chev {
+  color: var(--text-disabled);
+  flex-shrink: 0;
+}
+
+.lnav-sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.lnav-sheet__actions .lp-btn {
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Footer
+
+   Four columns on an ink panel: who we are and what we take, then
+   Product / Get started / Contact. The old one led with an inverted
+   black PNG and closed on "Douala, Cameroon" beside a map pin, which is
+   a detail about us rather than anything a visitor came for. The
+   payment rails took that slot — a footer's bottom-left is where people
+   look for "what can I pay with", and naming the two we actually
+   integrate is a stronger signal than a location.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lfoot {
+  background: var(--lp-ink);
+  color: var(--lp-on-ink-dim);
+  padding: clamp(64px, 5.6vw, 104px) 0 clamp(28px, 2vw, 40px);
+}
+
+.lfoot__grid {
+  display: grid;
+  /* The brand column carries a paragraph and the rails; the link
+     columns carry three or four short items each. The link columns are
+     `max-content` rather than equal fractions — three columns of two to
+     four short words each, given a quarter of a 1200px page, sit in a
+     wide empty track with the text hugging its left edge and the ragged
+     right edge reading as a misalignment. Sized to their content and
+     pushed apart by the 1fr, they read as a set. */
+  grid-template-columns: minmax(0, 1fr) repeat(3, max-content);
+  gap: clamp(36px, 4vw, 64px);
+}
+
+.lfoot__home {
+  display: inline-block;
+  /* The logo is the tallest thing in the column and a link, so it needs a
+     focus ring that clears it rather than one drawn through it. */
+  border-radius: var(--radius-sm);
+}
+
+.lfoot__home:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 6px;
+}
+
+/* Fixed --brand-400, not --brand-solid. This panel is #0a0a0b in *both*
+   themes, so a theme-aware token is wrong here: on the light theme
+   --brand-solid resolves to #a8530f, which is 2.6:1 against this ink and
+   fails the 3:1 that a graphic needs. #d97b2b measures 6.4:1 on it. */
+.lfoot__logo {
+  height: calc(var(--logo-h) * 0.9);
+  width: auto;
+  display: block;
+  color: var(--brand-400);
+}
+
+.lfoot__blurb {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--lp-on-ink-dim);
+  margin: 22px 0 0;
+  max-width: 36ch;
+}
+
+/* ─── Payment rails ───────────────────────────────────────────────
+   The networks' own marks rather than coloured dots, and under a
+   heading rather than behind an `aria-label` — "Payments accepted" is
+   the same information a sighted visitor gets from the position, so it
+   may as well be on the page.
+
+   Each badge keeps its network's colours on both themes: MTN yellow
+   that shifted in dark mode would stop being MTN yellow. What changes
+   is the pill around it, which is why the mark sits on ink here and on
+   paper in the payments section without either needing an override.
+   ───────────────────────────────────────────────────────────────── */
+.lfoot__rails {
+  margin-top: 30px;
+}
+
+/* Qualified with `h2` so it outranks `.lfoot h2` below, which would
+   otherwise win on specificity and set this to the column-heading size.
+   It is a heading because it labels the list — but a quieter one than
+   the navigation columns, which are the footer's real structure. */
+.lfoot h2.lfoot__rails-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-on-ink-faint);
+  margin: 0 0 12px;
+}
+
+.lfoot__rails ul {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lfoot__rails li {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 15px 7px 9px;
+  border: 1px solid var(--lp-on-ink-line);
+  border-radius: var(--radius-full);
+  font-size: 0.9375rem;
+  color: var(--lp-on-ink);
+}
+
+/* Matches `.lp-rail__logo` — see the note there for why 26px and not 22.
+   MTN's lockup is transparent outside its yellow field, so it needs no
+   plate to sit on the footer's ink. */
+.lfoot__rail-logo {
+  height: 26px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+
+.lfoot h2 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-on-ink);
+  margin: 0 0 22px;
+}
+
+.lfoot__col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lfoot ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lfoot a {
+  font-size: 1rem;
+  color: var(--lp-on-ink-dim);
+  text-decoration: none;
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.lfoot a:hover {
+  color: var(--lp-on-ink);
+}
+
+/* Underline on hover as well as the colour lift: these sit on an ink
+   field where the shift from 62% to 100% white is a small cue on its
+   own, and the columns are the footer's only navigation. */
+.lfoot__col a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* Baselines. Every column heading sits on one line, and every first link
+   sits on the next — but the brand column leads with a logo, not a
+   heading, so without this the two sides of the footer started at
+   different heights and the whole block read as tilted. */
+.lfoot__col {
+  padding-top: 6px;
+}
+
+.lfoot__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: clamp(44px, 4vw, 72px);
+  padding-top: 26px;
+  border-top: 1px solid var(--lp-on-ink-line);
+  font-size: 0.9375rem;
+  color: var(--lp-on-ink-faint);
+}
+
+.lfoot__bottom-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.lfoot__socials {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.lfoot__socials a {
+  color: var(--lp-on-ink-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lfoot__socials a:hover {
+  color: var(--lp-on-ink);
+  /* The column links underline on hover, but icons shouldn't. */
+  text-decoration: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Domains
+
+   This page previously carried 61 inline style objects, ~20 repeats of
+   fontFamily: "Outfit,sans-serif", a dozen hardcoded greys, eight
+   onMouseEnter/onMouseLeave handlers doing what :hover does, and a
+   <style> block targeting bare `form`/`input`/`select` that leaked to
+   every form in the application. All of it lives here now, on the same
+   tokens as the rest of the site.
+   ═══════════════════════════════════════════════════════════════ */
+
+.dm {
+  background: var(--surface-900);
+  min-height: 100vh;
+}
+
+/* ─── Hero ────────────────────────────────────────────────────── */
+.dm-hero {
+  position: relative;
+  background: var(--surface-900);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  /* Clears the fixed navbar. The old build set paddingTop: 90 on an
+     outer wrapper *and* 100px on this section — 190px of dead space
+     above the heading. */
+  padding: calc(var(--lnav-h) + 72px) 0 72px;
+}
+
+.dm-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    145deg,
+    transparent 45%,
+    color-mix(in srgb, var(--brand-500) 5%, transparent) 100%
+  );
+}
+
+.dm-hero__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.dm-hero h1 {
+  color: var(--text-primary);
+  max-width: 22ch;
+}
+
+.dm-hero__sub {
+  margin: 24px 0 44px;
+  max-width: 52ch;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ─── Search ──────────────────────────────────────────────────── */
+.dm-search {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.dm-search__icon {
+  display: flex;
+  align-items: center;
+  padding-left: 18px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.dm-search__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 1.0625rem;
+  padding: 18px 14px;
+}
+
+.dm-search__input::placeholder {
+  color: var(--text-disabled);
+}
+
+.dm-search__ext {
+  border: 0;
+  border-left: 1px solid var(--border);
+  outline: none;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  cursor: pointer;
+  background: var(--surface-850);
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.dm-search__submit {
+  border: 0;
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+  padding: 0 32px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--duration-base) var(--ease-out);
+}
+
+.dm-search__submit:hover {
+  background: var(--brand-solid-hover);
+}
+
+.dm-search :focus-visible {
+  outline: 2px solid var(--brand-solid);
+  outline-offset: -2px;
+}
+
+/* ─── Extension chips ─────────────────────────────────────────── */
+.dm-chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.dm-chip {
+  padding: 8px 14px;
+  min-height: 36px;
+  background: var(--surface-900);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+}
+
+.dm-chip:hover {
+  background: var(--surface-850);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* Selected state carries a border and a fill, not colour alone. */
+.dm-chip[aria-pressed="true"] {
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+  border-color: var(--brand-solid);
+}
+
+.dm-chip:focus-visible {
+  outline: 2px solid var(--brand-solid);
+  outline-offset: 2px;
+}
+
+/* ─── Results ─────────────────────────────────────────────────── */
+.dm-body {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.dm-results__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.dm-results__q {
+  color: var(--brand-text);
+}
+
+.dm-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.dm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--surface-900);
+  border-top: 1px solid var(--border);
+}
+
+.dm-row:first-child {
+  border-top: 0;
+}
+
+.dm-row--taken {
+  background: var(--surface-850);
+}
+
+.dm-row__id {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dm-row__mark {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--brand-tint);
+  color: var(--brand-text);
+}
+
+.dm-row--taken .dm-row__mark {
+  background: var(--surface-700);
+  color: var(--text-muted);
+}
+
+.dm-row__name {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 550;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.dm-row--taken .dm-row__name {
+  color: var(--text-secondary);
+}
+
+.dm-row__status {
+  font-size: 0.8125rem;
+  font-weight: 550;
+  margin-top: 2px;
+}
+
+.dm-row__status--free {
+  color: var(--success-text);
+}
+
+.dm-row__status--taken {
+  color: var(--text-muted);
+}
+
+.dm-row__end {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-shrink: 0;
+}
+
+.dm-row__price {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 550;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.dm-row__unit {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* ─── Loading / empty ─────────────────────────────────────────── */
+.dm-state {
+  text-align: center;
+  padding: 56px 0;
+}
+
+.dm-state p {
+  color: var(--text-secondary);
+  max-width: 42ch;
+  margin: 0 auto;
+}
+
+.dm-state__icon {
+  color: var(--text-disabled);
+  margin: 0 auto 16px;
+  display: block;
+}
+
+.dm-spinner {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 16px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--brand-solid);
+  border-radius: var(--radius-full);
+  animation: spin 0.7s linear infinite;
+}
+
+/* ─── Premium ─────────────────────────────────────────────────── */
+.dm-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.dm-sec-head svg {
+  color: var(--brand-text);
+  flex-shrink: 0;
+}
+
+.dm-premium {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.dm-prem {
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface-900);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+
+.dm-prem:hover {
+  border-color: var(--surface-500);
+}
+
+.dm-prem__name {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 550;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.dm-prem__price {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 550;
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+
+.dm-prem__end {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ─── Features ────────────────────────────────────────────────── */
+.dm-features {
+  background: var(--surface);
+}
+
+.dm-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.dm-feature {
+  background: var(--surface-900);
+  padding: 28px 26px;
+}
+
+.dm-feature__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  background: var(--brand-tint);
+  color: var(--brand-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.dm-feature h3 {
+  margin: 0 0 8px;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dm-hero {
+    padding: calc(var(--lnav-h) + 48px) 0 56px;
+  }
+
+  /* Scoped to this form. The old rule was a bare `form { flex-direction:
+     column }` inside an injected <style>, which restyled every form in
+     the app — auth, checkout, product editor. */
+  .dm-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dm-search__icon {
+    display: none;
+  }
+
+  .dm-search__input {
+    padding: 16px 18px;
+  }
+
+  .dm-search__ext {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding: 14px 18px;
+    min-height: 48px;
+  }
+
+  .dm-search__submit {
+    padding: 16px;
+    min-height: 48px;
+  }
+
+  .dm-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .dm-row__end {
+    justify-content: space-between;
+  }
+}
+
+/* ═══ Responsive ══════════════════════════════════════════════ */
+
+/* The showcase photograph and its copy stop fitting side by side around
+   here. Stack them, well ahead of the tablet breakpoint. */
+@media (max-width: 1080px) {
+  .lp-showcase__grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 44px;
+  }
+}
+
+@media (max-width: 980px) {
+  /* The brand column carries a paragraph and two pills and stops fitting
+     beside the link columns well before they stop fitting beside each
+     other, so it takes the full width and they close up under it. */
+  .lfoot__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 44px 32px;
+  }
+
+  .lfoot__brand {
+    grid-column: 1 / -1;
+  }
+
+  .lp-pay__grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 44px;
+  }
+
+  /* The mirror is a two-column idea and has to be undone with the second
+     column. Left in place, `grid-column: 2` on the copy opens an implicit
+     track beside the one explicit one and the card lays out as two ragged
+     halves; `grid-row: 1` on the figure then pins it above the copy it is
+     meant to illustrate. Both reset, so the stack reads copy-then-figure
+     the same way the catalogue's does. */
+  .lp-panel--swap .lp-panel__copy {
+    grid-column: 1;
+  }
+
+  .lp-panel--swap .lp-panel__fig {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  /* Stacked, the 380px card should start at the copy's left edge rather
+     than sit centred over a full-width column. */
+  .lp-pay__figure {
+    margin-inline: 0 auto;
+    /* Stacked, the card spans the column and the photograph it was
+       matching is no longer beside it, so the full +95% buys nothing but
+       scroll distance. Still generous, no longer a screenful. */
+    --lp-co-grow: 1.45;
+  }
+
+  .lp-plans {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .lp-features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Below this the copy column would be too narrow to set a 3rem headline
+   in — around seven characters a line. The photographs stop being a
+   right-hand strip and become a band under the copy instead: same two
+   columns, same slow drift in opposite directions, in flow rather than
+   pinned to the edge. The copy goes back to centred, which is what a
+   single-column hero wants. */
+@media (max-width: 900px) {
+  .lp-hero__inner {
+    padding: calc(var(--lnav-h) + 56px) 0 56px;
+  }
+
+  .lp-hero__copy {
+    max-width: 660px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .lp-hero__sub {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 52ch;
+  }
+
+  .lp-hero__actions {
+    justify-content: center;
+  }
+
+  .lp-hero__mosaic {
+    position: relative;
+    width: auto;
+    /* Deep enough for most of a photograph, shallow enough that both
+       ends stay cropped — the crop is what the fade is for. */
+    height: clamp(220px, 36vw, 320px);
+    padding-right: 0;
+  }
+
+  /* Two columns at nearly half the viewport each: a 4:5 crop would be
+     over 500px tall in a 300px band, so most of every photograph would
+     be outside it. 3:4 keeps more of each one in view. */
+  .lp-hero__col img {
+    aspect-ratio: 3 / 4;
+  }
+
+  /* The left-edge fade was there to separate the strip from the copy.
+     Nothing is beside it now. */
+  .lp-hero__mosaic::after {
+    display: none;
+  }
+
+  /* The offsets existed to break up a right-hand strip taller than the
+     section. In a shallow band they would push the second column's
+     photographs out of it entirely. */
+  .lp-hero__col:first-child,
+  .lp-hero__col:last-child {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  /* The bar used to drop to its own `padding: 0 16px` here, which put it
+     back out of step with the page. It rides `--lp-gutter` through
+     `.lnav__inner` now, so it narrows when the content does and not
+     before. */
+  .lnav__links,
+  .lnav__signin {
+    display: none;
+  }
+
+  /* `.lnav__actions` is already `justify-self: end` in column 3, so the
+     burger needs nothing but to appear — the old `margin-left: auto` on
+     it and on the CTA were flex-row idioms from before the bar became a
+     grid, and both are now no-ops.
+
+     The CTA stays in the bar — it's the conversion path, and the sheet
+     is one tap further away. It only leaves at 560px, where the logo, a
+     button and a 44px burger genuinely stop fitting. */
+  .lnav__burger {
+    display: flex;
+  }
+
+  .lfoot__grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 36px 28px;
+  }
+
+  .lp-section {
+    padding: 72px 0;
+  }
+
+  .lp-hero__inner {
+    padding: calc(var(--lnav-h) + 40px) 0 48px;
+  }
+
+  .lp-hero__actions .lp-btn {
+    flex: 1 1 auto;
+  }
+
+  /* Two columns, not one: the third fact wraps under and the strip
+     stays compact instead of becoming a 3-row list. */
+  .lp-facts__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lp-facts__item {
+    padding: 22px 20px;
+  }
+
+  .lp-facts__item:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .lp-facts__value {
+    font-size: 1.375rem;
+  }
+
+  .lp-features {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stacked since 1080/980, so the 64–72px column gap is now vertical
+     space between a paragraph and the photograph under it. Too much. */
+  .lp-showcase__grid,
+  .lp-pay__grid {
+    gap: 36px;
+  }
+
+  .lp-pay__lead,
+  .lp-showcase__grid .lp-lead {
+    margin-bottom: 28px;
+  }
+
+  .lp-pay__list {
+    margin-bottom: 28px;
+  }
+
+  .lp-pay__rails {
+    padding-top: 22px;
+  }
+
+  .lp-head {
+    margin-bottom: 40px;
+  }
+}
+
+@media (max-width: 560px) {
+  /* On :root, not on `.lp` — the navbar, the footer and the cookie banner
+     all read this token from outside `.lp`, and scoped there the phone
+     gutter reached the sections but not the chrome around them. */
+  :root {
+    --lp-gutter: 20px;
+  }
+
+  .lnav__cta {
+    display: none;
+  }
+
+  /* "support@koraa.africa" needs the full column width at this size. */
+  .lfoot__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The flourish is atmosphere, and on a phone it is atmosphere sitting
+     directly behind the copy. It goes. */
+  .lp-hero__flourish {
+    display: none;
+  }
+
+  /* The handles are 9px squares straddling the corners of a 46px-tall
+     phrase. At that size they stop reading as handles and start reading
+     as four dots, so they shrink with everything else. */
+  .lp-mark::after {
+    --handle: 7px;
+  }
+
+  .lp-plans {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-feature,
+  .lp-plan {
+    padding: 28px 22px;
+  }
+
+  .lp-hero__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lp-trust {
+    justify-content: flex-start;
+  }
+
+  .lp-facts__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp-facts__item:last-child {
+    grid-column: auto;
+  }
+
+  .lp-co__method {
+    padding: 14px;
+  }
+
+  /* Phone-width: the card is the whole screen's width, so height it does
+     not need is height the reader has to scroll past. Barely taller than
+     its content now. */
+  .lp-pay__figure {
+    --lp-co-grow: 1.15;
+  }
+
+  /* The method row is radio + mark + a sixteen-character label inside a
+     figure that is now the full column width. The mark is the only part
+     with room to give. */
+  .lp-co__logo {
+    height: 22px;
+  }
+}

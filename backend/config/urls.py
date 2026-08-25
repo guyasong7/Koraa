@@ -10,6 +10,13 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.analytics.urls import merchant_patterns as analytics_merchant_patterns
+from apps.analytics.urls import public_patterns as analytics_public_patterns
+from apps.orders.urls import merchant_patterns as orders_merchant_patterns
+from apps.orders.urls import public_patterns as orders_public_patterns
+from apps.storefront.urls import merchant_patterns as storefront_merchant_patterns
+from apps.storefront.urls import public_patterns as storefront_public_patterns
+
 # ─── API v1 ───────────────────────────────────────────────────────────────────
 api_v1_patterns = [
     # Auth
@@ -22,6 +29,23 @@ api_v1_patterns = [
     path("", include("apps.products.urls")),
     # Categories (nested: /stores/{id}/categories/)
     path("", include("apps.categories.urls")),
+    # Storefront customization (merchant-authenticated)
+    path("storefront/", include(storefront_merchant_patterns)),
+    # Public storefront APIs (no auth)
+    path("public/", include(storefront_public_patterns)),
+    path("public/", include(orders_public_patterns)),
+    # One write endpoint, called by a shopper's browser on a storefront.
+    path("public/", include(analytics_public_patterns)),
+    # The merchant's order book. Not nested under a store: one list with a
+    # store filter, because a merchant with three shops wants one order book.
+    path("orders/", include(orders_merchant_patterns)),
+    # Traffic, engagement and sales. Same reasoning as the order book: not
+    # nested under a store, because ?store= is the filter.
+    path("analytics/", include(analytics_merchant_patterns)),
+    # Payments & Subscriptions
+    path("payments/", include("apps.payments.urls")),
+    # Notifications
+    path("notifications/", include("apps.notifications.urls")),
 ]
 
 urlpatterns = [

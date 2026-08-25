@@ -1,0 +1,69 @@
+{% extends "emails/base_email.html" %}
+
+{% comment %}
+The sender's own copy of what they sent.
+
+Branded as the shop, not as Koraa: the visitor filled in a form on the shop's
+website and has never heard of the platform. Reply-to is the merchant, so a
+follow-up thought goes where it should.
+
+It deliberately promises nothing about timing — Koraa does not know how quickly
+this particular merchant answers, and an automated "within 24 hours" the
+merchant never agreed to is a promise made on their behalf.
+{% endcomment %}
+
+{% block title %}We got your message — {{ store.name }}{% endblock %}
+
+{% block header %}
+{% if store_logo %}
+    <a href="{{ store_url }}" style="text-decoration: none;">
+        <img src="{{ store_logo }}" alt="{{ store.name }}" class="logo">
+    </a>
+{% else %}
+    <a href="{{ store_url }}" style="text-decoration: none; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
+        {{ store.name }}
+    </a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 6px;">Thank you for getting in touch</h1>
+<p class="muted" style="margin-bottom: 24px;">{{ submission.created_at|date:"j F Y, H:i" }}</p>
+
+<p>
+    Hi{% if submission.sender_name %} {{ submission.sender_name }}{% endif %},
+</p>
+
+<p>
+    Your message reached <strong>{{ store.name }}</strong> and somebody will read
+    it. Here is a copy for your records.
+</p>
+
+<table class="lines" style="margin: 26px 0 0;">
+    <tbody>
+        {% for answer in answers %}
+        <tr>
+            <td style="width: 38%; color: #64748b; font-size: 13px;">{{ answer.label }}</td>
+            <td style="color: #0f172a;">{{ answer.value|linebreaksbr }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p class="muted" style="margin-top: 26px;">
+    Need to add something? Reply to this email{% if store.email %} or write to
+    <a href="mailto:{{ store.email }}" style="color: #7c3aed;">{{ store.email }}</a>{% endif %}{% if store.phone %},
+    or call {{ store.phone }}{% endif %}.
+</p>
+{% endblock %}
+
+{% block footer %}
+<p style="margin: 0 0 10px; font-size: 13px;">
+    <a href="{{ store_url }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ store.name }}</a>
+    · &copy; {% now "Y" %}
+</p>
+<a href="{{ koraa_url }}" style="text-decoration: none; color: #94a3b8; font-size: 12px;">
+    <img src="{{ koraa_url }}/koraa-logo.png" alt="Koraa" style="height: 18px; width: auto; vertical-align: middle; opacity: 0.75;">
+    <span style="vertical-align: middle; margin-left: 6px;">Built with Koraa</span>
+</a>
+{% endblock %}

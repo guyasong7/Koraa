@@ -1,0 +1,53 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+.pytest_cache/
+.coverage
+htmlcov/
+.git/
+.gitignore
+*.log
+tsc_errors.log
+.DS_Store
+
+# Tests and fixtures. `COPY . .` was putting every app's test package into the
+# runtime image, along with the scratch scripts below — none of which the
+# gunicorn process can ever reach, and all of which are extra surface.
+#
+# `**/tests/` rather than `tests/`: a pattern with no slash is matched against
+# the context root only, and every test package here is at `apps/<app>/tests/`.
+# Django's app loading imports `apps.py` and `models.py`, never `tests`, so
+# `collectstatic` at build time is unaffected.
+**/tests/
+conftest.py
+pytest.ini
+.ruff_cache/
+.mypy_cache/
+
+# Ad-hoc scripts written against live third-party sandboxes. These carried
+# hardcoded API keys, and a key in a layer of a pushed image is readable by
+# anyone who can pull it — `docker history` shows the layer whether or not the
+# file survives to the final stage.
+test_*.py
+
+# A captured Django debug page. Django masks settings whose names look like
+# secrets, but the rest of the page is the full settings dump, the source of
+# every frame in the traceback, and the request that caused it. Nothing that
+# belongs in a shipped image.
+#
+# Named exactly, not `*.html`: the email and admin templates under `templates/`
+# are .html too, and excluding those would ship an image that raises
+# TemplateDoesNotExist the first time it sends a verification email.
+debug_500.html
+
+# Scratch upload fixtures.
+dummy.jpg

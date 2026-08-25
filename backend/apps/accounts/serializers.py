@@ -34,14 +34,42 @@ class KoraaTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """Safe read-only representation of a user."""
-
+    merchant_tier = serializers.SerializerMethodField()
+    is_pro = serializers.SerializerMethodField()
+    merchant_is_verified = serializers.SerializerMethodField()
+    has_merchant = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
         fields = [
             "id", "email", "full_name", "phone", "avatar",
             "role", "is_verified", "date_joined",
+            "merchant_tier", "is_pro", "has_merchant", "merchant_is_verified",
+            "date_of_birth", "gender", "id_card_number", "city",
         ]
-        read_only_fields = fields
+        read_only_fields = ["id", "email", "role", "is_verified", "date_joined", "merchant_tier", "is_pro", "has_merchant", "merchant_is_verified"]
+
+    def get_has_merchant(self, obj):
+        return hasattr(obj, 'merchant')
+
+    def get_merchant_tier(self, obj):
+        try:
+            return obj.merchant.tier
+        except Exception:
+            return "free"
+
+    def get_is_pro(self, obj):
+        try:
+            return obj.merchant.is_pro
+        except Exception:
+            return False
+
+    def get_merchant_is_verified(self, obj):
+        try:
+            return obj.merchant.is_verified
+        except Exception:
+            return False
+
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -49,7 +77,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["full_name", "phone", "avatar"]
+        fields = ["full_name", "phone", "avatar", "date_of_birth", "gender", "id_card_number", "city"]
 
 
 # ─── Registration ─────────────────────────────────────────────────────────────
@@ -59,10 +87,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         write_only=True, required=True, validators=[validate_password]
     )
     password_confirm = serializers.CharField(write_only=True, required=True)
+    referral_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ["email", "full_name", "phone", "password", "password_confirm"]
+        fields = ["email", "full_name", "phone", "password", "password_confirm", "referral_code"]
 
     def validate(self, attrs):
         if attrs["password"] != attrs.pop("password_confirm"):
@@ -72,6 +101,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        validated_data.pop("referral_code", None)  # Handled in the view
         user = User.objects.create_user(**validated_data)
         return user
 
@@ -159,3 +189,24 @@ class ChangePasswordSerializer(serializers.Serializer):
                 {"new_password_confirm": "Passwords do not match."}
             )
         return attrs
+
+# ─── Social Auth ──────────────────────────────────────────────────────────────
+
+class SocialAuthSerializer(serializers.Serializer):
+    provider = serializers.ChoiceField(choices=["google", "apple", "firebase"])
+    id_token = serializers.CharField()
+    full_name = serializers.CharField(required=False, allow_blank=True)
+    referral_code = serializers.CharField(required=False, allow_blank=True)
+
+
+# ─── Referrals ────────────────────────────────────────────────────────────────
+
+class ReferralSerializer(serializers.ModelSerializer):
+    referred_user_email = serializers.CharField(source="referred_user.email", read_only=True)
+    referred_user_name = serializers.CharField(source="referred_user.full_name", read_only=True)
+    
+    class Meta:
+        from .models import Referral
+        model = Referral
+        fields = ["id", "referred_user_email", "referred_user_name", "status", "reward_amount", "created_at"]
+

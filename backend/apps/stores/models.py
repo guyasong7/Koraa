@@ -61,6 +61,13 @@ class Store(models.Model):
     logo = models.ImageField(_("logo"), upload_to="stores/logos/", blank=True, null=True)
     favicon = models.ImageField(_("favicon"), upload_to="stores/favicons/", blank=True, null=True)
     banner = models.ImageField(_("banner"), upload_to="stores/banners/", blank=True, null=True)
+    #: The picture chat apps and social networks show when someone pastes a link
+    #: to this shop. Separate from `banner`: a banner is cropped by whatever
+    #: section renders it, whereas this is a fixed 1200×630 card that must read
+    #: at thumbnail size.
+    social_image = models.ImageField(
+        _("social sharing image"), upload_to="stores/social/", blank=True, null=True
+    )
 
     # Theme
     theme = models.ForeignKey(
@@ -120,6 +127,20 @@ class Store(models.Model):
     seo_title = models.CharField(_("SEO title"), max_length=70, blank=True)
     seo_description = models.CharField(_("SEO description"), max_length=160, blank=True)
 
+    # Site settings — availability, languages, privacy, crawlers, images and the
+    # rest of the shop-wide preferences. One JSON column rather than thirty
+    # sparse ones: they are read and written as a whole and nothing here is
+    # filtered or indexed. `apps.stores.site_settings` owns the schema, the
+    # defaults and the validation; read through `site_settings.get()` rather
+    # than indexing this dict, so a store saved before a setting existed still
+    # answers with that setting's default.
+    site_settings = models.JSONField(
+        _("site settings"),
+        default=dict,
+        blank=True,
+        help_text="Availability, languages, privacy, crawlers and image preferences.",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -155,7 +176,9 @@ class Store(models.Model):
     def storefront_url(self):
         if self.custom_domain and self.domain_verified:
             return f"https://{self.custom_domain}"
-        return f"https://{self.slug}.{settings.KORAA_STOREFRONT_DOMAIN}"
+        
+        protocol = "http" if "localhost" in settings.KORAA_STOREFRONT_DOMAIN else "https"
+        return f"{protocol}://{self.slug}.{settings.KORAA_STOREFRONT_DOMAIN}"
 
     @property
     def is_live(self):

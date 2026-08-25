@@ -1,0 +1,1818 @@
+@import "tailwindcss";
+
+/* Inter and Outfit are Koraa's own chrome faces, loaded by
+   next/font/google in app/layout.tsx, which self-hosts them and exposes
+   --font-inter / --font-outfit. Reach for them through --font-text and
+   --font-display below, not by name.
+
+   Poppins, Lato, Raleway and Nunito are loaded there too, but they are
+   *merchant* faces — four of the six choices StorefrontConfig offers for
+   a storefront. Nothing in this file should reach for them.
+
+   Do not re-import any of them from fonts.googleapis.com here: it adds a
+   blocking request to a third party and downloads the faces twice. */
+
+/* ─── Design Tokens ──────────────────────────────────────────────
+   Three layers, in order: primitive ramp → semantic aliases → component.
+   Components should reference the *semantic* names (--brand-solid,
+   --brand-text, --brand-tint), never the raw ramp. The ramp exists so
+   the semantic layer has something to point at, and so it can be
+   remapped per theme in one place.
+   ──────────────────────────────────────────────────────────────── */
+:root {
+  /* ── Type ──────────────────────────────────────────────────────
+     Indirection only — these point at the faces layout.tsx actually
+     loads. Swapping the chrome typeface means changing these two lines
+     and nothing else. */
+  --font-display: var(--font-outfit), var(--font-inter), system-ui, sans-serif;
+  --font-text: var(--font-inter), "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* ── Brand — Ochre ─────────────────────────────────────────────
+     Indigo is the dominant (it is every dark surface and, in light
+     mode, the ink). Ochre is the sharp accent, and it is the *brand*
+     ramp because it is the only one of the two that survives on both
+     grounds: a mid-luminance warm reads against bone paper and against
+     indigo, where an indigo brand would vanish into its own surfaces.
+
+     The ramp is not re-pointed in dark mode, and it cannot be. 32 call
+     sites use --brand-600 as a fill with hardcoded white text on it,
+     42 use it as a foreground — those two want the value moved in
+     opposite directions, so it is pinned to the one value that serves
+     both: 5.4:1 under white, 4.8:1 as text on paper. Migrate a call
+     site to --brand-solid / --on-brand-solid and it becomes free to
+     follow the theme.
+
+     Stop 400 is the signature ochre. It sits above 500/600 rather than
+     between them because those two are pulled dark to clear contrast —
+     the same shift the violet ramp needed at 600/700 before it. */
+  --brand-50: #fdf5eb;
+  --brand-100: #f9e6ca;
+  --brand-200: #f2cf9d;
+  --brand-300: #e8ae63;   /* dark-mode text — 9.2:1 on indigo ground */
+  --brand-400: #d97b2b;   /* the signature ochre; dark-mode fill — 5.9:1 under ink */
+  --brand-500: #bf6318;   /* graphics/focus — clears 3:1 on paper and on indigo */
+  --brand-600: #a8530f;   /* primary fill — 5.4:1 under white, 4.8:1 as text on paper */
+  --brand-700: #8a4310;   /* primary hover — 7.3:1 under white */
+  --brand-800: #6b330c;
+  --brand-900: #47210a;
+
+  /* ── Indigo — the dominant ─────────────────────────────────────
+     Primitive and theme-independent: the dark surfaces are these
+     stops, and in light mode --text-primary is indigo-900 rather than
+     a neutral grey, so type on paper is warm-against-cool instead of
+     flat black. 900 is the ground and 800 the field. */
+  --indigo-50: #eef1f7;
+  --indigo-100: #dde3ee;
+  --indigo-200: #bcc7dc;
+  --indigo-300: #8fa1c2;
+  --indigo-400: #5c74a0;
+  --indigo-500: #3d5480;
+  --indigo-600: #2c3f66;
+  --indigo-700: #223047;
+  --indigo-800: #1a2536;  /* field */
+  --indigo-900: #10161f;  /* ground */
+  --indigo-950: #0b1017;
+
+  /* ── Bone — paper ──────────────────────────────────────────────
+     Warm off-whites. The old surfaces were blue-greys (#f8f9fb over
+     #ffffff); against an ochre accent a cool ground turns the accent
+     muddy, because the two are on opposite sides of neutral. */
+  --bone-50: #fdfaf4;
+  --bone-100: #f5f1e8;
+  --bone-200: #efe9dd;
+  --bone-300: #e3dccb;
+  --bone-400: #c9c0a9;
+  --bone-500: #9c9280;
+
+  /* ── Clay — support ────────────────────────────────────────────
+     The third textile colour. Chart series, tertiary accents; never a
+     status, because it sits between the brand and --danger. */
+  --clay-400: #d97060;
+  --clay-500: #c4553d;
+  --clay-600: #a4402c;
+  --clay-text: #8c3323;   /* 7.7:1 on card */
+
+  /* Brand — semantic. Use these, not the ramp. */
+  --brand-solid: var(--brand-600);
+  --brand-solid-hover: var(--brand-700);
+  --on-brand-solid: #ffffff;
+  --brand-text: var(--brand-600);
+  --brand-tint: var(--brand-50);
+  --brand-tint-border: var(--brand-200);
+
+  /* Surfaces */
+  --surface: var(--bone-100);
+  --surface-950: var(--bone-100);
+  --surface-900: var(--bone-50);
+  --surface-850: var(--bone-200);
+  --surface-800: var(--bone-50);
+  --surface-700: var(--bone-300);
+  --surface-600: var(--bone-400);
+  --surface-500: var(--bone-500);
+
+  /* Text hierarchy */
+  --text-primary: var(--indigo-900);   /* 17.4:1 on card */
+  --text-secondary: #3c4657;           /* 8.5:1 on page */
+  --text-muted: #5d6779;               /* 4.7:1 on the raised surface, its worst ground */
+  --text-disabled: #8c93a1;
+
+  /* Borders */
+  --border: var(--bone-300);
+  --border-strong: var(--bone-400);
+  --border-focus: var(--brand-500);
+
+  /* Texture. Consumed by .motif — see the textile block below. */
+  --motif-ink: var(--indigo-900);
+
+  /* Semantic status.
+     Two variants each, because one colour cannot do both jobs: the
+     saturated value is for fills, dots and chart series, the -text
+     value is the darkened tone that actually clears 4.5:1 as type on a
+     tinted background. #22c55e as label text on a green tint is 3.3:1
+     and fails — that is what the -text tokens exist to prevent.
+
+     Both hues moved off the default ramp to stay legible *as
+     semantics* next to an ochre brand: --warning is a yellow gold
+     rather than amber, and --info is teal rather than blue, which
+     would have read as the indigo surfaces. --danger is pulled toward
+     crimson for the same reason, away from the brand's burnt orange. */
+  --success: #3f9e52;
+  --success-text: #2f6b34;  /* 6.2:1 on card */
+  --warning: #e8b021;
+  --warning-text: #8a5a06;  /* 5.7:1 on card */
+  --danger: #e0483c;
+  --danger-text: #a81c14;   /* 7.1:1 on card */
+  --info: #0d9488;
+  --info-text: #0f766e;     /* 5.3:1 on card */
+
+  /* Radius.
+     Structural surfaces that participate in a hairline grid (the
+     landing feature/pricing grids) opt out to 0 locally — rounded
+     cells with 1px gaps read as broken. Controls are soft. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* ── Control radius ──────────────────────────────────────────────
+     Buttons and text fields share one corner. They sit side by side
+     constantly — a search box next to Filters, a field above Save — and
+     a field on a different radius from the button beside it is the kind
+     of mismatch that reads as unfinished rather than as a choice.
+
+     So `.btn`, `.btn-sm`, `.input` and friends all resolve their corner
+     through this variable instead of naming a `--radius-*` step each.
+     Overriding it on an ancestor restyles a whole region's controls
+     together and keeps them in agreement: `.auth-split` sets it to
+     `--radius-full` for its pill card, and the dashboard leaves it
+     alone. Change it in one place, not per control.
+
+     Storefronts do not use this. They are themed by the merchant and
+     resolve their own corner from `--sf-r`, which the merchant's
+     button_style sets — same principle, different source of truth. */
+  --control-radius: var(--radius-lg);
+
+  /* Shadows — neutral only. A coloured glow around a button is the
+     single fastest way to make an interface look generated. */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.04);
+  --shadow-xl: 0 20px 24px -4px rgba(16, 24, 40, 0.1), 0 8px 8px -4px rgba(16, 24, 40, 0.04);
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Layout */
+  --sidebar-width: 260px;
+  --header-height: 64px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+}
+
+/* ─── Dark Theme ─────────────────────────────────────────────── */
+.dark {
+  /* The dark theme is the indigo ground: surfaces are the indigo ramp
+     rather than neutral greys, so the brand ochre lands on a blue-black
+     it is complementary to instead of on charcoal. */
+  --surface: var(--indigo-950);
+  --surface-950: var(--indigo-950);
+  --surface-900: var(--indigo-900);
+  --surface-850: #161e2a;
+  --surface-800: var(--indigo-800);
+  --surface-700: var(--indigo-700);
+  --surface-600: var(--indigo-600);
+  --surface-500: var(--indigo-500);
+
+  /* Bone, not white. #ffffff on a saturated blue-black buzzes; the
+     warm off-white is what the indigo textiles are resist-dyed to. */
+  --text-primary: #f2ece1;   /* 15.4:1 on ground */
+  --text-secondary: #b8b3a6; /* 8.7:1 on ground */
+  --text-muted: #948e82;     /* 4.7:1 on the field, its worst ground */
+  --text-disabled: #6b665c;
+
+  --border: var(--indigo-700);
+  --border-strong: var(--indigo-600);
+
+  /* Brand, remapped for dark.
+     The ramp is not re-pointed here — only the semantic layer is. A
+     dark-mode "--brand-50" that is actually dark would be a lie, and
+     the previous build read --brand-50 straight into the active nav
+     background, which painted a near-white block into the dark
+     sidebar. Semantic tokens make that impossible.
+
+     Ochre inverts its relationship to type across themes: on paper it
+     is a dark fill under white, on indigo it is a bright fill under
+     ink. Hence --on-brand-solid flipping to the ground colour. */
+  --brand-solid: var(--brand-400);          /* the signature ochre — 5.9:1 under ink */
+  --brand-solid-hover: var(--brand-300);
+  --on-brand-solid: var(--indigo-900);
+  --brand-text: var(--brand-300);           /* 9.2:1 on ground, 7.8:1 on field */
+  --brand-tint: rgba(217, 123, 43, 0.15);
+  --brand-tint-border: rgba(217, 123, 43, 0.32);
+
+  --clay-text: #e2836c;      /* 6.7:1 on ground */
+
+  /* The lattice inverts with the ground — a dark motif on a dark
+     surface is invisible. */
+  --motif-ink: #f2ece1;
+
+  /* Status text lightens in dark mode — the darkened light-mode tones
+     drop to ~2:1 against a near-black surface. */
+  --success-text: #5fcf72;
+  --warning-text: #eab920;
+  --danger-text: #f2857c;
+  --info-text: #3fc9bb;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 12px 16px -4px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 24px -4px rgba(0, 0, 0, 0.65);
+}
+
+/* ─── The logo, as vectors ────────────────────────────────────────
+   Three sizes for the three places the app shows it outside the
+   landing page. All of them take their colour from `currentColor` via
+   --brand-solid, which is the same treatment the landing nav uses —
+   the raster logo could only ever be black or white, which is why it
+   needed a `filter: brightness(0) invert(1)` for dark mode and could
+   never be brand-coloured. Height only: the viewBox carries the ratio.
+   ───────────────────────────────────────────────────────────────── */
+.auth-logo,
+.dash-logo,
+.sf-koraa-logo {
+  width: auto;
+  display: block;
+  color: var(--brand-solid);
+}
+
+/* Centred over the card's heading, which is why the margin is here
+   rather than on a wrapper: the wrapper is a bare `text-align: center`
+   div and a block SVG does not respond to it. */
+.auth-logo {
+  height: clamp(44px, 3.6vw, 60px);
+  margin: 0 auto 10px;
+}
+
+/* Left-aligned in the register form column and the onboarding header,
+   both of which set their own surrounding spacing. */
+.auth-logo--start {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.dash-logo {
+  height: 40px;
+}
+
+.sf-koraa-logo {
+  height: 44px;
+}
+
+/* ─── Reset ──────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* One root size, and everything rem-based below it moves with the viewport.
+   The whole application was authored against a fixed 16px root, which means a
+   1440px laptop and a 375px phone render body copy, labels and controls at
+   exactly the same physical size — and at desk distance that reads small. The
+   clamp lifts the root to 18px on a wide screen and holds it at 16px on a
+   phone, where 16px is already the right size and is also the threshold below
+   which iOS Safari zooms on focusing an input.
+
+   Deliberately a relative unit rather than px, so a reader who has set a
+   larger default font size in their browser still gets it — `font-size: 16px`
+   on `html` would have thrown that preference away. */
+html {
+  font-size: clamp(1rem, 0.9rem + 0.32vw, 1.125rem);
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* …and off again wherever Lenis is driving the scroll. `SmoothScroll` mounts
+   Lenis on the landing page, and Lenis animates by writing the real scroll
+   position every frame. With native smooth scrolling still on, each of those
+   writes starts a second animation of its own, so the page crawls behind the
+   wheel and then glides on after Lenis has finished — which is exactly what
+   it did before this rule existed.
+
+   `!important`, and in CSS rather than as an inline style, because it has to
+   beat an inline style: ScrollTrigger reads the declaration above when it
+   first measures a scroller, remembers that the page was smooth, and writes
+   `scroll-behavior: smooth` straight onto `<html>` after every refresh (see
+   `_scrollers.forEach` in gsap/ScrollTrigger.js). Anything JS sets on the
+   element loses that race.
+
+   The two classes are Lenis's own, added to `<html>` while it is running and
+   removed when it is destroyed, so this applies exactly when it should and
+   the dashboard keeps native smooth scrolling. */
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+body {
+  font-family: var(--font-text);
+  font-size: 1rem;
+  line-height: 1.6;
+  background: var(--surface);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Typography ──────────────────────────────────────────────────
+   One scale, defined once. Headings are 600/700 — the previous 800
+   weight on h1 combined with -0.02em tracking made display type look
+   crowded and shouty at every size.
+
+   The whole scale sits one step above where it started. It was set as
+   though this were a dense data tool read at desk distance, but the
+   dashboard is a page merchants read on a phone: 28px page titles,
+   17px section headings, 14px table cells and 13px field labels all
+   read as fine print on anything smaller than a laptop. Component
+   sizes below moved with it, so the relationships hold.
+   ──────────────────────────────────────────────────────────────── */
+.font-display,
+h1,
+h2,
+h3 {
+  font-family: var(--font-outfit), var(--font-inter), system-ui, sans-serif;
+  letter-spacing: -0.018em;
+}
+
+h1 {
+  font-size: 2rem;      /* 32px */
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: 1.5rem;    /* 24px */
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.1875rem; /* 19px */
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────
+   Neutral, and theme-aware. A brand-coloured scrollbar thumb is
+   decoration competing with content, and the old hardcoded #f1f1f1
+   track stayed light in dark mode.
+   ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+  background-clip: padding-box;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-600) transparent;
+}
+
+/* ─── Focus visible ───────────────────────────────────────────────
+   :focus-visible only, so a mouse click never paints a ring, but every
+   keyboard path does. Never remove this.
+   ──────────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--brand-solid);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Card ────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ─── Glass ───────────────────────────────────────────────────────
+   Was a hardcoded rgba(255,255,255,0.8), which stayed white in dark
+   mode and turned any text on it unreadable.
+   ──────────────────────────────────────────────────────────────── */
+.glass {
+  background: color-mix(in srgb, var(--surface-900) 82%, transparent);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid var(--border);
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────
+   No transform on hover. Lifting a button on hover moves the thing the
+   pointer is aimed at, and paired with a coloured glow it is the
+   clearest tell of a generated interface. State is carried by fill.
+   ──────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--control-radius);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 550;
+  font-size: 0.9375rem;
+  line-height: 1;
+  padding: 0 18px;
+  cursor: pointer;
+  transition:
+    background var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+  border: 1px solid transparent;
+  outline: none;
+  text-decoration: none;
+  user-select: none;
+  white-space: nowrap;
+  min-height: 42px;
+}
+
+.btn-primary {
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-solid-hover);
+}
+
+.btn-secondary {
+  background: var(--surface-900);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-850);
+  border-color: var(--surface-500);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-850);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border-color: var(--danger);
+}
+
+.btn-sm {
+  padding: 0 14px;
+  font-size: 0.875rem;
+  min-height: 36px;
+  /* Not a smaller corner. A 36px button beside a 44px field on two
+     different radii is the mismatch `--control-radius` exists to stop,
+     and 8px on a short button does not read as over-rounded. */
+  border-radius: var(--control-radius);
+}
+
+.btn-lg {
+  padding: 0 26px;
+  font-size: 1rem;
+  min-height: 50px;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Inputs ──────────────────────────────────────────────────── */
+.input {
+  width: 100%;
+  background: var(--surface-900);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--control-radius);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  padding: 11px 13px;
+  min-height: 44px;
+  transition: border-color var(--duration-base), box-shadow var(--duration-base);
+  outline: none;
+  line-height: 1.5;
+}
+
+.input:hover:not(:disabled):not(:focus) {
+  border-color: var(--surface-500);
+}
+
+.input:focus {
+  border-color: var(--brand-solid);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-solid) 18%, transparent);
+}
+
+.input::placeholder {
+  color: var(--text-disabled);
+}
+
+.input:disabled {
+  background: var(--surface-850);
+  cursor: not-allowed;
+  color: var(--text-muted);
+}
+
+.input[type="select"],
+select.input {
+  cursor: pointer;
+}
+
+/* Labels stay visible. A placeholder is not a label — it disappears the
+   moment the field has content, which is exactly when the user is most
+   likely to need it. */
+.input-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 550;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-hint {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.input-error {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 15%, transparent) !important;
+}
+
+.error-text {
+  font-size: 0.875rem;
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ─── Badge ───────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success-text);
+  border-color: color-mix(in srgb, var(--success) 25%, transparent);
+}
+
+.badge-warning {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning-text);
+  border-color: color-mix(in srgb, var(--warning) 28%, transparent);
+}
+
+.badge-danger {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger-text);
+  border-color: color-mix(in srgb, var(--danger) 25%, transparent);
+}
+
+.badge-neutral {
+  background: var(--surface-850);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.badge-brand {
+  background: var(--brand-tint);
+  color: var(--brand-text);
+  border-color: var(--brand-tint-border);
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────── */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background: var(--surface-900);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background var(--duration-fast), color var(--duration-fast);
+  cursor: pointer;
+  text-decoration: none;
+  margin: 1px 8px;
+  min-height: 40px;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--surface-850);
+  color: var(--text-primary);
+}
+
+/* Active state reads --brand-tint / --brand-text, which are remapped
+   per theme. Reading the raw --brand-50 here painted a near-white
+   block into the dark sidebar, because the ramp is not re-pointed
+   for dark mode. */
+.sidebar-nav-item.active {
+  background: var(--brand-tint);
+  color: var(--brand-text);
+  font-weight: 550;
+}
+
+.sidebar-nav-item .nav-icon {
+  flex-shrink: 0;
+}
+
+/* ─── Dashboard layout ────────────────────────────────────────── */
+.dashboard-layout {
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.dashboard-header {
+  height: var(--header-height);
+  background: var(--surface-900);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  box-shadow: var(--shadow-xs);
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: var(--space-8) var(--space-10);
+}
+
+/* ─── Stat card ───────────────────────────────────────────────────
+   A stat card is not a control. It had translateY(-2px) on hover, which
+   invited a click that does nothing — hover affordance should follow
+   interactivity, not decorate every surface.
+   ──────────────────────────────────────────────────────────────── */
+.stat-card {
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Opt in per-card where the whole card really is a link. */
+a.stat-card,
+button.stat-card {
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+
+a.stat-card:hover,
+button.stat-card:hover {
+  border-color: var(--surface-500);
+}
+
+/* ─── Table ───────────────────────────────────────────────────── */
+.table-container {
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  background: var(--surface-850);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.table td {
+  padding: 14px 16px;
+  font-size: 0.9375rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+/* The old rule tinted rows at 2% brand opacity — under 1:1 contrast
+   against the surface, i.e. no feedback at all. A neutral surface step
+   is visible in both themes. */
+.table tbody tr:hover td {
+  background: var(--surface-850);
+}
+
+/* ─── Animations ──────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s var(--ease-out) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s var(--ease-out) forwards;
+}
+
+.spin {
+  animation: spin 10s linear infinite;
+}
+
+.spin-fast {
+  animation: spin 0.7s linear infinite;
+}
+
+.skeleton {
+  background: var(--surface-700);
+  animation: pulse-dot 1.4s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ─── Auth pages ──────────────────────────────────────────────── */
+/* The card was --surface-900 on a --surface-900 page, so the only thing
+   separating it from the field behind it was its hairline. The landing
+   page's pattern is the other way round — cards sit a step *lighter*
+   than the section they are in — so the field drops to --surface and
+   the card keeps the paper. */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: 40px;
+  position: relative;
+  z-index: 1;
+  animation: fadeIn 0.35s var(--ease-out);
+}
+
+/* .auth-glow removed — no decorative gradients */
+
+/* ─── Divider ─────────────────────────────────────────────────── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── Modals ──────────────────────────────────────────────────────
+   Three dashboard dialogs carried a byte-identical inline overlay and
+   an inline panel with no height ceiling at all, so a panel grew to
+   whatever its content wanted: the create-store dialog opens on a
+   seven-category grid of 60px rows and ran past the fold, and once past
+   it there was nothing to scroll — the page behind does not move while
+   a fixed overlay is up, so the submit button was simply unreachable on
+   a laptop.
+
+   The fix is the panel being a flex column with a `max-height`, and its
+   body being the only part that scrolls. Header and footer stay put, so
+   the dialog never gets taller than the viewport and the primary action
+   is always on screen.
+
+   `--modal-max` is the ceiling. `min()` rather than a bare `vh` so the
+   dialog stops growing on a tall monitor as well — past roughly 680px a
+   two-field form is stretched, not generous.
+   ───────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Room for the panel's shadow, and the whole gutter on a phone. */
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  /* If a panel ever does exceed the ceiling — a validation summary
+     unfolding, a zoomed browser — the overlay itself scrolls rather
+     than clipping the panel's ends off. */
+  overflow-y: auto;
+}
+
+.modal-panel {
+  --modal-max: min(88vh, 680px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  max-height: var(--modal-max);
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+  /* Corners are square by default here, but a caller may round them, and
+     a scrolling body's scrollbar would otherwise square them back off. */
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Header and footer are the fixed ends; `flex-shrink: 0` keeps flex
+   from compressing them to make room for a long body. */
+.modal-header {
+  flex-shrink: 0;
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-body {
+  /* `min-height: 0` is the load-bearing half of this: a flex child's
+     default `min-height: auto` refuses to shrink below its content, and
+     without it the panel grows past `max-height` and never scrolls. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+.modal-footer {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-900);
+}
+
+/* A dialog whose body is a form still needs the body/footer split, and
+   the submit button has to stay inside the form to keep submitting it.
+   So the form becomes the flex column between them rather than being
+   given `display: contents`, which would drop its landmark role. */
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* A body that ends flush against the footer's rule reads as cut off
+   mid-content even when it is complete, so the last row gets air. */
+.modal-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* ─── Split auth card ─────────────────────────────────────────────
+   Register and onboarding share this: one card floating on the warm
+   ground, form on one side, an inset photo on the other.
+
+   The predecessor bled a full-bleed photo to the window edge against a
+   --surface-900 page, which is the one surface value that reads as
+   plain white in light mode — so the form column looked like an unstyled
+   document next to a picture. Here the page takes --surface, the same
+   bone the dashboard sits on, and the card keeps the lighter paper. That
+   inverted pair is the app's existing figure/ground rule; see the
+   .auth-container note above, which fixed the same mistake on login.
+
+   Deliberately NOT named .auth-card — that one is the 420px single
+   column login/forgot/reset card and is still in use.
+   ───────────────────────────────────────────────────────────────── */
+.auth-split-shell {
+  min-height: 100vh;
+  display: grid;
+  /* One row that takes the whole height, and the default `stretch`
+     alignment, so the card fills the window instead of sitting as a
+     1060px box centred in it. `place-items: center` was here before and
+     is what made the card a floating object — with it, the row is only
+     as tall as the card's content and there is nothing to stretch into.
+
+     The padding is what keeps the corners readable: at 12px the card is
+     effectively the screen, but the warm ground still shows as a hairline
+     frame around it, which is the only thing that lets a 16px radius
+     register at all. Full-bleed to the window edge and the radius may as
+     well not be there. */
+  grid-template-rows: 1fr;
+  padding: 12px;
+  /* A wash rather than a second colour: the ochre is thinned to ~10%
+     over the bone, so the corner warms without introducing a hue the
+     token layer does not already own. */
+  background:
+    radial-gradient(
+      1100px 620px at 12% -12%,
+      color-mix(in srgb, var(--brand-400) 14%, transparent),
+      transparent 68%
+    ),
+    radial-gradient(
+      900px 500px at 96% 108%,
+      color-mix(in srgb, var(--brand-400) 10%, transparent),
+      transparent 62%
+    ),
+    var(--surface);
+}
+
+.auth-split {
+  /* Login's radius. `.auth-card` — the 420px login/forgot/reset card —
+     is `var(--radius-2xl)`, and this was a one-off 28px, so the two auth
+     surfaces rounded differently on pages a visitor moves between in one
+     sitting. The photo's radius follows it down: 14px of inset inside a
+     16px corner wants a small inner radius, and 20px inside 16px was
+     already reading as the wrong way round. */
+  --auth-radius: var(--radius-2xl);
+  --auth-photo-radius: var(--radius-lg);
+  /* Width of the form's *content* area — not of the card, which is the
+     screen. Lives here rather than inline in the padding calc below so a
+     page that carries a longer form can widen its own column without
+     moving every other page that shares this shell. */
+  --auth-form-width: 460px;
+  position: relative;
+  width: 100%;
+  /* No `max-width`. The card is the screen now; what stops the form from
+     becoming a 900px-wide line is the cap on the *content* inside the
+     column, in `.auth-split__form` below, not a ceiling on the card. */
+  display: grid;
+  grid-template-columns: 1.04fr 0.96fr;
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-radius: var(--auth-radius);
+  /* Long and soft. The card is the only object on the page, so the
+     shadow is doing the lifting a border cannot. */
+  box-shadow:
+    0 1px 2px rgba(24, 18, 8, 0.04),
+    0 28px 70px -18px rgba(24, 18, 8, 0.22);
+  animation: fadeIn 0.35s var(--ease-out);
+}
+
+/* Sign-up's form is the long one on this shell, so it gets a wider content
+   column than the default above. */
+.auth-split--wide {
+  --auth-form-width: 560px;
+}
+
+/* Its own stacking context, so the floating cards over the photo cannot
+   escape the card's rounded corners. */
+.auth-split__aside {
+  position: relative;
+  padding: 14px 14px 14px 0;
+  isolation: isolate;
+}
+
+.auth-split__photo {
+  position: relative;
+  height: 100%;
+  min-height: 540px;
+  border-radius: var(--auth-photo-radius);
+  overflow: hidden;
+  background-color: var(--surface-850);
+  background-image: var(--auth-photo, none);
+  background-repeat: no-repeat;
+  background-size: cover;
+  /* Portraits crop from the top: the subject's face is in the upper
+     third, and `center` would cut it off first as the column narrows. */
+  background-position: var(--auth-photo-pos, 50% 16%);
+}
+
+.auth-split__form {
+  /* min-width guards the grid track: a long validation string in a
+     flex/grid child otherwise pushes the column past its fraction and
+     squeezes the photo. */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* The horizontal padding centres a 460px content area rather than
+     being a fixed inset, and that is what makes a full-screen card
+     usable: this column is half the window now, so on a 1920px monitor
+     it is roughly 980px wide, and a 980px-wide text input is not a form
+     but a line.
+
+     A percentage in `padding` resolves against the inline size of the
+     containing block — here the grid track — so `(100% - 460px) / 2` per
+     side leaves exactly 460px of content. `max()` keeps the old 44px
+     inset as the floor for every width where the column is already
+     narrower than that. Padding rather than a wrapper element or a
+     `max-width` on the children, because this is still a flex column and
+     `.auth-split__brand` depends on `align-self: flex-start` to stay the
+     width of the lozenge instead of stretching. */
+  padding: clamp(28px, 4vh, 56px) max(44px, (100% - var(--auth-form-width)) / 2);
+  color: var(--text-primary);
+}
+
+/* ─── Split auth card: contents ───────────────────────────────── */
+
+/* The logo in a tinted lozenge rather than bare, which gives the form
+   column a top-left anchor and keeps the mark from floating in space. */
+.auth-split__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 7px 14px 7px 12px;
+  margin-bottom: 26px;
+  border-radius: var(--radius-full);
+  background: var(--brand-tint);
+  border: 1px solid var(--brand-tint-border);
+}
+
+.auth-split__brand .auth-logo {
+  height: 26px;
+  margin: 0;
+}
+
+.auth-split__head {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+/* The greeting, above the title. Small and ochre so it reads as a warm
+   aside rather than competing with the heading for first place. */
+.auth-split__eyebrow {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--brand-text);
+  margin: 0 0 7px;
+}
+
+.auth-split__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+
+.auth-split__sub {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Pill fields and pill buttons, scoped to this card only. The dashboard
+   is deliberately square-cornered and must stay that way — this cannot
+   leak there because it sets a variable on .auth-split, and nothing
+   outside the card inherits it.
+
+   Set once here rather than listed per control: the previous version
+   named `.input` and `.auth-split__btn` explicitly, so any control added
+   to this card later would have kept the app's 8px corner and quietly
+   broken the pill language. Anything resolving `--control-radius` now
+   follows without being added to a list. */
+.auth-split {
+  --control-radius: var(--radius-full);
+}
+
+.auth-split .input {
+  width: 100%;
+  padding: 13px 18px;
+  font-size: 0.9375rem;
+  /* A step darker than the card, so the field reads as recessed into the
+     paper. The app default is the reverse — a light field on a darker
+     page — which inside this card would make every input a bright slab. */
+  background: var(--surface);
+}
+
+/* Softer than --border-strong, which is heavy on a card this quiet.
+   Scoped away from :focus deliberately: `.auth-split .input` and
+   `.input:focus` weigh the same and this block is later in the file, so
+   without the :not() the ochre focus border would never show. */
+.auth-split .input:not(:focus) {
+  border-color: var(--border);
+}
+
+.auth-split .input:focus {
+  background: var(--surface-900);
+}
+
+.auth-split__field {
+  margin-bottom: 12px;
+}
+
+.auth-split__label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 6px 16px;
+}
+
+/* Indented to the pill's inner edge, so the message reads as belonging
+   to the field rather than to the column. */
+.auth-split .error-text {
+  font-size: 0.8125rem;
+  margin: 5px 0 0 16px;
+}
+
+/* Two columns for names/passwords, so five fields stop pushing the card
+   taller than the photo beside it. */
+.auth-split__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.auth-split__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 50px;
+  padding: 13px 20px;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  /* This is not a `.btn`, so it carries no radius of its own — it used to
+     borrow one from the two-selector rule above. It resolves the shared
+     token now, which `.auth-split` has already set to a pill. */
+  border-radius: var(--control-radius);
+  transition:
+    background 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out);
+}
+
+.auth-split__btn--primary {
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+}
+
+.auth-split__btn--primary:hover:not(:disabled) {
+  background: var(--brand-solid-hover);
+}
+
+.auth-split__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-split__btn--ghost {
+  background: var(--surface-900);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.auth-split__btn--ghost:hover:not(:disabled) {
+  background: var(--surface-850);
+  border-color: var(--surface-500);
+}
+
+/* Side by side as in the reference. `minmax(0, 1fr)` rather than `1fr`
+   so a long provider label shrinks instead of widening its track. */
+.auth-split__socials {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.auth-split__foot {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.auth-split__foot a {
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-split__foot a:hover {
+  color: var(--brand-text);
+  text-decoration: underline;
+}
+
+/* ─── Cards floating over the photo ───────────────────────────────
+   The reference overlays product chrome on its photo, which is what
+   makes the picture read as "this is the thing you are signing up to"
+   rather than decoration. These two are the app's actual subject: a
+   mobile-money payment landing, and the day's order count.
+   ──────────────────────────────────────────────────────────────── */
+.auth-split__float {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 13px;
+  border-radius: 14px;
+  /* Translucent over the photo, so it belongs to the image instead of
+     sitting on it. The backdrop blur is what keeps the text legible
+     over whatever pixels happen to be underneath. */
+  background: color-mix(in srgb, var(--surface-900) 88%, transparent);
+  backdrop-filter: blur(10px) saturate(1.2);
+  border: 1px solid color-mix(in srgb, #fff 34%, transparent);
+  box-shadow: 0 12px 30px -10px rgba(24, 18, 8, 0.38);
+  color: var(--text-primary);
+}
+
+.auth-split__float--pay {
+  left: -14px;
+  top: 16%;
+}
+
+.auth-split__float--stat {
+  right: 14px;
+  bottom: 8%;
+}
+
+.auth-split__float-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 2px;
+}
+
+.auth-split__float-value {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+}
+
+/* 30px, not the 22px the footer rails use. The MTN lockup is a mark plus
+   a wordmark plus a rule, and below about 28px the wordmark stops being
+   letters and the rule smears into the mark. */
+.auth-split__float-rail {
+  height: 30px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* ─── Onboarding extras ───────────────────────────────────────────
+   Onboarding reuses the split card, so only the things register has no
+   equivalent for live here: the step rail, the business-type tiles and
+   the success state.
+
+   All three were previously drawn in Tailwind purple — a #4f46e5→#9333ea
+   panel and rgba(168,85,247,…) shadows — on a page whose every other
+   value came from the ochre tokens. That is the exact mistake the token
+   layering exists to prevent, so nothing below names a colour directly.
+   ──────────────────────────────────────────────────────────────── */
+.auth-split__steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+/* Bars, not numbered circles. Two steps do not need to be counted, they
+   need to show how much is left — and a bar says that without adding a
+   row of chrome above a form this short. */
+.auth-split__steps li {
+  flex: 1;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.25s var(--ease-out);
+}
+
+.auth-split__steps li::before {
+  content: "";
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--surface-700);
+  transition: background 0.25s var(--ease-out);
+}
+
+.auth-split__steps li[data-reached="true"] {
+  color: var(--brand-text);
+}
+
+.auth-split__steps li[data-reached="true"]::before {
+  background: var(--brand-solid);
+}
+
+.auth-split__tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.auth-split__tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  /* A tile is a control in this card, so it follows the card's corner
+     rather than naming a pill of its own. */
+  border-radius: var(--control-radius);
+  cursor: pointer;
+  transition:
+    background 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out),
+    color 0.18s var(--ease-out);
+}
+
+.auth-split__tile:hover {
+  border-color: var(--brand-tint-border);
+}
+
+/* Driven by aria-pressed rather than a class, so the state a screen
+   reader is told and the state that is painted cannot drift apart. */
+.auth-split__tile[aria-pressed="true"] {
+  background: var(--brand-tint);
+  border-color: var(--brand-tint-border);
+  color: var(--brand-text);
+  font-weight: 650;
+}
+
+.auth-split__tile-emoji {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.auth-split__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Back stays narrow. Equal halves would give the same weight to leaving
+   the step as to finishing it. */
+.auth-split__actions .auth-split__btn--ghost {
+  flex: 0 0 30%;
+}
+
+.auth-split__actions .auth-split__btn--primary {
+  flex: 1;
+}
+
+.auth-split__done {
+  text-align: center;
+  padding: 26px 0;
+}
+
+/* Two rings of thinning tint around the mark, which is the cheapest way
+   to make one static icon feel like an arrival.
+
+   Mixed down from --brand-solid rather than using --brand-tint: in light
+   mode that token resolves to --brand-50, which is within a couple of
+   values of the card it would be drawn on, so both rings vanished. */
+.auth-split__done-mark {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--brand-solid);
+  color: var(--on-brand-solid);
+  box-shadow:
+    0 0 0 10px color-mix(in srgb, var(--brand-solid) 18%, transparent),
+    0 0 0 20px color-mix(in srgb, var(--brand-solid) 8%, transparent);
+}
+
+/* ─── Landing ─────────────────────────────────────────────────────
+   The marketing pages own their styling in app/(landing)/landing.css.
+   Nothing for them belongs here.
+   ──────────────────────────────────────────────────────────────── */
+
+/* ─── Utility helpers ─────────────────────────────────────────── */
+.surface {
+  background: var(--surface);
+}
+
+/* ─── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  /* The photo goes rather than shrinking. A portrait squeezed into a
+     narrow track crops to a shoulder, and the floating cards would then
+     cover most of what is left of it. */
+  .auth-split {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-split__aside {
+    display: none;
+  }
+
+  .auth-split__form {
+    /* The same centred-content padding as the wide layout, with a tighter
+       floor. The `max-width: 520px` that used to sit on `.auth-split` here
+       is gone — the card stays the size of the screen at every width now,
+       and it is the content that is capped, so a tablet gets a full-bleed
+       sheet with the form centred on it rather than a 520px box adrift in
+       the middle of a large empty page. */
+    padding: 34px max(26px, (100% - var(--auth-form-width)) / 2);
+  }
+
+  .dashboard-content {
+    padding: var(--space-8) var(--space-6);
+  }
+
+  .products-new-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 260px;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.28s var(--ease-out);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .dashboard-layout {
+    margin-left: 0;
+  }
+
+  .dashboard-header {
+    padding: 0 16px;
+  }
+
+  .dashboard-content {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+
+  .auth-card {
+    padding: 32px 20px;
+    border-radius: var(--radius-xl);
+  }
+
+  .auth-container {
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .table {
+    min-width: 700px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Body text stays at 16px. The previous rule dropped it to 14px here,
+     which shrank body copy exactly where reading conditions are worst,
+     and made the 20px desktop base look like a different product. Only
+     the touch targets change. */
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn-sm {
+    min-height: 40px;
+  }
+
+  /* Paired fields unpair. Two 13px-padded inputs on a 360px screen leave
+     each about 150px, which is not enough for a password. */
+  .auth-split__row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Same reason, one step further: a pill tile holding an emoji and
+     "Beauty & Cosmetics" wraps to three lines in half of 360px. */
+  .auth-split__tiles {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-split-shell {
+    /* On a phone the card genuinely is the screen — the 12px frame that
+       lets the corners read on a monitor is, at 360px, a sliver the eye
+       reads as a mistake, so it closes up. */
+    padding: 0;
+  }
+
+  .auth-split {
+    /* Nothing behind it to round against once the frame is gone, and a
+       rounded card against the black window edge on a phone reads as a
+       floating modal rather than a page. Square it off. */
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    min-height: 100vh;
+  }
+
+  .auth-split__form {
+    padding: 30px max(20px, (100% - 460px) / 2);
+  }
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dashboard Responsiveness */
+.dash-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .dash-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Dashboard — type scale ──────────────────────────────────────
+   This block used to read:
+
+     .dashboard-content { zoom: 1.15 }
+     .sidebar          { zoom: 1.05 }
+
+   with a comment explaining that inline styles (fontSize: 13px) could
+   not be overridden from CSS, so the whole subtree was scaled instead.
+   That is worth spelling out as the thing not to reintroduce: `zoom`
+   compounds with every nested length, knocks text off the pixel grid so
+   it renders soft, and breaks position: fixed inside the scaled subtree.
+   It also fought the 30px/24px heading overrides directly below it —
+   30px x 1.15 = 34.5px, so the declared size was never the real one.
+
+   The fix is for page code to stop hardcoding font sizes inline. Pages
+   still carrying inline fontSize are being migrated; headings are
+   declared here at their true size in the meantime.
+   ──────────────────────────────────────────────────────────────── */
+.dashboard-content h1 {
+  font-size: 1.5rem;
+}
+
+.dashboard-content h2 {
+  font-size: 1.25rem;
+}
+
+.dashboard-content h3 {
+  font-size: 1.0625rem;
+}
+
+.dashboard-content h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* Responsive Utility Classes */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  /* Ensure elements with data tables can scroll horizontally */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .settings-tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  
+  .mobile-stack-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .mobile-stack-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+}
