@@ -38,6 +38,7 @@ function isPlatformHost(host: string): boolean {
   return (
     name === "localhost" ||
     name.endsWith(".localhost") ||
+    name.endsWith(".vercel.app") || // Prevent Vercel URLs from being treated as store domains
     name === "127.0.0.1" ||
     name === "0.0.0.0" ||
     name === "[::1]" ||
@@ -45,7 +46,7 @@ function isPlatformHost(host: string): boolean {
   );
 }
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const host = (request.headers.get("host") ?? "").toLowerCase();
   const { pathname, search } = request.nextUrl;
 
