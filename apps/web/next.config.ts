@@ -27,10 +27,12 @@ const nextConfig: NextConfig = {
   },
   // Emits .next/standalone with only the traced runtime dependencies, so the
   // container does not need node_modules or the monorepo around it.
-  output: "standalone",
+  // Disabled on Vercel, as Vercel uses its own tracing mechanism for serverless functions
+  // and forcing standalone here breaks Vercel's build pipeline.
+  output: process.env.VERCEL ? undefined : "standalone",
   // Traced from the monorepo root, otherwise hoisted workspace dependencies
   // are missed and the standalone server crashes on a missing module.
-  outputFileTracingRoot: MONOREPO_ROOT,
+  outputFileTracingRoot: process.env.VERCEL ? undefined : MONOREPO_ROOT,
   // The proxy rewrites storefront hosts onto /store/<slug>; nothing in the app
   // reflects the Host header into a response, and nginx sets it explicitly.
   poweredByHeader: false,
