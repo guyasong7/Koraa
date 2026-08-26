@@ -1,0 +1,55 @@
+{
+  "Version": "2012-10-17",
+  "Id": "koraa-media-public-prefixes",
+  "Statement": [
+    {
+      "Sid": "PublicReadStorefrontAssets",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": [
+        "arn:aws:s3:::koraa-africa-media/media/products/images/*",
+        "arn:aws:s3:::koraa-africa-media/media/stores/logos/*",
+        "arn:aws:s3:::koraa-africa-media/media/stores/favicons/*",
+        "arn:aws:s3:::koraa-africa-media/media/stores/banners/*",
+        "arn:aws:s3:::koraa-africa-media/media/stores/social/*",
+        "arn:aws:s3:::koraa-africa-media/media/merchants/logos/*",
+        "arn:aws:s3:::koraa-africa-media/media/merchants/banners/*",
+        "arn:aws:s3:::koraa-africa-media/media/categories/*",
+        "arn:aws:s3:::koraa-africa-media/media/avatars/*",
+        "arn:aws:s3:::koraa-africa-media/media/themes/previews/*"
+      ]
+    },
+    {
+      "Sid": "DenyAnonymousAccessToPrivatePrefixes",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::koraa-africa-media/media/products/files/*",
+        "arn:aws:s3:::koraa-africa-media/media/merchants/identity_docs/*",
+        "arn:aws:s3:::koraa-africa-media/media/merchants/business_docs/*"
+      ],
+      "Condition": {
+        "StringNotEquals": {
+          "aws:PrincipalAccount": "565898898566"
+        }
+      }
+    },
+    {
+      "Sid": "DenyUnencryptedTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::koraa-africa-media",
+        "arn:aws:s3:::koraa-africa-media/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    }
+  ]
+}

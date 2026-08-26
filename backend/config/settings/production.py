@@ -57,9 +57,12 @@ if SECRET_KEY.startswith("django-insecure-") or len(SECRET_KEY) < 50:  # noqa: F
 # ──────────────────────────────────────────────────────────────────────────────
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
 
-# Cloudflare R2 is used for media when configured. All four values are required
-# together; if any is missing, media falls back to local disk rather than
-# raising ImproperlyConfigured at import time and refusing to boot at all.
+# Two object-storage backends are supported, and neither is required: AWS S3
+# via USE_S3 (configured in base.py) and Cloudflare R2 via the R2_* block below.
+# Both are the same S3Boto3Storage, differing only in endpoint and credentials.
+#
+# All four R2 values are required together; if any is missing, R2 is simply off
+# rather than raising ImproperlyConfigured at import time and refusing to boot.
 R2_ACCESS_KEY_ID = env("R2_ACCESS_KEY_ID", default="")  # noqa: F405
 R2_SECRET_ACCESS_KEY = env("R2_SECRET_ACCESS_KEY", default="")  # noqa: F405
 R2_BUCKET_NAME = env("R2_BUCKET_NAME", default="")  # noqa: F405
@@ -68,22 +71,29 @@ R2_CUSTOM_DOMAIN = env("R2_CUSTOM_DOMAIN", default="")  # noqa: F405
 
 USE_R2 = all([R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_ENDPOINT_URL])
 
-# The STORAGES dict replaces STATICFILES_STORAGE / DEFAULT_FILE_STORAGE, which
-# are deprecated in Django 4.2 and removed in 5.1.
-STORAGES = {
-    "default": {
-        "BACKEND": (
-            "storages.backends.s3boto3.S3Boto3Storage"
-            if USE_R2
-            else "django.core.files.storage.FileSystemStorage"
-        ),
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+# Only the entries this module actually changes are overridden. Replacing the
+# whole dict — which is what used to happen here — discarded base.py's USE_S3
+# decision and silently sent every upload to the container's local disk, where
+# it would vanish on the next deploy.
+#
+# Static files always come from whitenoise in production, whatever media does.
+#
+# A subclass of whitenoise's CompressedManifestStaticFilesStorage rather than the
+# class itself: jazzmin hands {% static %} a directory, which manifest storage
+# treats as a missing file and turns into a 500 on every admin page. See
+# config/storages.py for the whole story.
+STORAGES["staticfiles"]["BACKEND"] = (  # noqa: F405
+    "config.storages.JazzminSafeStaticFilesStorage"
+)
+
+if USE_R2 and USE_S3:  # noqa: F405
+    raise ImproperlyConfigured(
+        "USE_S3 and the R2_* settings are both configured, but media can only "
+        "live in one bucket. Unset USE_S3 or clear the R2_* values."
+    )
 
 if USE_R2:
+    STORAGES["default"]["BACKEND"] = "storages.backends.s3boto3.S3Boto3Storage"  # noqa: F405
     AWS_ACCESS_KEY_ID = R2_ACCESS_KEY_ID
     AWS_SECRET_ACCESS_KEY = R2_SECRET_ACCESS_KEY
     AWS_STORAGE_BUCKET_NAME = R2_BUCKET_NAME

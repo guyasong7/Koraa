@@ -194,34 +194,82 @@ USE_TZ = True
 # ──────────────────────────────────────────────────────────────────────────────
 # Static & Media Files
 # ──────────────────────────────────────────────────────────────────────────────
+# Static files are always local, collected into STATIC_ROOT and served by
+# whitenoise. Only media — merchant uploads: product images, store logos,
+# digital-delivery files — is a candidate for object storage.
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Set even when media lives in a bucket. config/urls.py reads MEDIA_ROOT
+# unconditionally under DEBUG to hand to django.conf.urls.static.static(), so
+# leaving it unset made `runserver` with USE_S3 die on an AttributeError before
+# serving a single request.
+MEDIA_ROOT = BASE_DIR / "media"
+
 USE_S3 = env.bool("USE_S3", default=False)
 
 if USE_S3:
-    AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME")
-    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-    AWS_DEFAULT_ACL = "public-read"
-    AWS_S3_OBJECT_PARAMETERS = {
-        "CacheControl": "max-age=86400",
-    }
-    
-    # Media files on S3
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
-    
-    # Static files on S3 (optional, often we just serve static via whitenoise, but S3 is fine)
-    # STATICFILES_STORAGE = "storages.backends.s3boto3.S3StaticStorage"
-    # STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
-    
-    STATIC_URL = "/static/"
-    STATIC_ROOT = BASE_DIR / "staticfiles"
+    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="us-east-1")
+
+    # Deliberately allowed to be absent. Unset, django-storages passes None to
+    # boto3, which then resolves credentials from the EC2 instance metadata
+    # service — so a host with an IAM role needs no long-lived key in its env
+    # file at all. An empty string would instead be taken as a real (invalid)
+    # key and every upload would fail on signature validation, hence the
+    # `or None`.
+    AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="") or None
+    AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="") or None
+
+    # Region-qualified host. The bare `<bucket>.s3.amazonaws.com` form only
+    # resolves for us-east-1; every other region answers a 301 to the regional
+    # endpoint, and a redirect without CORS headers reads in the browser as the
+    # image having simply failed to load.
+    AWS_S3_CUSTOM_DOMAIN = env(
+        "AWS_S3_CUSTOM_DOMAIN",
+        default=f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com",
+    )
+
+    # No ACL, rather than the "public-read" this used to send. Buckets created
+    # since April 2023 have Object Ownership set to bucket-owner-enforced, which
+    # disables ACLs outright — S3 then rejects any request carrying one with
+    # AccessControlListNotSupported, so every upload would 400. Public read is
+    # granted by a bucket policy on the media/ prefix instead.
+    AWS_DEFAULT_ACL = None
+
+    # Unsigned URLs: product images are public, and a signed URL would carry an
+    # expiry into the storefront payloads cached in Redis, so images would start
+    # 403ing partway through a cache entry's life.
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+
+    # One prefix for everything, so the bucket policy can open up media/* and
+    # nothing else.
+    AWS_LOCATION = "media"
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
 else:
-    STATIC_URL = "/static/"
-    STATIC_ROOT = BASE_DIR / "staticfiles"
     MEDIA_URL = "/media/"
-    MEDIA_ROOT = BASE_DIR / "media"
+
+# STORAGES, not DEFAULT_FILE_STORAGE. Django 4.2 deprecated the latter and
+# raises ImproperlyConfigured("DEFAULT_FILE_STORAGE/STORAGES are mutually
+# exclusive") when both are set — and production.py sets STORAGES, so the
+# DEFAULT_FILE_STORAGE that used to live here meant USE_S3=True could not boot
+# at all. production.py overrides these two entries rather than replacing the
+# dict, so the choice made here survives.
+STORAGES = {
+    "default": {
+        "BACKEND": (
+            "storages.backends.s3boto3.S3Boto3Storage"
+            if USE_S3
+            else "django.core.files.storage.FileSystemStorage"
+        ),
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

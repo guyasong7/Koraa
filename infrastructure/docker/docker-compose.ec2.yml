@@ -1,0 +1,254 @@
+# Koraa on a single EC2 instance — API, workers, Postgres, Redis, nginx.
+#
+#   docker compose -f infrastructure/docker/docker-compose.ec2.yml \
+#     --env-file .env.prod up -d --build
+#
+# A standalone file, not an override on docker-compose.prod.yml. Two reasons:
+#
+#   * prod.yml's `web` service declares build args as ${NEXT_PUBLIC_API_URL:?...}
+#     and friends. Compose interpolates the *entire* file when it loads it, before
+#     it works out which services are in play — so those required-variable errors
+#     fire even with `web` scaled to zero or excluded. An override cannot suppress
+#     them.
+#   * The frontend is on Vercel. There is no `web` container and no certbot, so
+#     roughly a third of prod.yml would be dead weight to carry as overrides.
+#
+# Differences from docker-compose.prod.yml:
+#   - no `web`: Next.js is deployed on Vercel
+#   - no `certbot`: TLS is a Cloudflare Origin CA certificate, valid 15 years
+#   - nginx serves koraa-api.conf (api.koraa.africa only)
+#   - Redis eviction policy changed — see the redis service
+#   - Celery's broker moved off the cache database
+#   - log rotation, because everything shares one small root volume
+
+# Docker's json-file driver has no size limit by default. On a box where the
+# database, the uploads and the logs share one 30GB volume, a noisy week of
+# gunicorn access logs is enough to fill it, and a full disk stops Postgres from
+# writing — which looks like a database fault, not a logging one.
+x-logging: &default_logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: koraa_db
+    restart: unless-stopped
+    logging: *default_logging
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+    # Deliberately not published to the host. The security group does not open
+    # 5432 either, so this is the second of two locks.
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: koraa_redis
+    restart: unless-stopped
+    logging: *default_logging
+    # volatile-lru, not allkeys-lru, because one Redis is doing two jobs here.
+    #
+    # maxmemory-policy is per-instance, not per-database, so it governs Celery's
+    # queues as much as the cache. Under allkeys-lru, hitting the 256mb ceiling
+    # lets Redis evict the `celery` list itself — queued tasks disappear with no
+    # error anywhere, and the subscription expiry sweep simply never runs.
+    #
+    # volatile-lru only considers keys with a TTL. Every cache entry has one
+    # (CACHES["default"]["TIMEOUT"] = 300, storefront payloads 600), and Celery's
+    # queue keys have none, so pressure is taken out on exactly the keys that are
+    # cheap to rebuild. The storefront version keys in apps/storefront/cache.py
+    # are also TTL-less and so also protected — losing one only costs a rebuild,
+    # but there is no reason to pay even that.
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy volatile-lru
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Migrations run once, as their own unit, so three gunicorn workers do not
+  # race each other applying the same migration on boot.
+  migrate:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: koraa-backend:latest
+    container_name: koraa_migrate
+    restart: "no"
+    logging: *default_logging
+    env_file: &backend_env
+      - ../../backend/.env.prod
+    environment: &backend_environment
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # Cache. Django's RedisCache.clear() issues FLUSHDB, so anything sharing
+      # this database is collateral — which is why the broker below is not on it.
+      REDIS_URL: redis://redis:6379/0
+      # Broker on its own database. base.py defaults CELERY_BROKER_URL to
+      # REDIS_URL, putting queues and cache entries in one keyspace; separating
+      # them means a cache flush cannot take the task queue with it.
+      CELERY_BROKER_URL: redis://redis:6379/1
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python manage.py migrate --noinput
+
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: koraa-backend:latest
+    container_name: koraa_backend
+    restart: unless-stopped
+    logging: *default_logging
+    volumes:
+      - media_files:/app/media
+    env_file: *backend_env
+    environment: *backend_environment
+    expose:
+      - "8000"
+    # The image's own HEALTHCHECK curls http://127.0.0.1:8000/api/schema/ with no
+    # X-Forwarded-Proto. In production SECURE_SSL_REDIRECT is on, so Django
+    # answers that with a 301 to https — and `curl -fsS` without -L treats a 301
+    # as success. The check passes without Django having resolved a URL, served a
+    # view, or touched the database, so it stays green through faults it exists to
+    # catch. Sending the header makes the redirect not apply and a 200 the only
+    # passing answer.
+    #
+    # Needs 127.0.0.1 in ALLOWED_HOSTS, or get_host() raises DisallowedHost and
+    # the container is permanently unhealthy. See backend/.env.prod.example.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS -o /dev/null
+          -H 'X-Forwarded-Proto: https'
+          http://127.0.0.1:8000/api/schema/
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # CMD from the Dockerfile runs gunicorn.
+
+  celery_worker:
+    image: koraa-backend:latest
+    container_name: koraa_celery_worker
+    restart: unless-stopped
+    logging: *default_logging
+    volumes:
+      - media_files:/app/media
+    env_file: *backend_env
+    environment: *backend_environment
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: celery -A config worker --loglevel=info --concurrency=2
+    # The image's HEALTHCHECK curls gunicorn on :8000. No Celery container runs
+    # gunicorn, so inherited it can only ever fail — and a service parked
+    # permanently in `unhealthy` while working perfectly is worse than no check,
+    # because it teaches everyone to disregard the column that would report a
+    # real fault. `inspect ping` is the honest equivalent: it goes out over the
+    # broker and back, so it fails exactly when the worker has stopped consuming.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          celery -A config inspect ping -d celery@$$(hostname)
+          --timeout 10 2>/dev/null | grep -q pong
+      # 60s rather than 30s: each probe is a broker round-trip, and nothing here
+      # needs faster detection than that.
+      interval: 60s
+      timeout: 15s
+      start_period: 40s
+      retries: 3
+
+  celery_beat:
+    image: koraa-backend:latest
+    container_name: koraa_celery_beat
+    restart: unless-stopped
+    logging: *default_logging
+    env_file: *backend_env
+    environment: *backend_environment
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    # Beat has no port and answers no ping — it only publishes on a timer, so
+    # there is nothing to probe from outside that would not also be green for a
+    # beat that had silently stopped scheduling. Rather than invent a check that
+    # cannot fail meaningfully, drop the inherited one: `restart: unless-stopped`
+    # already covers the case beat actually dies. If it stops firing while alive,
+    # what shows it is `docker compose logs celery_beat` going quiet — schedule
+    # entries are logged as they are sent.
+    healthcheck:
+      disable: true
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: koraa_nginx
+    restart: unless-stopped
+    logging: *default_logging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx/koraa-api.conf:/etc/nginx/conf.d/default.conf:ro
+      # snippets/ deliberately NOT under conf.d: nginx parses every .conf in
+      # conf.d at http level, and a bare proxy_set_header there fails to load.
+      - ../nginx/snippets:/etc/nginx/snippets:ro
+      - media_files:/var/www/media:ro
+      # fullchain.pem and privkey.pem. Both must exist before this starts —
+      # nginx refuses to load a config whose ssl_certificate file is missing,
+      # which is why infrastructure/aws/make-placeholder-cert.sh exists.
+      - ./certs:/etc/nginx/certs:ro
+      # Let's Encrypt HTTP-01 challenge files. Shared with the one-off certbot
+      # container: certbot writes the token here, nginx serves it from
+      # /.well-known/acme-challenge/. Writable, because on renewal it is certbot
+      # in a *different* container that has to create the file.
+      - certbot_webroot:/var/www/certbot
+    depends_on:
+      - backend
+    # No reload loop, unlike docker-compose.prod.yml. Renewal is driven from the
+    # host instead — setup-letsencrypt.sh installs a systemd timer that renews and
+    # then runs `docker compose ... exec nginx nginx -s reload`. A loop inside the
+    # container would reload every 6 hours whether anything changed or not, and
+    # would still not pick up a certificate that landed in ./certs by a copy.
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_files:
+  # A named volume rather than a bind mount so the one-off certbot container can
+  # join it by name without needing to know the checkout's path on the host.
+  certbot_webroot:

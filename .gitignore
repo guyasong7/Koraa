@@ -29,6 +29,14 @@ backend/.env.prod
 apps/web/.env.prod
 # TLS material mounted into the nginx container.
 infrastructure/docker/certs/
+# certbot's own state, created on the server by
+# infrastructure/aws/setup-letsencrypt.sh. live/<domain>/privkey.pem is the
+# certificate's private key, so this must never be committed — the repo is public.
+infrastructure/docker/letsencrypt/
+# Written on the server by the deploy, next to the checkout. The repo is public,
+# so an admin password one `git add .` away from a commit is not a risk worth
+# carrying.
+.superuser-credentials
 
 # Build artifacts
 dist/
