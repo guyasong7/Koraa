@@ -15,6 +15,7 @@ import { FiBarChart2 as LuBarChart3 } from "react-icons/fi";
 import dynamic from "next/dynamic";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
+import AppProviders from "@/components/AppProviders";
 
 /**
  * The chat bubble, out of the dashboard's initial JavaScript.
@@ -162,229 +163,238 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { crumbs, title } = describeRoute(pathname);
 
   return (
-    <div style={{ minHeight: "100vh", width: "100%" }}>
+    /* The data and notification providers wrap from here rather than from the
+       root layout, so the marketing pages stop shipping react-query and
+       react-hot-toast; see `components/Providers.tsx`. Inside the two early
+       returns above rather than around them on purpose — the loader and the
+       unauthenticated `null` use neither, and everything that does (the
+       breadcrumb header's NotificationBell, `handleLogout`'s toast, and every
+       page passed in as `children`) is below this point. */
+    <AppProviders>
+      <div style={{ minHeight: "100vh", width: "100%" }}>
 
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          onClick={() => setMobileOpen(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 39, backdropFilter: "blur(4px)" }}
-        />
-      )}
+        {/* Mobile overlay */}
+        {mobileOpen && (
+          <div
+            onClick={() => setMobileOpen(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 39, backdropFilter: "blur(4px)" }}
+          />
+        )}
 
-      {/* ── Sidebar ── */}
-      <nav className={`sidebar ${mobileOpen ? "open" : ""}`} aria-label="Main navigation">
+        {/* ── Sidebar ── */}
+        <nav className={`sidebar ${mobileOpen ? "open" : ""}`} aria-label="Main navigation">
 
-        {/* Logo area */}
-        <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <KoraaLogo className="dash-logo" />
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="mobile-menu-btn"
-              style={{ display: "none", background: "var(--surface)", border: "none", borderRadius: "var(--radius-md)", padding: 6, cursor: "pointer", color: "var(--text-secondary)" }}
-              aria-label="Close menu"
-            >
-              <LuX size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Main nav */}
-        <div style={{ padding: "12px 0", flex: 1, overflowY: "auto" }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", padding: "6px 22px 6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-            Navigation
-          </p>
-          {NAV.map(({ label, href, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`sidebar-nav-item ${isActive(href) ? "active" : ""}`}
-              aria-current={isActive(href) ? "page" : undefined}
-            >
-              <Icon size={17} className="nav-icon" />
-              <span style={{ flex: 1 }}>{label}</span>
-              {isActive(href) && <LuChevronRight size={13} style={{ opacity: 0.6 }} />}
-            </Link>
-          ))}
-        </div>
-
-        {/* Bottom area */}
-        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-          {BOTTOM.map(({ label, href, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`sidebar-nav-item ${isActive(href) ? "active" : ""}`}
-            >
-              <Icon size={17} className="nav-icon" />
-              <span>{label}</span>
-            </Link>
-          ))}
-
-          {/* Upsell Cards.
-              No numbers here. The limits live in `apps/merchants/plans.py`
-              and this card had already drifted from them — it advertised
-              "200+ products" on Starter after the real ceiling was raised.
-              The Billing screen reads the catalogue live; this only has to
-              get people there. */}
-          {(user?.merchant_tier === "free" || !user?.merchant_tier) && (
-            <div style={{ margin: "12px 16px 16px" }}>
-              <Link href="/dashboard/billing" style={{
-                display: "block", borderRadius: "var(--radius-md)", textDecoration: "none",
-                background: "var(--surface)", border: "1px solid var(--border)", padding: "16px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <LuStar size={16} color="var(--brand-600)" />
-                  <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>Upgrade to Starter</span>
-                </div>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: 12 }}>
-                  More stores, a bigger catalogue and your own domain.
-                </p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "var(--brand-600)", borderRadius: "var(--radius-sm)", padding: "9px", fontSize: 14, fontWeight: 600, color: "white" }}>
-                  <LuZap size={15} /> Upgrade
-                </div>
-              </Link>
+          {/* Logo area */}
+          <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <KoraaLogo className="dash-logo" />
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="mobile-menu-btn"
+                style={{ display: "none", background: "var(--surface)", border: "none", borderRadius: "var(--radius-md)", padding: 6, cursor: "pointer", color: "var(--text-secondary)" }}
+                aria-label="Close menu"
+              >
+                <LuX size={18} />
+              </button>
             </div>
-          )}
-
-          {user?.merchant_tier === "starter" && (
-            <div style={{ margin: "12px 16px 16px" }}>
-              <Link href="/dashboard/billing" style={{
-                display: "block", borderRadius: "var(--radius-md)", textDecoration: "none",
-                background: "var(--surface)", border: "1px solid var(--border)", padding: "16px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <LuStar size={16} color="var(--brand-600)" />
-                  <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>Upgrade to Pro</span>
-                </div>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: 12 }}>
-                  Lift the store and product limits altogether.
-                </p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "var(--brand-600)", borderRadius: "var(--radius-sm)", padding: "9px", fontSize: 14, fontWeight: 600, color: "white" }}>
-                  <LuZap size={15} /> Get Pro
-                </div>
-              </Link>
-            </div>
-          )}
-
-          {/* Theme Toggle */}
-          <div style={{ margin: "0 16px 16px" }}>
-            <ThemeToggle />
           </div>
 
-          {/* User row */}
-          <div style={{ margin: "0 10px 10px", borderRadius: "var(--radius-md)", padding: "10px 12px", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: "var(--radius-md)",
-              background: "var(--brand-100)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 15, fontWeight: 700, color: "var(--brand-700)", flexShrink: 0,
-            }}>
-              {initial}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {user?.full_name || "Merchant"}
-              </p>
-              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {user?.email}
-              </p>
-            </div>
-            <button
-              onClick={handleLogout}
-              title="Sign out"
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4, borderRadius: "var(--radius-sm)" }}
-              className="hover-bg"
-              aria-label="Sign out"
-            >
-              <LuLogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* ── Main area ── */}
-      <div className="dashboard-layout">
-        {/* Header */}
-        <header className="dashboard-header">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              className="mobile-menu-btn"
-              onClick={() => setMobileOpen(true)}
-              style={{ display: "none", background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: "var(--radius-sm)", color: "var(--text-secondary)" }}
-              aria-label="Open menu"
-            >
-              <LuMenu size={22} />
-            </button>
-            {/* Breadcrumb trail, ending in the page's own title */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          {/* Main nav */}
+          <div style={{ padding: "12px 0", flex: 1, overflowY: "auto" }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", padding: "6px 22px 6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              Navigation
+            </p>
+            {NAV.map(({ label, href, icon: Icon }) => (
               <Link
-                href="/dashboard"
-                style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, textDecoration: "none", flexShrink: 0 }}
+                key={href}
+                href={href}
+                className={`sidebar-nav-item ${isActive(href) ? "active" : ""}`}
+                aria-current={isActive(href) ? "page" : undefined}
               >
-                Koraa
+                <Icon size={17} className="nav-icon" />
+                <span style={{ flex: 1 }}>{label}</span>
+                {isActive(href) && <LuChevronRight size={13} style={{ opacity: 0.6 }} />}
               </Link>
-              {crumbs.slice(0, -1).map((crumb) => (
-                <Fragment key={crumb.href}>
-                  <LuChevronRight size={15} color="var(--text-disabled)" style={{ flexShrink: 0 }} />
-                  <Link
-                    href={crumb.href}
-                    style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, textDecoration: "none", textTransform: "capitalize", whiteSpace: "nowrap" }}
-                  >
-                    {crumb.label}
-                  </Link>
-                </Fragment>
-              ))}
-              <LuChevronRight size={15} color="var(--text-disabled)" style={{ flexShrink: 0 }} />
-              <h1
-                style={{
-                  fontSize: 19, fontWeight: 700, margin: 0, color: "var(--text-primary)",
-                  textTransform: "capitalize", letterSpacing: "-0.01em",
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}
-              >
-                {title}
-              </h1>
-            </div>
+            ))}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {!user?.is_verified && (
-              <Link href="/dashboard/settings?tab=identity" style={{
-                display: "flex", alignItems: "center", gap: 5,
-                background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
-                borderRadius: "var(--radius-md)", padding: "7px 13px", fontSize: 13, fontWeight: 600,
-                color: "#d97706", textDecoration: "none",
-              }}>
-                <LuTriangleAlert size={15} /> Verify identity
-              </Link>
-            )}
-            <NotificationBell />
-            <Link href="/dashboard/settings?tab=profile" style={{ textDecoration: "none" }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: "50%",
-                background: "var(--brand-600)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 15, fontWeight: 700, color: "#ffffff",
-                cursor: "pointer", transition: "opacity 0.2s",
-              }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = "0.85"}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "1"}
+          {/* Bottom area */}
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+            {BOTTOM.map(({ label, href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`sidebar-nav-item ${isActive(href) ? "active" : ""}`}
               >
+                <Icon size={17} className="nav-icon" />
+                <span>{label}</span>
+              </Link>
+            ))}
+
+            {/* Upsell Cards.
+                No numbers here. The limits live in `apps/merchants/plans.py`
+                and this card had already drifted from them — it advertised
+                "200+ products" on Starter after the real ceiling was raised.
+                The Billing screen reads the catalogue live; this only has to
+                get people there. */}
+            {(user?.merchant_tier === "free" || !user?.merchant_tier) && (
+              <div style={{ margin: "12px 16px 16px" }}>
+                <Link href="/dashboard/billing" style={{
+                  display: "block", borderRadius: "var(--radius-md)", textDecoration: "none",
+                  background: "var(--surface)", border: "1px solid var(--border)", padding: "16px",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <LuStar size={16} color="var(--brand-600)" />
+                    <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>Upgrade to Starter</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: 12 }}>
+                    More stores, a bigger catalogue and your own domain.
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "var(--brand-600)", borderRadius: "var(--radius-sm)", padding: "9px", fontSize: 14, fontWeight: 600, color: "white" }}>
+                    <LuZap size={15} /> Upgrade
+                  </div>
+                </Link>
+              </div>
+            )}
+
+            {user?.merchant_tier === "starter" && (
+              <div style={{ margin: "12px 16px 16px" }}>
+                <Link href="/dashboard/billing" style={{
+                  display: "block", borderRadius: "var(--radius-md)", textDecoration: "none",
+                  background: "var(--surface)", border: "1px solid var(--border)", padding: "16px",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <LuStar size={16} color="var(--brand-600)" />
+                    <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>Upgrade to Pro</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: 12 }}>
+                    Lift the store and product limits altogether.
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "var(--brand-600)", borderRadius: "var(--radius-sm)", padding: "9px", fontSize: 14, fontWeight: 600, color: "white" }}>
+                    <LuZap size={15} /> Get Pro
+                  </div>
+                </Link>
+              </div>
+            )}
+
+            {/* Theme Toggle */}
+            <div style={{ margin: "0 16px 16px" }}>
+              <ThemeToggle />
+            </div>
+
+            {/* User row */}
+            <div style={{ margin: "0 10px 10px", borderRadius: "var(--radius-md)", padding: "10px 12px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: "var(--radius-md)",
+                background: "var(--brand-100)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 15, fontWeight: 700, color: "var(--brand-700)", flexShrink: 0,
+              }}>
                 {initial}
               </div>
-            </Link>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {user?.full_name || "Merchant"}
+                </p>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {user?.email}
+                </p>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Sign out"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4, borderRadius: "var(--radius-sm)" }}
+                className="hover-bg"
+                aria-label="Sign out"
+              >
+                <LuLogOut size={16} />
+              </button>
+            </div>
           </div>
-        </header>
+        </nav>
 
-        <main className="dashboard-content animate-fade-in">
-          {children}
-        </main>
+        {/* ── Main area ── */}
+        <div className="dashboard-layout">
+          {/* Header */}
+          <header className="dashboard-header">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button
+                className="mobile-menu-btn"
+                onClick={() => setMobileOpen(true)}
+                style={{ display: "none", background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: "var(--radius-sm)", color: "var(--text-secondary)" }}
+                aria-label="Open menu"
+              >
+                <LuMenu size={22} />
+              </button>
+              {/* Breadcrumb trail, ending in the page's own title */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                <Link
+                  href="/dashboard"
+                  style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, textDecoration: "none", flexShrink: 0 }}
+                >
+                  Koraa
+                </Link>
+                {crumbs.slice(0, -1).map((crumb) => (
+                  <Fragment key={crumb.href}>
+                    <LuChevronRight size={15} color="var(--text-disabled)" style={{ flexShrink: 0 }} />
+                    <Link
+                      href={crumb.href}
+                      style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, textDecoration: "none", textTransform: "capitalize", whiteSpace: "nowrap" }}
+                    >
+                      {crumb.label}
+                    </Link>
+                  </Fragment>
+                ))}
+                <LuChevronRight size={15} color="var(--text-disabled)" style={{ flexShrink: 0 }} />
+                <h1
+                  style={{
+                    fontSize: 19, fontWeight: 700, margin: 0, color: "var(--text-primary)",
+                    textTransform: "capitalize", letterSpacing: "-0.01em",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}
+                >
+                  {title}
+                </h1>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {!user?.is_verified && (
+                <Link href="/dashboard/settings?tab=identity" style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
+                  borderRadius: "var(--radius-md)", padding: "7px 13px", fontSize: 13, fontWeight: 600,
+                  color: "#d97706", textDecoration: "none",
+                }}>
+                  <LuTriangleAlert size={15} /> Verify identity
+                </Link>
+              )}
+              <NotificationBell />
+              <Link href="/dashboard/settings?tab=profile" style={{ textDecoration: "none" }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: "50%",
+                  background: "var(--brand-600)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 15, fontWeight: 700, color: "#ffffff",
+                  cursor: "pointer", transition: "opacity 0.2s",
+                }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = "0.85"}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "1"}
+                >
+                  {initial}
+                </div>
+              </Link>
+            </div>
+          </header>
+
+          <main className="dashboard-content animate-fade-in">
+            {children}
+          </main>
+        </div>
+
+        {/* Floating AI Chat Widget */}
+        <AIChatWidget />
       </div>
-
-      {/* Floating AI Chat Widget */}
-      <AIChatWidget />
-    </div>
+    </AppProviders>
   );
 }
