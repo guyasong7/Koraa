@@ -42,13 +42,31 @@ const PUBLIC_ENV_LEGACY_NAMES: Record<string, string> = {
   KORAA_PUBLIC_FIREBASE_APP_ID: "NEXT_PUBLIC_FIREBASE_APP_ID",
 };
 
+/**
+ * Cleans a value as typed into a host's dashboard.
+ *
+ * A shell strips the quotes off `FOO="bar"`; a web form does not, so a value
+ * pasted with its quotes still attached arrives with them, and a value pasted
+ * with a trailing newline keeps that too. Either one is non-empty, so it passes
+ * the required-variable check below and is inlined verbatim — which is how a
+ * quoted Firebase key becomes `auth/invalid-api-key` at sign-in, an error that
+ * describes the key as wrong rather than as wrongly quoted.
+ */
+function normalize(value: string | undefined): string {
+  const trimmed = (value ?? "").trim();
+  // [\s\S] rather than the `s` flag: tsconfig targets below es2018, where
+  // dotAll is not available.
+  const quoted = /^(["'])[\s\S]*\1$/.test(trimmed) && trimmed.length >= 2;
+  return quoted ? trimmed.slice(1, -1).trim() : trimmed;
+}
+
 const publicEnv: Record<string, string> = Object.fromEntries(
   Object.entries(PUBLIC_ENV_LEGACY_NAMES).map(([name, legacyName]) => [
     name,
     // `||`, not `??`: a variable created-but-left-blank in a host's dashboard
     // arrives as "" rather than undefined, and that must still fall through to
     // the legacy name instead of resolving to a blank value.
-    process.env[name] || process.env[legacyName] || "",
+    normalize(process.env[name]) || normalize(process.env[legacyName]) || "",
   ]),
 );
 
@@ -86,21 +104,83 @@ function assertPublicEnv(phase: string): void {
   if (phase !== "phase-production-build") return;
 
   const missing = REQUIRED_PUBLIC_ENV.filter((name) => !publicEnv[name]);
-  if (missing.length === 0) return;
+  if (missing.length > 0) {
+    throw new Error(
+      [
+        `Missing browser configuration for a production build:`,
+        ...missing.map((name) => `  - ${name} (or ${PUBLIC_ENV_LEGACY_NAMES[name]})`),
+        ``,
+        `These are inlined into the client bundle at build time. Without them the`,
+        `build would succeed and ship localhost fallbacks, so it stops here.`,
+        ``,
+        `Vercel: Project Settings -> Environment Variables, then redeploy. Values`,
+        `added there do not reach an existing build.`,
+        `Docker: pass them as --build-arg (see apps/web/Dockerfile).`,
+        `Local:  apps/web/.env.local — note it is gitignored and never reaches a host.`,
+      ].join("\n"),
+    );
+  }
+
+  assertPublicEnvShape();
+}
+
+/**
+ * Catches values that are present but cannot work, which the check above passes.
+ *
+ * Both cases here have been shipped to production and both reported themselves
+ * as something else: a Firebase key that is not a key surfaces at sign-in only
+ * as `auth/invalid-api-key`, and an API base pointing at localhost fails as a
+ * dropped request from the visitor's own machine. Naming the variable at build
+ * time is the difference between a one-line fix and reading bundle output.
+ */
+function assertPublicEnvShape(): void {
+  const problems: string[] = [];
+
+  // Google API keys are `AIza` + 35 characters. Checking only the prefix keeps
+  // this from going stale if the length ever changes, and still catches a
+  // truncated paste, a project id pasted into the wrong field, or a value that
+  // is still URL-encoded.
+  const apiKey = publicEnv.KORAA_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey.startsWith("AIza")) {
+    problems.push(
+      `  - KORAA_PUBLIC_FIREBASE_API_KEY does not look like a Google API key.\n` +
+        `    Expected it to begin with "AIza"; got ${JSON.stringify(
+          apiKey.length > 12 ? `${apiKey.slice(0, 12)}…` : apiKey,
+        )}.\n` +
+        `    Firebase Console -> Project settings -> Your apps -> SDK setup.`,
+    );
+  }
+
+  // A browser-facing base URL on localhost means the visitor's own machine, so
+  // it can only ever work for a build someone runs and opens themselves. That
+  // is a real case — `next build && next start` locally — so this only fails
+  // where the build is demonstrably for a deployment.
+  const isDeployBuild = !!process.env.VERCEL || !!process.env.CI;
+  const apiUrl = publicEnv.KORAA_PUBLIC_API_URL;
+  if (isDeployBuild && /^https?:\/\/(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(apiUrl)) {
+    problems.push(
+      `  - KORAA_PUBLIC_API_URL points at localhost (${apiUrl}) in a deployed build.\n` +
+        `    That resolves to each visitor's own machine, not the API. Use the\n` +
+        `    public origin, e.g. https://<api host>/api/v1.`,
+    );
+  }
+
+  // An https page cannot call an http API — the browser blocks it as mixed
+  // content before any request is made, and the failure looks like the network
+  // dropped rather than like a scheme mismatch.
+  if (isDeployBuild && apiUrl.startsWith("http://")) {
+    problems.push(
+      `  - KORAA_PUBLIC_API_URL is http:// in a deployed build (${apiUrl}).\n` +
+        `    Pages are served over https, and browsers block mixed content, so\n` +
+        `    every API call would fail. Use https://, or a relative /api/v1 if a\n` +
+        `    proxy serves the API from the page's own origin.`,
+    );
+  }
+
+  if (problems.length === 0) return;
 
   throw new Error(
-    [
-      `Missing browser configuration for a production build:`,
-      ...missing.map((name) => `  - ${name} (or ${PUBLIC_ENV_LEGACY_NAMES[name]})`),
-      ``,
-      `These are inlined into the client bundle at build time. Without them the`,
-      `build would succeed and ship localhost fallbacks, so it stops here.`,
-      ``,
-      `Vercel: Project Settings -> Environment Variables, then redeploy. Values`,
-      `added there do not reach an existing build.`,
-      `Docker: pass them as --build-arg (see apps/web/Dockerfile).`,
-      `Local:  apps/web/.env.local — note it is gitignored and never reaches a host.`,
-    ].join("\n"),
+    [`Unusable browser configuration for a production build:`, ...problems].join("\n"),
   );
 }
 
