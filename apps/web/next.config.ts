@@ -70,19 +70,34 @@ const publicEnv: Record<string, string> = Object.fromEntries(
   ]),
 );
 
-// ── Required at build time ───────────────────────────────────────────────────
+// ── Checked at build time ────────────────────────────────────────────────────
 //
 // Every value above is inlined, so a build that runs without them does not fail
-// — it silently bakes in each read site's `||` fallback and ships. That is not a
-// theoretical concern: it is exactly how a Vercel deploy came to serve
-// `apiKey: ""` and an API base of `http://localhost:8000/api/v1`, which surfaced
-// to users only as "Google login failed. Please try again." — the sign-in path
-// reports a broken config and an unreachable backend through the same catch.
+// on its own — it silently bakes in each read site's `||` fallback and ships.
+// That is not a theoretical concern: it is exactly how a Vercel deploy came to
+// serve `apiKey: ""` and an API base of `http://localhost:8000/api/v1`, which
+// surfaced to users only as "Google login failed. Please try again." — the
+// sign-in path reports a broken config and an unreachable backend through the
+// same catch.
 //
-// So the build refuses instead. The required set matches the `:?` build args in
-// apps/web/Dockerfile, which already drew this line: STORAGE_BUCKET and
-// MESSAGING_SENDER_ID are optional there because nothing signs in without them,
-// and DASHBOARD_ORIGIN and SITE_URL have honest same-origin defaults.
+// This warns rather than throwing, and the reason is specific to what hosts do
+// with a failed build. Vercel keeps the previous deployment serving, so throwing
+// here does not trade a broken deploy for no deploy — it pins production to the
+// last broken bundle and hides the fact that anything was pushed at all. That is
+// how this check briefly made things worse than it found them: the commit that
+// taught sign-in to say "not configured on this deployment" could not reach
+// anyone, because this threw before it could be built.
+//
+// Warning ships the bundle that reports its own misconfiguration instead —
+// lib/firebase.ts refuses to initialise a blank config and lib/socialAuthError.ts
+// turns that into one honest sentence — while still naming the variables in the
+// build log. Set KORAA_STRICT_PUBLIC_ENV=1 where a hard stop is the right call:
+// a release job with nothing live to fall back to.
+//
+// The required set matches the `:?` build args in apps/web/Dockerfile, which
+// already drew this line: STORAGE_BUCKET and MESSAGING_SENDER_ID are optional
+// there because nothing signs in without them, and DASHBOARD_ORIGIN and
+// SITE_URL have honest same-origin defaults.
 const REQUIRED_PUBLIC_ENV = [
   "KORAA_PUBLIC_API_URL",
   "KORAA_PUBLIC_ROOT_DOMAIN",
@@ -92,48 +107,73 @@ const REQUIRED_PUBLIC_ENV = [
   "KORAA_PUBLIC_FIREBASE_APP_ID",
 ] as const;
 
+/** Escalates the report below from a warning to a build failure. */
+const STRICT_PUBLIC_ENV = process.env.KORAA_STRICT_PUBLIC_ENV === "1";
+
 /**
- * Fails a production build whose browser configuration is incomplete.
+ * Reports a production build whose browser configuration cannot work.
  *
  * Guarded on the build phase, not on NODE_ENV: `next start` also runs with
  * NODE_ENV=production, and by then the values are already inlined into the
- * bundle — the environment it starts with says nothing about the build, so
- * throwing there would break serving a perfectly good image.
+ * bundle — the environment it starts with says nothing about the build it is
+ * serving, so complaining there would be about the wrong machine entirely.
  */
-function assertPublicEnv(phase: string): void {
+function checkPublicEnv(phase: string): void {
   if (phase !== "phase-production-build") return;
 
-  const missing = REQUIRED_PUBLIC_ENV.filter((name) => !publicEnv[name]);
-  if (missing.length > 0) {
-    throw new Error(
-      [
-        `Missing browser configuration for a production build:`,
-        ...missing.map((name) => `  - ${name} (or ${PUBLIC_ENV_LEGACY_NAMES[name]})`),
-        ``,
-        `These are inlined into the client bundle at build time. Without them the`,
-        `build would succeed and ship localhost fallbacks, so it stops here.`,
-        ``,
-        `Vercel: Project Settings -> Environment Variables, then redeploy. Values`,
-        `added there do not reach an existing build.`,
-        `Docker: pass them as --build-arg (see apps/web/Dockerfile).`,
-        `Local:  apps/web/.env.local — note it is gitignored and never reaches a host.`,
-      ].join("\n"),
-    );
-  }
+  const problems = [...missingPublicEnv(), ...unusablePublicEnv()];
+  if (problems.length === 0) return;
 
-  assertPublicEnvShape();
+  const report = [
+    ``,
+    `⚠ Browser configuration is incomplete for this production build:`,
+    ``,
+    ...problems,
+    ``,
+    `  These are inlined into the client bundle at build time, so the build`,
+    `  below will ship fallback values and sign-in will not work in it.`,
+    ``,
+    `  Vercel: Project Settings -> Environment Variables, ticking Production`,
+    `          and Preview, then redeploy. Values added there do not reach a`,
+    `          build that has already run.`,
+    `  Docker: pass them as --build-arg (see apps/web/Dockerfile).`,
+    `  Local:  apps/web/.env.local — gitignored, so it never reaches a host.`,
+    ``,
+  ].join("\n");
+
+  if (STRICT_PUBLIC_ENV) throw new Error(report);
+
+  // Once per build, not once per process. Next loads this config again in each
+  // worker it forks for page data and static generation, and a warning repeated
+  // four times reads like four separate problems. Workers inherit the parent's
+  // environment, so a marker set here is already present by the time they load
+  // it. Deliberately not a module-scope boolean: each worker gets its own fresh
+  // copy of this module, so a local flag would never be the one already set.
+  if (process.env.__KORAA_PUBLIC_ENV_REPORTED === "1") return;
+  process.env.__KORAA_PUBLIC_ENV_REPORTED = "1";
+  console.warn(report);
+}
+
+/** The required values this build has nothing at all for. */
+function missingPublicEnv(): string[] {
+  return REQUIRED_PUBLIC_ENV.filter((name) => !publicEnv[name]).map(
+    (name) => `  - ${name} is not set (nor ${PUBLIC_ENV_LEGACY_NAMES[name]}).`,
+  );
 }
 
 /**
- * Catches values that are present but cannot work, which the check above passes.
+ * The values that are present but cannot work, which the check above passes.
  *
  * Both cases here have been shipped to production and both reported themselves
  * as something else: a Firebase key that is not a key surfaces at sign-in only
  * as `auth/invalid-api-key`, and an API base pointing at localhost fails as a
  * dropped request from the visitor's own machine. Naming the variable at build
  * time is the difference between a one-line fix and reading bundle output.
+ *
+ * Each check requires its value to be non-empty, so a variable that is simply
+ * missing is reported once by `missingPublicEnv` rather than twice.
  */
-function assertPublicEnvShape(): void {
+function unusablePublicEnv(): string[] {
   const problems: string[] = [];
 
   // Google API keys are `AIza` + 35 characters. Checking only the prefix keeps
@@ -141,7 +181,7 @@ function assertPublicEnvShape(): void {
   // truncated paste, a project id pasted into the wrong field, or a value that
   // is still URL-encoded.
   const apiKey = publicEnv.KORAA_PUBLIC_FIREBASE_API_KEY;
-  if (!apiKey.startsWith("AIza")) {
+  if (apiKey && !apiKey.startsWith("AIza")) {
     problems.push(
       `  - KORAA_PUBLIC_FIREBASE_API_KEY does not look like a Google API key.\n` +
         `    Expected it to begin with "AIza"; got ${JSON.stringify(
@@ -153,7 +193,7 @@ function assertPublicEnvShape(): void {
 
   // A browser-facing base URL on localhost means the visitor's own machine, so
   // it can only ever work for a build someone runs and opens themselves. That
-  // is a real case — `next build && next start` locally — so this only fails
+  // is a real case — `next build && next start` locally — so this only reports
   // where the build is demonstrably for a deployment.
   const isDeployBuild = !!process.env.VERCEL || !!process.env.CI;
   const apiUrl = publicEnv.KORAA_PUBLIC_API_URL;
@@ -177,11 +217,7 @@ function assertPublicEnvShape(): void {
     );
   }
 
-  if (problems.length === 0) return;
-
-  throw new Error(
-    [`Unusable browser configuration for a production build:`, ...problems].join("\n"),
-  );
+  return problems;
 }
 
 const nextConfig: NextConfig = {
@@ -243,9 +279,9 @@ const nextConfig: NextConfig = {
   // payload stops carrying its own copy.
 };
 
-// Function form so the build phase is available — see `assertPublicEnv`. The
+// Function form so the build phase is available — see `checkPublicEnv`. The
 // config itself is identical in every phase.
 export default (phase: string): NextConfig => {
-  assertPublicEnv(phase);
+  checkPublicEnv(phase);
   return nextConfig;
 };
