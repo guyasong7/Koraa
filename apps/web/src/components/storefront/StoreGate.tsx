@@ -38,7 +38,7 @@ export interface GatePayload {
 }
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+  process.env.KORAA_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export function StoreGate({ payload }: { payload: GatePayload }) {
   const [passcode, setPasscode] = useState("");
@@ -214,7 +214,7 @@ export function StoreGate({ payload }: { payload: GatePayload }) {
         <p style={{ marginTop: 22, fontSize: 12.5, color: "#a3a3a3" }}>
           Built with{" "}
           <a
-            href={process.env.NEXT_PUBLIC_KORAA_URL || "https://koraa.africa"}
+            href={process.env.KORAA_PUBLIC_SITE_URL || "https://koraa.africa"}
             style={{ color: "#737373", fontWeight: 600, textDecoration: "none" }}
           >
             Koraa

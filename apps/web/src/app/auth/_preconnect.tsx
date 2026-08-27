@@ -47,7 +47,7 @@ export default function AuthPreconnect() {
   // The project's own auth domain serves /__/auth/handler (the popup) and
   // /__/auth/iframe. Guarded because the variable is inlined at build time and
   // a build without Firebase configured would otherwise emit "https://undefined".
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+  const authDomain = process.env.KORAA_PUBLIC_FIREBASE_AUTH_DOMAIN;
   if (authDomain) preconnect(`https://${authDomain}`);
 
   // Where the user actually picks their account. One step later than the

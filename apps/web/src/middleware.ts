@@ -15,13 +15,13 @@ import type { NextRequest } from "next/server";
  * of the host as the slug, stripping the port so `shop.localhost:3000` works.
  * So all this has to do is hand it the host.
  *
- * `NEXT_PUBLIC_ROOT_DOMAIN` carries the port in development (`localhost:3000`)
+ * `KORAA_PUBLIC_ROOT_DOMAIN` carries the port in development (`localhost:3000`)
  * because the Host header does too; comparing both with the port keeps the
  * suffix test exact. Point it at the real domain to deploy — nothing here is
  * hardcoded to localhost.
  */
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
+const ROOT_DOMAIN = process.env.KORAA_PUBLIC_ROOT_DOMAIN || "localhost:3000";
 
 /**
  * Subdomains that belong to the platform, not to a merchant. Without this,

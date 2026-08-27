@@ -440,12 +440,12 @@ function Footer({ settings, store }: FooterProps) {
 /**
  * The Koraa attribution bar every storefront carries beneath its footer.
  *
- * Built from NEXT_PUBLIC_ROOT_DOMAIN — the same variable `proxy.ts` strips to
+ * Built from KORAA_PUBLIC_ROOT_DOMAIN — the same variable `proxy.ts` strips to
  * find a store's slug — so it points at the platform's own landing page in dev
  * and in production without a second setting to keep in step.
  */
 function KoraaBadge() {
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+  const rootDomain = process.env.KORAA_PUBLIC_ROOT_DOMAIN || "localhost:3000";
   const scheme = rootDomain.startsWith("localhost") || rootDomain.startsWith("127.") ? "http" : "https";
   return (
     <div className="sf-koraa">

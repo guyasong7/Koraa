@@ -8,8 +8,50 @@ const MONOREPO_ROOT = path.resolve(__dirname, "../../");
 // forcing standalone here breaks the build pipeline.
 const isVercel = !!process.env.VERCEL;
 
+// ── Browser-visible configuration ────────────────────────────────────────────
+//
+// Every value the client needs is named KORAA_PUBLIC_*, not NEXT_PUBLIC_*.
+//
+// Next inlines NEXT_PUBLIC_* by itself and nothing else, so a different prefix
+// only reaches the browser if it is declared here: anything listed in `env` is
+// written into the client bundle regardless of what it is called. See
+// node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/env.md
+// — "prefixing the environment variable name with NEXT_PUBLIC_ only has an
+// effect when specifying them through the environment or .env files".
+//
+// Each key falls back to the NEXT_PUBLIC_ name it replaced. That is what keeps
+// the Docker path working with no changes: apps/web/Dockerfile and
+// docker-compose.prod.yml still pass the old names as build args, and any host
+// that already has the old variables set needs nothing done to it. Set the new
+// name to override, and drop the old one whenever convenient.
+//
+// An unset variable resolves to "" instead of being left out, so every key is a
+// real string in the bundle and `process.env.KORAA_PUBLIC_*` is never an
+// un-inlined lookup that a bundler could leave to fail at runtime. The cost is
+// that read sites must default with `||` and not `??` — "" is not nullish.
+const PUBLIC_ENV_LEGACY_NAMES: Record<string, string> = {
+  KORAA_PUBLIC_API_URL: "NEXT_PUBLIC_API_URL",
+  KORAA_PUBLIC_ROOT_DOMAIN: "NEXT_PUBLIC_ROOT_DOMAIN",
+  KORAA_PUBLIC_DASHBOARD_ORIGIN: "NEXT_PUBLIC_DASHBOARD_ORIGIN",
+  KORAA_PUBLIC_SITE_URL: "NEXT_PUBLIC_KORAA_URL",
+  KORAA_PUBLIC_FIREBASE_API_KEY: "NEXT_PUBLIC_FIREBASE_API_KEY",
+  KORAA_PUBLIC_FIREBASE_AUTH_DOMAIN: "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+  KORAA_PUBLIC_FIREBASE_PROJECT_ID: "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+  KORAA_PUBLIC_FIREBASE_STORAGE_BUCKET: "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+  KORAA_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+  KORAA_PUBLIC_FIREBASE_APP_ID: "NEXT_PUBLIC_FIREBASE_APP_ID",
+};
+
+const publicEnv: Record<string, string> = Object.fromEntries(
+  Object.entries(PUBLIC_ENV_LEGACY_NAMES).map(([name, legacyName]) => [
+    name,
+    process.env[name] ?? process.env[legacyName] ?? "",
+  ]),
+);
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  env: publicEnv,
   turbopack: {
     root: MONOREPO_ROOT,
   },

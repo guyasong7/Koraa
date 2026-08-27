@@ -31,10 +31,10 @@ export function StorefrontProvider({ initialData, isPreview = false, children }:
     if (!isPreview) return;
 
     // The editor and the preview iframe are served by the same Next.js app, so
-    // the only origin we ever accept is our own. NEXT_PUBLIC_DASHBOARD_ORIGIN
+    // the only origin we ever accept is our own. KORAA_PUBLIC_DASHBOARD_ORIGIN
     // exists as an escape hatch for split deployments.
     const allowedOrigin =
-      process.env.NEXT_PUBLIC_DASHBOARD_ORIGIN || window.location.origin;
+      process.env.KORAA_PUBLIC_DASHBOARD_ORIGIN || window.location.origin;
 
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== allowedOrigin && event.origin !== window.location.origin) {

@@ -332,13 +332,14 @@ export const blueprintApi = {
  * sits on the same private network as the backend — going out through the
  * public hostname would hairpin through nginx and TLS for nothing, and fails
  * outright when the public DNS name is not resolvable from inside the network.
- * INTERNAL_API_URL (e.g. http://backend:8000/api/v1) is server-only: it has no
- * NEXT_PUBLIC_ prefix, so it is never inlined into the client bundle.
+ * INTERNAL_API_URL (e.g. http://backend:8000/api/v1) is server-only: it is not
+ * declared in next.config.ts's `env`, so it is never inlined into the client
+ * bundle and stays a runtime lookup on the server.
  */
 function serverApiBase(): string {
   return (
-    process.env.INTERNAL_API_URL ??
-    process.env.NEXT_PUBLIC_API_URL ??
+    process.env.INTERNAL_API_URL ||
+    process.env.KORAA_PUBLIC_API_URL ||
     "http://localhost:8000/api/v1"
   );
 }
@@ -349,7 +350,7 @@ function serverApiBase(): string {
  * Needed where the backend hands back a path rather than a whole URL. The
  * download endpoints do, because the token in the path is the credential and
  * assembling that path a second time in TypeScript would be a second place to
- * get it wrong. A relative `NEXT_PUBLIC_API_URL` means the API is served from
+ * get it wrong. A relative `KORAA_PUBLIC_API_URL` means the API is served from
  * the page's own origin, so an empty prefix is already right.
  *
  * Deliberately not `serverApiBase()`: this value ends up in an `href` a person

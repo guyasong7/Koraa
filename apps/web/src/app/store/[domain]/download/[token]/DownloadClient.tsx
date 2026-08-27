@@ -72,7 +72,7 @@ function remainingLabel(remaining: number | null): string {
  * unstyled markup on the page.
  */
 function KoraaBar() {
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+  const rootDomain = process.env.KORAA_PUBLIC_ROOT_DOMAIN || "localhost:3000";
   const scheme =
     rootDomain.startsWith("localhost") || rootDomain.startsWith("127.") ? "http" : "https";
   return (
