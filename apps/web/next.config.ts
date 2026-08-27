@@ -45,9 +45,64 @@ const PUBLIC_ENV_LEGACY_NAMES: Record<string, string> = {
 const publicEnv: Record<string, string> = Object.fromEntries(
   Object.entries(PUBLIC_ENV_LEGACY_NAMES).map(([name, legacyName]) => [
     name,
-    process.env[name] ?? process.env[legacyName] ?? "",
+    // `||`, not `??`: a variable created-but-left-blank in a host's dashboard
+    // arrives as "" rather than undefined, and that must still fall through to
+    // the legacy name instead of resolving to a blank value.
+    process.env[name] || process.env[legacyName] || "",
   ]),
 );
+
+// ── Required at build time ───────────────────────────────────────────────────
+//
+// Every value above is inlined, so a build that runs without them does not fail
+// — it silently bakes in each read site's `||` fallback and ships. That is not a
+// theoretical concern: it is exactly how a Vercel deploy came to serve
+// `apiKey: ""` and an API base of `http://localhost:8000/api/v1`, which surfaced
+// to users only as "Google login failed. Please try again." — the sign-in path
+// reports a broken config and an unreachable backend through the same catch.
+//
+// So the build refuses instead. The required set matches the `:?` build args in
+// apps/web/Dockerfile, which already drew this line: STORAGE_BUCKET and
+// MESSAGING_SENDER_ID are optional there because nothing signs in without them,
+// and DASHBOARD_ORIGIN and SITE_URL have honest same-origin defaults.
+const REQUIRED_PUBLIC_ENV = [
+  "KORAA_PUBLIC_API_URL",
+  "KORAA_PUBLIC_ROOT_DOMAIN",
+  "KORAA_PUBLIC_FIREBASE_API_KEY",
+  "KORAA_PUBLIC_FIREBASE_AUTH_DOMAIN",
+  "KORAA_PUBLIC_FIREBASE_PROJECT_ID",
+  "KORAA_PUBLIC_FIREBASE_APP_ID",
+] as const;
+
+/**
+ * Fails a production build whose browser configuration is incomplete.
+ *
+ * Guarded on the build phase, not on NODE_ENV: `next start` also runs with
+ * NODE_ENV=production, and by then the values are already inlined into the
+ * bundle — the environment it starts with says nothing about the build, so
+ * throwing there would break serving a perfectly good image.
+ */
+function assertPublicEnv(phase: string): void {
+  if (phase !== "phase-production-build") return;
+
+  const missing = REQUIRED_PUBLIC_ENV.filter((name) => !publicEnv[name]);
+  if (missing.length === 0) return;
+
+  throw new Error(
+    [
+      `Missing browser configuration for a production build:`,
+      ...missing.map((name) => `  - ${name} (or ${PUBLIC_ENV_LEGACY_NAMES[name]})`),
+      ``,
+      `These are inlined into the client bundle at build time. Without them the`,
+      `build would succeed and ship localhost fallbacks, so it stops here.`,
+      ``,
+      `Vercel: Project Settings -> Environment Variables, then redeploy. Values`,
+      `added there do not reach an existing build.`,
+      `Docker: pass them as --build-arg (see apps/web/Dockerfile).`,
+      `Local:  apps/web/.env.local — note it is gitignored and never reaches a host.`,
+    ].join("\n"),
+  );
+}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -108,4 +163,9 @@ const nextConfig: NextConfig = {
   // payload stops carrying its own copy.
 };
 
-export default nextConfig;
+// Function form so the build phase is available — see `assertPublicEnv`. The
+// config itself is identical in every phase.
+export default (phase: string): NextConfig => {
+  assertPublicEnv(phase);
+  return nextConfig;
+};

@@ -15,6 +15,7 @@ import {
   consumeRedirectResult,
   tookGoogleRedirect,
 } from "@/lib/firebase";
+import { socialAuthErrorMessage } from "@/lib/socialAuthError";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -95,11 +96,12 @@ export default function LoginPage() {
         } finally {
           useAuthStore.setState({ isLoading: false });
         }
-      } catch {
+      } catch (err) {
         // Only worth reporting if a redirect actually happened. On an ordinary
         // visit there is no sign-in in progress to have failed, and a toast
         // here would be about nothing.
-        if (returning) toast.error("Google authentication failed. Please try again.");
+        const message = socialAuthErrorMessage(err);
+        if (returning && message) toast.error(message);
       }
     };
     void handleRedirectResult();
@@ -125,8 +127,6 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch (err: any) {
-      if (err.code === "auth/popup-closed-by-user") return;
-
       // A blocked popup is not a failed sign-in, and telling the user it was
       // leaves them stuck on a button that will never work. Finish the same
       // sign-in without a popup instead: the redirect flow leaves the page, and
@@ -141,15 +141,12 @@ export default function LoginPage() {
         }
       }
 
-      // This domain isn't listed in Firebase Console → Authentication →
-      // Authorized domains. In production this means the domain was not added;
-      // in development it usually means `localhost` is missing from the list.
-      if (err.code === "auth/unauthorized-domain") {
-        toast.error("Google sign-in is not enabled for this domain. Please use email and password instead.");
-        return;
-      }
-
-      toast.error("Google login failed. Please try again.");
+      // Everything else — a closed popup, an unauthorized domain, a build with
+      // no Firebase credentials, an unreachable API, a token the backend would
+      // not take. The helper logs the real error and answers null for the cases
+      // that are not worth a toast.
+      const message = socialAuthErrorMessage(err);
+      if (message) toast.error(message);
     }
   };
 

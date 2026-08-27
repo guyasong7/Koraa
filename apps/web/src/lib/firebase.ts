@@ -20,6 +20,35 @@ const firebaseConfig = {
 };
 
 /**
+ * Marks a sign-in failure as "this build has no Firebase credentials", so the
+ * UI can say that instead of blaming the user's attempt.
+ *
+ * `next.config.ts` fails a production build with these missing, so reaching this
+ * means either a dev shell with no `.env.local` or a bundle built before that
+ * check existed. Worth distinguishing regardless: `initializeApp` accepts a
+ * blank config without complaint and the failure only appears later, from
+ * `signInWithPopup`, as an error about the request rather than the setup.
+ */
+export const FIREBASE_NOT_CONFIGURED = "koraa/firebase-not-configured";
+
+/** The config keys sign-in cannot proceed without. */
+const REQUIRED_CONFIG = ["apiKey", "authDomain", "projectId", "appId"] as const;
+
+function assertConfigured(): void {
+  const missing = REQUIRED_CONFIG.filter((key) => !firebaseConfig[key]);
+  if (missing.length === 0) return;
+
+  const err = new Error(
+    `Firebase is not configured: KORAA_PUBLIC_FIREBASE_${missing
+      .map((key) => key.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase())
+      .join(", KORAA_PUBLIC_FIREBASE_")} missing from this build.`,
+  );
+  // Same shape Firebase's own errors use, so callers keep matching on `.code`.
+  (err as Error & { code: string }).code = FIREBASE_NOT_CONFIGURED;
+  throw err;
+}
+
+/**
  * Why the SDK is loaded dynamically, and why every export below is async.
  *
  * `firebase/auth` is the largest dependency any page in this app pulls in, and
@@ -55,6 +84,7 @@ function loadAuth(): Promise<{ auth: Auth; sdk: AuthSdk }> {
   if (sdkLoad) return sdkLoad;
 
   const attempt = (async () => {
+    assertConfigured();
     // Both imports at once: `firebase/app` is small and independent, so
     // sequencing them would add a round trip for nothing.
     const [{ getApps, initializeApp }, sdk] = await Promise.all([
