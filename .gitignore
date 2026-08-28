@@ -15,18 +15,31 @@ packages/*/node_modules/
 
 # Next.js
 apps/*/.next/
-apps/*/.env.local
-apps/*/.env*.local
 apps/*/out/
+# `vercel link`/`vercel pull` scratch state, including project.json — machine
+# local, and it names the org and project ids.
+.vercel/
 
 # Env
-.env
-.env.local
-.env.*.local
-# Production secrets, read by infrastructure/docker/docker-compose.prod.yml.
-.env.prod
-backend/.env.prod
-apps/web/.env.prod
+#
+# Blanket-ignore every .env file, at any depth, so a new one holding secrets
+# cannot be committed by an absent-minded `git add .` — the repo is public.
+# `.env.prod` and `backend/.env.prod` land here: they hold the production
+# secrets read by infrastructure/docker/docker-compose.prod.yml.
+.env*
+
+# Then re-admit the two kinds that are public on purpose. These negations must
+# stay below the blanket above — for a given path the last matching rule wins.
+#
+# The *.example templates document which variables exist and carry placeholder
+# values, never real ones.
+!.env*.example
+# apps/web/.env.production holds the *public* half of the browser bundle's
+# config, committed deliberately: next.config.ts inlines these values into
+# JavaScript served to every visitor, and a build without them ships
+# apiKey:"" plus a localhost API base. The file's own header says what may and
+# may not go in it; read it before adding a line there.
+!apps/web/.env.production
 # TLS material mounted into the nginx container.
 infrastructure/docker/certs/
 # certbot's own state, created on the server by
