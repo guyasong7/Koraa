@@ -299,6 +299,18 @@ REST_FRAMEWORK = {
         "anon": "100/hour",
         "user": "1000/hour",
         "auth": "10/minute",
+        # A shopper's browser polls for up to three minutes while they approve a
+        # mobile money charge on their handset — roughly two dozen calls. The
+        # default `anon` scope is 100/hour counted per IP, which would cut off
+        # the fourth shopper behind a mobile carrier's NAT halfway through
+        # paying. Both scopes below are therefore deliberately generous; what
+        # actually protects Fapshi is the per-transaction cache gate in
+        # `StorefrontOrderStatusView`, not a request count.
+        "order-status": "120/minute",
+        # Starting a charge is the expensive one — it reaches Fapshi every time —
+        # but a shopper legitimately retries after mistyping a number, and each
+        # attempt is one call.
+        "checkout-pay": "12/minute",
     },
 }
 

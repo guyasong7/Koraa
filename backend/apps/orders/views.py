@@ -4,6 +4,8 @@ import logging
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Sum
 from django.http import FileResponse, StreamingHttpResponse
@@ -13,8 +15,11 @@ from .models import DownloadGrant, Order, OrderItem
 from .serializers import (
     MerchantOrderDetailSerializer,
     MerchantOrderListSerializer,
+    OrderChargeRequestSerializer,
+    OrderChargeSerializer,
     OrderCreateSerializer,
     OrderSerializer,
+    OrderStatusSerializer,
 )
 from apps.stores.access import accessible_stores
 from apps.stores.models import Store
@@ -32,6 +37,15 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
+
+#: Stored in ``Order.fapshi_status`` when a charge request got no answer at all.
+#:
+#: Not one of Fapshi's strings — every other value in that column is. It marks
+#: the one state nothing can resolve automatically: Fapshi may have taken the
+#: charge, but returned no ``transId``, so there is no transaction to ask about
+#: and the reconcile sweep has nothing to work with. Someone has to look at the
+#: Fapshi dashboard, and this is how they find the order that needs it.
+UNCONFIRMED_CHARGE = "UNCONFIRMED"
 
 
 class CheckoutError(Exception):
@@ -145,39 +159,30 @@ def _price_and_reserve(store, items):
 class StorefrontOrderCreateView(generics.CreateAPIView):
     """
     POST /public/storefront/{domain}/orders/
-    Public endpoint for placing an order on a custom storefront.
+
+    Prices a cart against live product data, holds the stock, and records the
+    order. **It does not charge anything** — that is ``StorefrontOrderChargeView``.
+
+    Splitting the two is what lets the checkout show an authoritative total
+    before the shopper approves a payment. The cart in the browser sums
+    ``base_price``; the server prices the default variant's ``effective_price``,
+    so the two can legitimately disagree. When the charge was part of this
+    request, that disagreement could only ever surface *after* the money had
+    gone. Now the shopper sees the real figure, and only then pays.
+
+    It also makes a refused charge retryable: the shopper fixes their number and
+    posts to ``/pay/`` again against the same order, instead of leaving a dead
+    order behind — and another stock reservation with it — on every attempt.
     """
     permission_classes = [permissions.AllowAny]
     serializer_class = OrderCreateSerializer
 
     @extend_schema(responses={201: OrderSerializer})
     def create(self, request, domain, *args, **kwargs):
-        domain = domain.strip().lower()
-        store = None
-        
-        # 1. Check StoreDomain (Custom Domains)
-        from apps.domains.models import StoreDomain
-        store_domain = StoreDomain.objects.filter(
-            domain=domain, is_verified=True, status="active"
-        ).select_related("store").first()
+        store = _resolve_store(domain)
+        if store is None:
+            return Response({"error": "No store found for this domain."}, status=status.HTTP_404_NOT_FOUND)
 
-        if store_domain:
-            store = store_domain.store
-        else:
-            # 2. Extract slug from Koraa subdomains (e.g. my-store.koraa.africa or my-store.localhost:3000)
-            domain_without_port = domain.split(":")[0]
-            slug = domain_without_port.split(".")[0]
-            try:
-                # Only a published store may take money. Accepting orders
-                # against a draft store charged real customers on shops the
-                # merchant had not launched.
-                store = Store.objects.get(
-                    slug=slug,
-                    status=Store.Status.PUBLISHED,
-                )
-            except Store.DoesNotExist:
-                return Response({"error": "No store found for this domain."}, status=status.HTTP_404_NOT_FOUND)
-        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -217,30 +222,265 @@ class StorefrontOrderCreateView(generics.CreateAPIView):
         except CheckoutError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Fapshi is called after the commit: a 15-second HTTP timeout should not
-        # be holding the variant row locks taken above.
-        # The callback verifies using externalId = "order_" + str(order.id)
-        scheme = "https" if request.is_secure() else "http"
-        redirect_url = f"{scheme}://{domain}/checkout/success?order={order.id}"
-        message = f"Order #{str(order.id)[:8]} at {store.name}"
-
-        try:
-            link, trans_id = fapshi.initiate_pay(
-                amount=int(total_amount),
-                email=order.customer_email,
-                redirect_url=redirect_url,
-                external_id=f"order_{order.id}",
-                message=message,
-            )
-            order.payment_link = link
-            order.fapshi_trans_id = trans_id
-            order.save(update_fields=["payment_link", "fapshi_trans_id"])
-        except Exception:
-            # The order is kept so the merchant can see the attempt, but the
-            # failure is logged instead of silently swallowed.
-            logger.exception("Fapshi initiation failed for order %s", order.id)
-
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+
+class StorefrontOrderChargeView(APIView):
+    """
+    POST /public/storefront/orders/{order_id}/pay/  {"phone": ..., "medium": ...}
+
+    Charges a mobile money number for an order that already exists. The shopper
+    approves the charge on their handset and this browser stays where it is and
+    polls ``/status/`` — there is no redirect and no hosted page, which is the
+    whole reason for direct-pay in a market where the buyer is already on their
+    phone.
+
+    Unauthenticated, like the rest of checkout: a Koraa storefront has no shopper
+    accounts. The order id is a ``uuid4`` and the only thing this endpoint can do
+    with one is *send money to Koraa*, so a guessed id is not a way to take
+    anything. It is rate-limited all the same, because each call can reach Fapshi.
+
+    Three outcomes, and the distinction between the last two is the point:
+
+    * **Accepted** — 201, a ``transId`` is stored, the shopper approves on their
+      handset and the browser polls.
+    * **Refused** — 400. Fapshi declined the request, so nothing was charged and
+      nothing will be. The order stays pending and chargeable, because the usual
+      cause is a number the shopper can correct.
+    * **No answer** — 202 with ``charge_accepted: false``. Fapshi never confirmed,
+      so **the charge may or may not exist**. This must not be shown as a failure
+      and must not be retried automatically: resending would be the one way to
+      take a shopper's money twice.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "checkout-pay"
+
+    @extend_schema(
+        request=OrderChargeRequestSerializer,
+        responses={201: OrderChargeSerializer, 202: OrderChargeSerializer},
+    )
+    def post(self, request, order_id):
+        try:
+            order = Order.objects.select_related("store").get(pk=order_id)
+        except Order.DoesNotExist:
+            raise NotFound("No such order.")
+
+        serializer = OrderChargeRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        phone = serializer.validated_data["phone"]
+        medium = serializer.validated_data.get("medium") or None
+
+        conflict = self._existing_payment_conflict(order)
+        if conflict is not None:
+            return conflict
+
+        message = f"Order #{str(order.id)[:8]} at {order.store.name}"
+        try:
+            trans_id = fapshi.direct_pay(
+                amount=order.total_amount,
+                phone=phone,
+                # `external_ref` requires [a-zA-Z0-9-_], and a bare uuid satisfies
+                # it. The old `order_{id}` prefix bought nothing and cost the
+                # webhook a string-slicing step to undo.
+                external_id=str(order.id),
+                name=order.customer_name,
+                email=order.customer_email,
+                message=message,
+                medium=medium,
+            )
+        except fapshi.FapshiRejected as exc:
+            # Nothing was charged. Left pending and chargeable so the shopper can
+            # correct their number and try again on this same order.
+            logger.warning("Fapshi refused the charge for order %s: %s", order.id, exc)
+            return Response(
+                {
+                    "error": str(exc),
+                    "order_id": str(order.id),
+                    "charge_accepted": False,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except fapshi.FapshiUnavailable:
+            # The dangerous branch. Fapshi may have taken the charge before the
+            # connection died, so this is neither a success nor a failure. There
+            # is no transId, so nothing can follow it up automatically — which is
+            # exactly why it is recorded loudly and marked for a human.
+            logger.exception(
+                "Fapshi gave no answer charging order %s — the charge may exist", order.id
+            )
+            Order.objects.filter(pk=order.pk, settled_at__isnull=True).update(
+                fapshi_status=UNCONFIRMED_CHARGE
+            )
+            order.refresh_from_db(fields=["fapshi_status"])
+            return Response(
+                OrderChargeSerializer(order).data, status=status.HTTP_202_ACCEPTED
+            )
+
+        Order.objects.filter(pk=order.pk).update(fapshi_trans_id=trans_id)
+        order.refresh_from_db(fields=["fapshi_trans_id"])
+        return Response(
+            OrderChargeSerializer(order).data, status=status.HTTP_201_CREATED
+        )
+
+    def _existing_payment_conflict(self, order):
+        """Refuse a second charge on an order that already has one in flight.
+
+        Returns a 409 response, or None when charging is safe.
+
+        The check costs a Fapshi status call, and only on a retry — a first
+        charge has no ``fapshi_trans_id`` to ask about. Worth it: the alternative
+        is deciding from a possibly-stale local row whether a shopper is about to
+        be charged twice for one basket.
+        """
+        if order.settled_at:
+            return Response(
+                {
+                    "error": "This order has already been settled.",
+                    "order_id": str(order.id),
+                    "payment_status": order.payment_status,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if not order.fapshi_trans_id:
+            return None
+
+        result = settlement.settle_order(order.id)
+
+        if result in (settlement.PAID, settlement.ALREADY):
+            return Response(
+                {
+                    "error": "This order has already been paid.",
+                    "order_id": str(order.id),
+                    "payment_status": Order.PaymentStatus.PAID,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if result == settlement.PENDING:
+            return Response(
+                {
+                    "error": (
+                        "A payment for this order is already waiting for your "
+                        "approval. Check your phone for the prompt — please do "
+                        "not start another one."
+                    ),
+                    "order_id": str(order.id),
+                    "payment_status": order.payment_status,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if result == settlement.UNKNOWN:
+            # Fapshi could not be reached, so whether the previous attempt is
+            # live is unknown. Charging again could take the money twice.
+            return Response(
+                {
+                    "error": (
+                        "We cannot reach the payment provider to check your "
+                        "previous attempt. Please wait a moment and try again."
+                    ),
+                    "order_id": str(order.id),
+                    "payment_status": order.payment_status,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        # settlement.FAILED: the previous charge is dead and a new one is safe.
+        # `settled_at` is now set, so clear it along with the spent transId —
+        # this order is being given a second attempt, not un-settled.
+        Order.objects.filter(pk=order.pk).update(
+            settled_at=None,
+            fapshi_trans_id=None,
+            fapshi_status="",
+            payment_status=Order.PaymentStatus.PENDING,
+            payout_status=Order.PayoutStatus.PENDING,
+        )
+        order.refresh_from_db()
+        return None
+
+
+class StorefrontOrderStatusView(APIView):
+    """
+    GET /public/storefront/orders/{order_id}/status/
+
+    What the checkout polls while the shopper approves the charge on their
+    handset. Returns Koraa's own ``payment_status``, never Fapshi's.
+
+    Unauthenticated, and safe on the same grounds as the charge endpoint: the id
+    is a ``uuid4``, and the response carries no address, no email and no line
+    items — only what a shopper watching their own payment needs.
+
+    Two things keep this from becoming a way to hammer Fapshi with a guessed id:
+
+    * A settled order answers from the stored row. The state is final, so there
+      is nothing to ask about.
+    * An unsettled one asks Fapshi at most once every
+      ``STATUS_MIN_INTERVAL_SECONDS``, across all callers, through a cache gate.
+      Fapshi allows six status calls a minute *per transaction* and answers a
+      seventh with 429. The browser may poll Koraa as often as it likes; this is
+      what stops that reaching Fapshi.
+
+    The gate is per-process on LocMem and shared on Redis. Production requires
+    Redis (``production.py`` refuses to boot without it), so the shared case is
+    the real one — and a 429 slipping through anyway is harmless: Fapshi's rate
+    limit surfaces as ``FapshiRateLimited``, a ``FapshiUnavailable``, which every
+    settle path treats as "change nothing and ask again later".
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    #: Generously rated on purpose. A shopper's browser makes roughly two dozen
+    #: calls over the three minutes it waits, and the default `anon` scope
+    #: (100/hour, counted per IP) would cut off a handful of shoppers sharing a
+    #: mobile carrier's NAT mid-payment. The Fapshi gate above is the real limit;
+    #: this one only stops a script from spinning.
+    throttle_scope = "order-status"
+
+    @extend_schema(responses={200: OrderStatusSerializer})
+    def get(self, request, order_id):
+        try:
+            order = Order.objects.select_related("store").get(pk=order_id)
+        except Order.DoesNotExist:
+            raise NotFound("No such order.")
+
+        if not order.settled_at and order.fapshi_trans_id:
+            gate = f"fapshi:status-gate:{order.fapshi_trans_id}"
+            # `add` writes only when the key is absent, and does so atomically —
+            # so exactly one caller per interval gets through, however many are
+            # polling this order at once.
+            if cache.add(gate, 1, timeout=fapshi.STATUS_MIN_INTERVAL_SECONDS):
+                settlement.settle_order(order.id)
+                order.refresh_from_db()
+
+        return Response(OrderStatusSerializer(order).data, status=status.HTTP_200_OK)
+
+
+def _resolve_store(domain: str):
+    """The storefront a checkout request is for, or None.
+
+    A custom verified domain first, then a Koraa subdomain's slug. Only a
+    published store is returned: accepting orders against a draft store charged
+    real customers on shops the merchant had not launched.
+    """
+    domain = (domain or "").strip().lower()
+
+    from apps.domains.models import StoreDomain
+
+    store_domain = (
+        StoreDomain.objects.filter(domain=domain, is_verified=True, status="active")
+        .select_related("store")
+        .first()
+    )
+    if store_domain:
+        return store_domain.store
+
+    # e.g. my-store.koraa.africa, or my-store.localhost:3000 in development.
+    slug = domain.split(":")[0].split(".")[0]
+    return Store.objects.filter(slug=slug, status=Store.Status.PUBLISHED).first()
+
 
 class StorefrontOrderCallbackView(APIView):
     """Fapshi's word on a storefront order, however it reaches us.

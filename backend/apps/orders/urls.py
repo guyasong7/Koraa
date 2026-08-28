@@ -26,11 +26,26 @@ from .views import (
     PublicDownloadFileView,
     PublicDownloadView,
     StorefrontOrderCallbackView,
+    StorefrontOrderChargeView,
     StorefrontOrderCreateView,
+    StorefrontOrderStatusView,
 )
 
 public_patterns = [
     path("storefront/<str:domain>/orders/", StorefrontOrderCreateView.as_view(), name="storefront-orders-create"),
+    # Both keyed by order id rather than nested under the domain: the browser has
+    # the id from the create response, and the order already knows its store — so
+    # a mismatched domain cannot point a charge at the wrong shop.
+    path(
+        "storefront/orders/<uuid:order_id>/pay/",
+        StorefrontOrderChargeView.as_view(),
+        name="storefront-orders-pay",
+    ),
+    path(
+        "storefront/orders/<uuid:order_id>/status/",
+        StorefrontOrderStatusView.as_view(),
+        name="storefront-orders-status",
+    ),
     path("storefront/orders/callback/", StorefrontOrderCallbackView.as_view(), name="storefront-orders-callback"),
     # <str:token> rather than <slug:token>: secrets.token_urlsafe emits "-" and
     # "_", and a slug converter rejects the underscore, which would 404 roughly

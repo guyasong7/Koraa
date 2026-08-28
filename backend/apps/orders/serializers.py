@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Order, OrderItem
 from apps.products.models import Product
 from . import invoices
+from apps.payments import fapshi
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,6 +50,107 @@ class OrderCreateSerializer(serializers.Serializer):
                 )
             seen.add(pid)
         return items
+
+
+class OrderChargeRequestSerializer(serializers.Serializer):
+    """The mobile money number to charge, for ``POST .../orders/{id}/pay/``.
+
+    Separate from ``OrderCreateSerializer`` because charging is a separate
+    request. Creating the order prices it against live product data; the shopper
+    sees that authoritative total and *then* approves the charge. Collecting the
+    phone number up front and charging in one step would mean a price correction
+    could only ever be discovered after the money had gone.
+
+    ``phone`` is validated here rather than in the view so a mistyped number is a
+    400 with a field error against the input that caused it — before anything is
+    sent to Fapshi.
+    """
+
+    phone = serializers.CharField(max_length=20)
+    #: Omitted means "let Fapshi work it out from the prefix", which its own docs
+    #: recommend over a caller-supplied guess. Sent only when a shopper overrode
+    #: the pre-selection, so a wrong prefix table of ours cannot misroute a charge.
+    medium = serializers.ChoiceField(
+        choices=[(fapshi.MEDIUM_MTN, "MTN MoMo"), (fapshi.MEDIUM_ORANGE, "Orange Money")],
+        required=False,
+        allow_blank=True,
+    )
+
+    def validate_phone(self, raw):
+        try:
+            return fapshi.normalise_msisdn(raw)
+        except fapshi.FapshiRejected as exc:
+            # The message names what is wrong with the number and is written for a
+            # shopper to read; see `normalise_msisdn`.
+            raise serializers.ValidationError(str(exc)) from exc
+
+
+class OrderChargeSerializer(serializers.ModelSerializer):
+    """What the shopper's browser is told after a charge is requested.
+
+    Deliberately small. This response reaches a public, unauthenticated caller,
+    so it carries what the checkout needs to follow the payment and nothing that
+    would help someone enumerate orders: no address, no line items, no email.
+
+    ``charge_accepted`` is the field the frontend branches on. False means Fapshi
+    never confirmed it took the request, so the charge may or may not exist — the
+    one outcome that must not be reported to a shopper as a failure.
+    """
+
+    reference = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
+    charge_accepted = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            "id", "reference", "total_amount", "currency",
+            "payment_status", "charge_accepted",
+        ]
+
+    def get_reference(self, obj) -> str:
+        return invoices.reference(obj)
+
+    def get_currency(self, obj) -> str:
+        return obj.store.currency or "XAF"
+
+    def get_charge_accepted(self, obj) -> bool:
+        # A transId exists only when Fapshi answered and accepted the charge.
+        return bool(obj.fapshi_trans_id)
+
+
+class OrderStatusSerializer(serializers.ModelSerializer):
+    """The polling response for ``GET .../orders/{id}/status/``.
+
+    Same reasoning as ``OrderChargeSerializer`` on what it omits, and the same
+    fields, so the checkout can hand either one to the same render path.
+
+    ``settled`` rather than ``payment_status == "paid"``: a *failed* payment is
+    also settled and also final, and a browser that polls until "paid" would
+    poll a failed order forever. Fapshi's own status strings never appear —
+    ``payment_status`` is Koraa's vocabulary, which is what keeps the gateway
+    replaceable.
+    """
+
+    reference = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
+    settled = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            "id", "reference", "total_amount", "currency",
+            "payment_status", "settled",
+        ]
+
+    def get_reference(self, obj) -> str:
+        return invoices.reference(obj)
+
+    def get_currency(self, obj) -> str:
+        return obj.store.currency or "XAF"
+
+    def get_settled(self, obj) -> bool:
+        return obj.is_settled
 
 
 # ── Merchant-facing ───────────────────────────────────────────────────────────
