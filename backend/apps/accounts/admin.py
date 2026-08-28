@@ -3,6 +3,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
+from apps.common.admin_images import ImagePreviewAdminMixin, image_preview
+
 from .models import User, EmailVerificationOTP, PasswordResetToken
 
 
@@ -16,8 +18,10 @@ class MerchantInline(admin.StackedInline):
     fields = ("business_name", "business_type", "tier", "tier_expires_at", "is_verified")
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
-    list_display = ("email", "full_name", "role", "is_verified", "is_active", "date_joined")
+class UserAdmin(ImagePreviewAdminMixin, BaseUserAdmin):
+    avatar_preview = image_preview("avatar", label="", max_side=32)
+
+    list_display = ("avatar_preview", "email", "full_name", "role", "is_verified", "is_active", "date_joined")
     list_filter = ("role", "is_verified", "is_active", "is_staff")
     search_fields = ("email", "full_name", "phone")
     ordering = ("-date_joined",)
