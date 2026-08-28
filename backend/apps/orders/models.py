@@ -26,9 +26,32 @@ class Order(models.Model):
         PAID = "paid", "Paid"
         FAILED = "failed", "Failed"
 
+    class PayoutStatus(models.TextChoices):
+        """Whether the merchant has been paid for this sale.
+
+        Separate from ``payment_status`` because they answer different questions
+        and can disagree in the way that matters most: an order can be PAID —
+        Koraa holds the buyer's money — while the merchant's share is still
+        sitting here because their payout bounced. Before these fields existed
+        that state was invisible; a failed payout wrote a line to the log and
+        nothing else, so there was no way to find out who was owed money, let
+        alone retry it.
+        """
+
+        PENDING = "pending", "Pending"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+        #: Fapshi accepted the payout but we never got the reply, so money may or
+        #: may not have moved. Never retried automatically — a human checks the
+        #: Fapshi dashboard, because the alternative is paying twice.
+        UNKNOWN = "unknown", "Unknown — verify with Fapshi"
+        #: Nothing to send: the merchant has no payout account on file, or the
+        #: net came to zero.
+        NOT_APPLICABLE = "not_applicable", "Not applicable"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="orders")
-    
+
     # Customer Details
     customer_name = models.CharField(max_length=255)
     customer_email = models.EmailField()
@@ -36,15 +59,69 @@ class Order(models.Model):
     shipping_address = models.TextField()
     city = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20, blank=True)
-    
+
     # Financials
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    
+
     # Payment Tracking
     payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
     fapshi_trans_id = models.CharField(max_length=100, blank=True, null=True)
     payment_link = models.URLField(max_length=500, blank=True, null=True)
-    
+
+    #: The idempotency marker for settlement, and the reason a merchant cannot be
+    #: paid twice for one sale.
+    #:
+    #: Fapshi can deliver a webhook and a browser poll for the same payment, and
+    #: ``reconcile_orders`` may arrive at it a third time. Each of those used to
+    #: read ``payment_status`` unlocked and act on it, so two concurrent settles
+    #: both saw "pending" and both paid the merchant out. This is set under
+    #: ``select_for_update`` inside the same transaction as the payout, which is
+    #: what makes the second caller see the work as already done.
+    #:
+    #: Distinct from ``updated_at`` (any write touches that) and from
+    #: ``paid_at`` (when the money moved, as against when Koraa reacted).
+    settled_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    #: Fapshi's own status string, kept verbatim for diagnosis.
+    #:
+    #: ``payment_status`` deliberately has only three values, so Fapshi's EXPIRED
+    #: and FAILED both land on FAILED — the buyer-visible outcome is identical and
+    #: collapsing them keeps every existing consumer working. This is where the
+    #: distinction survives, and it is the first field to look at when a merchant
+    #: asks why a specific order failed.
+    fapshi_status = models.CharField(max_length=32, blank=True)
+
+    #: When Fapshi says the money actually moved (its ``dateConfirmed``), which
+    #: can be hours before ``settled_at`` if a webhook was lost and a reconcile
+    #: pass caught it. Null on orders settled before this field existed.
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    #: The operator's reference (Fapshi's ``financialTransId``) — what a buyer or
+    #: merchant disputing a payment quotes to their MTN or Orange agent.
+    financial_trans_id = models.CharField(max_length=100, blank=True)
+
+    #: What Koraa actually received: Fapshi's ``revenue``, i.e. the charge less
+    #: Fapshi's own fee. Not the same as ``total_amount``, and the gap is the
+    #: reason this is recorded rather than inferred — a payout computed from the
+    #: gross can exceed what came in.
+    fapshi_revenue = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+
+    # Merchant payout
+    payout_status = models.CharField(
+        max_length=20, choices=PayoutStatus.choices, default=PayoutStatus.PENDING
+    )
+    payout_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    #: Fapshi's transId for the payout, so a merchant asking "where is my money"
+    #: has an answer that can be looked up rather than a log line to grep for.
+    payout_reference = models.CharField(max_length=100, blank=True)
+    payout_at = models.DateTimeField(null=True, blank=True)
+    #: Why a payout failed, in Fapshi's words. Read straight off the admin list.
+    payout_error = models.CharField(max_length=255, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -52,9 +129,31 @@ class Order(models.Model):
         ordering = ["-created_at"]
         verbose_name = "order"
         verbose_name_plural = "orders"
+        indexes = [
+            # The reconcile command's query: pending orders that have a Fapshi
+            # transaction to ask about, oldest first.
+            models.Index(
+                fields=["payment_status", "created_at"],
+                name="order_status_created_idx",
+            ),
+            # Every settle path starts by looking an order up by the trans_id a
+            # webhook handed it. Not unique: see the note in the migration about
+            # why the constraint that belongs here is deferred.
+            models.Index(fields=["fapshi_trans_id"], name="order_fapshi_trans_idx"),
+        ]
 
     def __str__(self):
         return f"Order {self.id} - {self.store.name} ({self.total_amount})"
+
+    @property
+    def is_settled(self) -> bool:
+        """Whether settlement has already run for this order.
+
+        Read this rather than ``payment_status == PAID``: a failed payment is
+        settled too, and asking about the status is what let the old code settle
+        the same order twice.
+        """
+        return self.settled_at is not None
 
 class OrderItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

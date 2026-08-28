@@ -7,9 +7,8 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Sum
 from django.http import FileResponse, StreamingHttpResponse
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from . import downloads, invoices
+from . import downloads, invoices, settlement
 from .models import DownloadGrant, Order, OrderItem
 from .serializers import (
     MerchantOrderDetailSerializer,
@@ -20,18 +19,19 @@ from .serializers import (
 from apps.stores.access import accessible_stores
 from apps.stores.models import Store
 from apps.products.models import Product, ProductVariant
-from apps.payments.views import _initiate_fapshi_payment, _check_fapshi_status, _initiate_fapshi_payout
-from apps.merchants.models import MerchantPayoutAccount
-from apps.notifications.models import Notification
+# `_initiate_fapshi_payment`, `_check_fapshi_status` and `_initiate_fapshi_payout`
+# used to be imported from `apps.payments.views` — three private functions
+# reached across an app boundary. `apps.payments.fapshi` is the public seam now,
+# and settlement lives in this app's own `settlement` module.
+#
+# `MerchantPayoutAccount`, `Notification`, `send_mail` and PLATFORM_COMMISSION_RATE
+# left with it: paying and notifying the merchant is settlement's job, not a
+# view's, which is what stops the webhook and the browser doing it twice.
+from apps.payments import fapshi
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from django.core.mail import send_mail
-from django.conf import settings
 from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
-
-#: Share of each order Koraa keeps. The remainder is paid out to the merchant.
-PLATFORM_COMMISSION_RATE = getattr(settings, "KORAA_PLATFORM_COMMISSION_RATE", 0.05)
 
 
 class CheckoutError(Exception):
@@ -225,7 +225,7 @@ class StorefrontOrderCreateView(generics.CreateAPIView):
         message = f"Order #{str(order.id)[:8]} at {store.name}"
 
         try:
-            link, trans_id = _initiate_fapshi_payment(
+            link, trans_id = fapshi.initiate_pay(
                 amount=int(total_amount),
                 email=order.customer_email,
                 redirect_url=redirect_url,
@@ -243,101 +243,63 @@ class StorefrontOrderCreateView(generics.CreateAPIView):
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 class StorefrontOrderCallbackView(APIView):
+    """Fapshi's word on a storefront order, however it reaches us.
+
+    Accepts **GET and POST**. It was GET-only, which mattered more than it looks:
+    Fapshi's webhook POSTs, so the one caller that would have settled orders
+    without a browser present got a 405 — and since nothing else called this view
+    at all, no storefront order had ever been marked paid.
+
+    Unauthenticated on purpose, and safe for the same reason
+    ``FapshiWebhookView`` is: the ``transId`` in the request is a hint used only
+    to find the order, and the outcome is then fetched from Fapshi directly. A
+    forged request cannot declare a payment successful; at worst it makes Koraa
+    re-ask Fapshi about a payment that already exists.
+
+    All the real work — the lock, the payout, the emails, the download grants —
+    is in ``apps.orders.settlement``, so this view and the webhook and the
+    reconcile command cannot drift apart in how they settle.
     """
-    GET /public/storefront/orders/callback/
-    Fapshi webhook/callback for storefront orders.
-    """
+
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def get(self, request):
-        trans_id = request.query_params.get("transId") or request.query_params.get("trans_id")
+        return self._settle(request)
+
+    def post(self, request):
+        return self._settle(request)
+
+    def _settle(self, request):
+        trans_id = (
+            request.data.get("transId")
+            or request.data.get("trans_id")
+            or request.query_params.get("transId")
+            or request.query_params.get("trans_id")
+        )
         if not trans_id:
             return Response({"error": "transId is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        order = get_object_or_404(Order, fapshi_trans_id=trans_id)
+        # Fapshi's webhook secret, when one is configured. Belt and braces only —
+        # the outbound re-fetch is what makes this endpoint trustworthy, so a
+        # missing secret is not treated as an attack.
+        if not fapshi.webhook_secret_ok(request.headers.get("x-wh-secret")):
+            logger.warning("Storefront callback for %s had a bad webhook secret", trans_id)
+            return Response({"error": "Invalid signature."}, status=status.HTTP_403_FORBIDDEN)
 
-        if order.payment_status == Order.PaymentStatus.PAID:
-            return Response({"message": "Order already paid"}, status=status.HTTP_200_OK)
+        order = Order.objects.filter(fapshi_trans_id=trans_id).order_by("created_at").first()
+        if order is None:
+            # 200, not 404. Fapshi redelivers on a non-2xx and no amount of
+            # retrying will make an unknown transId known — but it may belong to
+            # a *subscription*, which the payments webhook handles, so this is
+            # logged at info rather than raised as an alarm.
+            logger.info("Storefront callback for unknown order transId %s", trans_id)
+            return Response({"status": "ignored"}, status=status.HTTP_200_OK)
 
-        fapshi_status_str = _check_fapshi_status(trans_id)
-
-        if fapshi_status_str in ("SUCCESSFUL", "SUCCESS"):
-            order.payment_status = Order.PaymentStatus.PAID
-            order.save()
-
-            merchant = order.store.merchant
-
-            # 1. Payout to merchant, less the platform commission. The previous
-            #    version sent the full order total, so Koraa earned nothing on
-            #    any sale.
-            payout_accounts = MerchantPayoutAccount.objects.filter(merchant=merchant)
-            if payout_accounts.exists():
-                account = payout_accounts.first()
-                gross = int(order.total_amount)
-                commission = int(gross * PLATFORM_COMMISSION_RATE)
-                net = gross - commission
-                if net > 0:
-                    ok = _initiate_fapshi_payout(account.phone, net)
-                    if not ok:
-                        logger.error(
-                            "Payout of %s XAF to merchant %s failed for order %s; "
-                            "settle manually",
-                            net, merchant.id, order.id,
-                        )
-            else:
-                logger.warning(
-                    "Order %s paid but merchant %s has no payout account",
-                    order.id, merchant.id,
-                )
-
-            # 2. In-App Notification
-            Notification.objects.create(
-                recipient=merchant.user,
-                type=Notification.Type.ORDER_PLACED,
-                title="New Order Received!",
-                body=f"You received an order of {order.total_amount} XAF from {order.customer_name}.",
-                data={"order_id": str(order.id)}
-            )
-
-            # 3. Email the merchant that they have a sale.
-            try:
-                send_mail(
-                    subject=f"New Order Received: {order.store.name}",
-                    message=f"You received a new order from {order.customer_name} for {order.total_amount} XAF.\n\nCheck your dashboard for details.",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[merchant.user.email],
-                    fail_silently=True,
-                )
-            except Exception:
-                pass
-
-            # 4. Email the shopper their invoice. Only the merchant was told
-            #    anything before this; the person who had just paid got no
-            #    reference, no itemised total and no record of the purchase.
-            #    send_invoice never raises — the payment is already taken and
-            #    the order already marked paid, so an SMTP outage must not turn
-            #    this into a 500 that Fapshi then retries.
-            invoices.send_invoice(order)
-
-            # 5. Digital lines: mint the download links and email them.
-            #    Separate from the invoice on purpose — the links are the
-            #    product, and burying them under a line-items table is how a
-            #    buyer ends up emailing the merchant to ask where their file is.
-            #    Minting is idempotent, so the webhook arriving after the
-            #    redirect cannot reset a buyer's download count.
-            downloads.send_downloads(order)
-
-            # 6. WhatsApp Notification Placeholder
-            # TODO: Integrate Twilio or Infobip
-
-            return Response({"message": "Payment verified and order marked as paid"}, status=status.HTTP_200_OK)
-            
-        elif fapshi_status_str == "FAILED":
-            order.payment_status = Order.PaymentStatus.FAILED
-            order.save()
-            return Response({"message": "Payment failed"}, status=status.HTTP_200_OK)
-
-        return Response({"message": f"Payment is {fapshi_status_str}"}, status=status.HTTP_200_OK)
+        result = settlement.settle_order(order.id)
+        return Response(
+            {"status": result, "order_id": str(order.id)}, status=status.HTTP_200_OK
+        )
 
 
 # ── Merchant-facing ───────────────────────────────────────────────────────────

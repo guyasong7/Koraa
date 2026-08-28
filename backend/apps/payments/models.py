@@ -53,6 +53,22 @@ class PaymentTransaction(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIATED)
     plan = models.CharField(max_length=20, choices=Plan.choices)
     billing_cycle = models.CharField(max_length=10, default="monthly")
+
+    #: The idempotency marker for activation — the same role ``settled_at`` plays
+    #: on ``Order``.
+    #:
+    #: ``status`` cannot do this job. It is set to SUCCESSFUL first and read
+    #: unlocked, so two concurrent settles both saw INITIATED and both ran the
+    #: activation: the term was extended twice and the referral bonus paid twice.
+    #: This is written under ``select_for_update`` in the same transaction as
+    #: that work, which is what makes the second caller stop.
+    settled_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    #: Fapshi's raw status string, for diagnosis. ``status`` collapses EXPIRED
+    #: and FAILED onto separate choices already, but this also captures CREATED
+    #: and PENDING, which have nowhere else to live.
+    fapshi_status = models.CharField(max_length=32, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -61,3 +77,8 @@ class PaymentTransaction(models.Model):
 
     def __str__(self):
         return f"TX {self.fapshi_trans_id} — {self.user.email} — {self.status}"
+
+    @property
+    def is_settled(self) -> bool:
+        """Whether activation has already run. Read this, not ``status``."""
+        return self.settled_at is not None

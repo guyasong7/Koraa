@@ -97,82 +97,149 @@ def _settle_transaction(tx: PaymentTransaction) -> str:
     The Fapshi status is always fetched from Fapshi — never taken from the
     caller — which is why the webhook can safely be unauthenticated.
 
-    Returns "activated", "failed" or "pending".
+    Idempotent and concurrency-safe. It did not used to be: the guard was
+    ``if tx.status == SUCCESSFUL`` read outside the ``atomic()`` block below and
+    with no row lock, so a webhook arriving while the browser polled let both
+    callers past. Both then activated the subscription — adding two years to the
+    term for one payment — and both completed the referral, paying that bonus
+    twice. ``settled_at`` is now written under ``select_for_update`` in the same
+    transaction as the activation, which is what makes the second caller stop.
+
+    Returns "activated", "failed", "pending" or "unknown". ``unknown`` means
+    Fapshi could not be reached and **nothing was changed**; it is not a failure,
+    and a caller must not present it as one.
     """
-    fapshi_status_str = _check_fapshi_status(tx.fapshi_trans_id)
+    try:
+        fapshi_status_str = _check_fapshi_status(tx.fapshi_trans_id)
+    except fapshi.FapshiUnavailable:
+        # The bug this replaces returned "FAILED" here, and callers believed it:
+        # an outage cancelled live subscriptions for payments that had gone
+        # through. Leaving the row alone keeps it settleable by a later pass.
+        logger.warning(
+            "Fapshi unreachable while settling transaction %s; left pending",
+            tx.fapshi_trans_id,
+        )
+        return "unknown"
+    except fapshi.FapshiRejected:
+        logger.exception(
+            "Fapshi rejected a status check for transaction %s", tx.fapshi_trans_id
+        )
+        return "unknown"
 
     if fapshi_status_str in ("SUCCESSFUL", "SUCCESS"):
-        # Fapshi may deliver the webhook and the redirect for the same
-        # payment. Activating twice would extend the expiry twice over and
-        # pay the referral bonus twice, so already-settled rows short-circuit.
-        if tx.status == PaymentTransaction.Status.SUCCESSFUL:
-            return "activated"
-
-        with db_transaction.atomic():
-            tx.status = PaymentTransaction.Status.SUCCESSFUL
-            tx.save(update_fields=["status"])
-
-            sub = tx.subscription
-            now = timezone.now()
-            merchant = getattr(tx.user, "merchant", None)
-
-            # Renewing before the current term ends adds a year to what is
-            # left rather than throwing it away. The expiry warning goes out a
-            # week early precisely to invite this, so charging for a year and
-            # handing back 365 days minus the unused remainder would be theft.
-            current_expiry = getattr(merchant, "tier_expires_at", None)
-            base = (
-                current_expiry
-                if current_expiry and current_expiry > now
-                else now
-            )
-
-            sub.status = Subscription.Status.ACTIVE
-            sub.starts_at = now
-            sub.expires_at = base + timedelta(
-                days=CYCLE_DAYS.get(sub.billing_cycle, 30)
-            )
-            # A fresh term has not been warned about yet.
-            sub.expiry_notice_sent_at = None
-            sub.save()
-
-            # Any earlier paid plan is superseded by the one just bought.
-            Subscription.objects.filter(
-                user=tx.user, status=Subscription.Status.ACTIVE
-            ).exclude(pk=sub.pk).update(status=Subscription.Status.CANCELLED)
-
-            if merchant is not None:
-                merchant.tier = sub.plan
-                merchant.tier_expires_at = sub.expires_at
-                merchant.save(update_fields=["tier", "tier_expires_at"])
-            else:
-                logger.warning(
-                    "Payment %s settled for user %s with no merchant profile",
-                    tx.fapshi_trans_id, tx.user_id,
-                )
-
-            # Referral payout: 2% of the first plan payment the referred
-            # user makes.
-            from apps.accounts.models import Referral
-            pending_ref = Referral.objects.filter(
-                referred_user=tx.user, status=Referral.Status.PENDING
-            ).first()
-            if pending_ref:
-                pending_ref.reward_amount = int(tx.amount * 0.02)
-                pending_ref.status = Referral.Status.COMPLETED
-                pending_ref.save(update_fields=["reward_amount", "status"])
-
-        return "activated"
+        return _activate_subscription(tx.pk, fapshi_status_str)
 
     if fapshi_status_str in ("FAILED", "EXPIRED"):
-        tx.status = PaymentTransaction.Status.FAILED
-        tx.save(update_fields=["status"])
+        return _fail_transaction(tx.pk, fapshi_status_str)
+
+    # CREATED or PENDING — the buyer has not approved on their handset yet.
+    PaymentTransaction.objects.filter(pk=tx.pk, settled_at__isnull=True).update(
+        fapshi_status=fapshi_status_str
+    )
+    return "pending"
+
+
+def _activate_subscription(tx_pk, fapshi_status_str: str) -> str:
+    """Give the buyer the plan they paid for, exactly once."""
+    with db_transaction.atomic():
+        tx = (
+            PaymentTransaction.objects.select_for_update()
+            .select_related("subscription", "user")
+            .get(pk=tx_pk)
+        )
+
+        # The real guard: any concurrent caller queues on the lock above and
+        # arrives here to find the work done.
+        if tx.settled_at:
+            return "activated"
+
+        now = timezone.now()
+        tx.status = PaymentTransaction.Status.SUCCESSFUL
+        tx.fapshi_status = fapshi_status_str
+        tx.settled_at = now
+        tx.save(update_fields=["status", "fapshi_status", "settled_at", "updated_at"])
+
+        sub = tx.subscription
+        merchant = getattr(tx.user, "merchant", None)
+
+        # Renewing before the current term ends adds a year to what is
+        # left rather than throwing it away. The expiry warning goes out a
+        # week early precisely to invite this, so charging for a year and
+        # handing back 365 days minus the unused remainder would be theft.
+        current_expiry = getattr(merchant, "tier_expires_at", None)
+        base = (
+            current_expiry
+            if current_expiry and current_expiry > now
+            else now
+        )
+
+        sub.status = Subscription.Status.ACTIVE
+        sub.starts_at = now
+        sub.expires_at = base + timedelta(
+            days=CYCLE_DAYS.get(sub.billing_cycle, 30)
+        )
+        # A fresh term has not been warned about yet.
+        sub.expiry_notice_sent_at = None
+        sub.save()
+
+        # Any earlier paid plan is superseded by the one just bought.
+        Subscription.objects.filter(
+            user=tx.user, status=Subscription.Status.ACTIVE
+        ).exclude(pk=sub.pk).update(status=Subscription.Status.CANCELLED)
+
+        if merchant is not None:
+            merchant.tier = sub.plan
+            merchant.tier_expires_at = sub.expires_at
+            merchant.save(update_fields=["tier", "tier_expires_at"])
+        else:
+            logger.warning(
+                "Payment %s settled for user %s with no merchant profile",
+                tx.fapshi_trans_id, tx.user_id,
+            )
+
+        # Referral payout: 2% of the first plan payment the referred
+        # user makes.
+        from apps.accounts.models import Referral
+        pending_ref = Referral.objects.filter(
+            referred_user=tx.user, status=Referral.Status.PENDING
+        ).first()
+        if pending_ref:
+            pending_ref.reward_amount = int(tx.amount * 0.02)
+            pending_ref.status = Referral.Status.COMPLETED
+            pending_ref.save(update_fields=["reward_amount", "status"])
+
+    return "activated"
+
+
+def _fail_transaction(tx_pk, fapshi_status_str: str) -> str:
+    """Record a subscription payment Fapshi says did not happen.
+
+    Locked for the same reason the success path is: a concurrent activation must
+    not be overwritten by a stale failure verdict.
+    """
+    with db_transaction.atomic():
+        tx = (
+            PaymentTransaction.objects.select_for_update()
+            .select_related("subscription")
+            .get(pk=tx_pk)
+        )
+        if tx.settled_at:
+            return "activated" if tx.status == PaymentTransaction.Status.SUCCESSFUL else "failed"
+
+        tx.status = (
+            PaymentTransaction.Status.EXPIRED
+            if fapshi_status_str == "EXPIRED"
+            else PaymentTransaction.Status.FAILED
+        )
+        tx.fapshi_status = fapshi_status_str
+        tx.settled_at = timezone.now()
+        tx.save(update_fields=["status", "fapshi_status", "settled_at", "updated_at"])
+
         if tx.subscription and tx.subscription.status == Subscription.Status.PENDING:
             tx.subscription.status = Subscription.Status.CANCELLED
             tx.subscription.save(update_fields=["status"])
-        return "failed"
 
-    return "pending"
+    return "failed"
 
 
 class InitiatePaymentView(APIView):
@@ -292,6 +359,12 @@ class FapshiWebhookView(APIView):
 
     Without this endpoint a buyer who closes the tab after paying is charged
     and never gets their plan.
+
+    Resolves **both** record types. It used to look only at
+    ``PaymentTransaction``, but storefront orders keep their ``fapshi_trans_id``
+    on ``Order`` — so every shopper's webhook fell through to "ignored" with a
+    200 that told Fapshi never to send it again. That single mismatch is why no
+    storefront order had ever been settled.
     """
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -305,19 +378,42 @@ class FapshiWebhookView(APIView):
         if not trans_id:
             return Response({"error": "transId is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            tx = PaymentTransaction.objects.select_related("subscription", "user").get(
-                fapshi_trans_id=trans_id
-            )
-        except PaymentTransaction.DoesNotExist:
-            # Acknowledge anyway: retrying will never make an unknown id known,
-            # and a 404 would have Fapshi redeliver forever.
-            logger.warning("Fapshi webhook for unknown transaction %s", trans_id)
-            return Response({"status": "ignored"})
+        # Fapshi can be configured with a shared secret sent as `x-wh-secret`.
+        # Checked when one is set, but it is not what makes this endpoint safe —
+        # the outbound re-fetch is. Returns True when unconfigured so enabling
+        # the secret is a deploy-time choice, not a prerequisite.
+        if not fapshi.webhook_secret_ok(request.headers.get("x-wh-secret")):
+            logger.warning("Fapshi webhook for %s had a bad secret", trans_id)
+            return Response({"error": "Invalid signature."}, status=status.HTTP_403_FORBIDDEN)
 
-        result = _settle_transaction(tx)
-        logger.info("Fapshi webhook settled %s as %s", trans_id, result)
-        return Response({"status": result})
+        tx = (
+            PaymentTransaction.objects.select_related("subscription", "user")
+            .filter(fapshi_trans_id=trans_id)
+            .first()
+        )
+        if tx is not None:
+            result = _settle_transaction(tx)
+            logger.info("Fapshi webhook settled subscription %s as %s", trans_id, result)
+            return Response({"status": result})
+
+        # Not a subscription, so try a storefront order. Imported here rather
+        # than at module scope: `apps.orders` imports `apps.payments.fapshi`, and
+        # a top-level import back into orders would close that loop.
+        from apps.orders.models import Order
+        from apps.orders import settlement
+
+        order = (
+            Order.objects.filter(fapshi_trans_id=trans_id).order_by("created_at").first()
+        )
+        if order is not None:
+            result = settlement.settle_order(order.id)
+            logger.info("Fapshi webhook settled order %s as %s", trans_id, result)
+            return Response({"status": result})
+
+        # Acknowledge anyway: retrying will never make an unknown id known,
+        # and a non-2xx would have Fapshi redeliver forever.
+        logger.warning("Fapshi webhook for unknown transaction %s", trans_id)
+        return Response({"status": "ignored"})
 
 
 class ActiveSubscriptionView(APIView):
