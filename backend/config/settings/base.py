@@ -508,10 +508,33 @@ JAZZMIN_UI_TWEAKS = {
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fapshi Payment Gateway
+#
+# Every value here is read at call time by apps/payments/fapshi.py, which is the
+# only module that talks to Fapshi. Nothing below has a working default, and that
+# is deliberate: FAPSHI_BASE_URL used to default to https://live.fapshi.com, so a
+# deploy that configured nothing at all took real money from real buyers instead
+# of failing. It now raises ImproperlyConfigured on first use, naming the variable.
+#
+# Set FAPSHI_BASE_URL to https://sandbox.fapshi.com for testing — sandbox has
+# documented test numbers with deterministic outcomes (fapshi.SANDBOX_NUMBERS),
+# which is the only way to exercise the failure path without asking a real
+# operator to decline a real payment.
 # ──────────────────────────────────────────────────────────────────────────────
 FAPSHI_API_USER = env("FAPSHI_API_USER", default="")
 FAPSHI_API_KEY  = env("FAPSHI_API_KEY", default="")
-FAPSHI_BASE_URL = env("FAPSHI_BASE_URL", default="https://live.fapshi.com")
+FAPSHI_BASE_URL = env("FAPSHI_BASE_URL", default="")
+
+# Fapshi's floor for a single transaction. Configurable because it is Fapshi's
+# number to change, not ours, and a hardcoded one would mean a code deploy to
+# follow it.
+FAPSHI_MIN_AMOUNT = env.int("FAPSHI_MIN_AMOUNT", default=100)
+
+# The static string Fapshi echoes in the `x-wh-secret` header of every webhook.
+# Not a signature — see fapshi.webhook_secret_ok for why it is checked with a
+# constant-time compare anyway, and why an unset value does not fail closed.
+# Created in the Fapshi dashboard and NOT readable afterwards, so record it when
+# you set it.
+FAPSHI_WEBHOOK_SECRET = env("FAPSHI_WEBHOOK_SECRET", default="")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Didit Verification

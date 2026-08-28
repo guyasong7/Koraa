@@ -1,6 +1,5 @@
 import logging
 
-import requests
 from django.conf import settings
 from django.db import transaction as db_transaction
 from django.utils import timezone
@@ -10,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from .models import Subscription, PaymentTransaction, Plan
-from . import lifecycle
+from . import fapshi, lifecycle
 from apps.merchants import plans as plan_catalogue
 
 logger = logging.getLogger(__name__)
@@ -31,50 +30,61 @@ PLAN_PRICES = {
 CYCLE_DAYS = {"monthly": 30, "yearly": 365}
 PURCHASABLE_CYCLES = ("yearly",)
 
-FAPSHI_HEADERS = {
-    "apiuser": settings.FAPSHI_API_USER,
-    "apikey":  settings.FAPSHI_API_KEY,
-}
-FAPSHI_BASE = getattr(settings, "FAPSHI_BASE_URL", "https://live.fapshi.com")
+# ──────────────────────────────────────────────────────────────────────────────
+# Fapshi — shims over apps.payments.fapshi
+#
+# The three functions below used to build their own requests here, and
+# `apps/orders/views.py` imported them across the app boundary. Everything about
+# the wire format now lives in `fapshi.py`; these are signature-compatible
+# wrappers so the settle paths keep working while they are rewritten to call
+# `fapshi` directly. They are deliberately thin and are not the long-term API.
+#
+# One behaviour deliberately does NOT survive the move: `_check_fapshi_status`
+# answered "FAILED" whenever Fapshi did not answer with a 200. Callers believed
+# it, so an outage marked paid orders failed and cancelled live subscriptions.
+# The shim lets `FapshiUnavailable` propagate instead. An uncaught exception in a
+# webhook is not pretty, but it leaves the row pending and recoverable, and a
+# pending row is something `reconcile_orders` can settle later — whereas a row
+# wrongly marked failed has lost the fact that money moved.
+# ──────────────────────────────────────────────────────────────────────────────
 
 
 def _initiate_fapshi_payment(amount: int, email: str, redirect_url: str, external_id: str, message: str):
     """Call Fapshi initiate-pay and return (link, trans_id) or raise on failure."""
-    payload = {
-        "amount": amount,
-        "email": email,
-        "redirectUrl": redirect_url,
-        "externalId": external_id,
-        "message": message,
-    }
-    resp = requests.post(f"{FAPSHI_BASE}/initiate-pay", json=payload, headers=FAPSHI_HEADERS, timeout=15)
-    if resp.status_code not in (200, 201):
-        raise ValueError(f"Fapshi error: {resp.text}")
-    data = resp.json()
-    return data["link"], data["transId"]
+    return fapshi.initiate_pay(
+        amount=amount,
+        email=email,
+        redirect_url=redirect_url,
+        external_id=external_id,
+        message=message,
+    )
 
 
 def _check_fapshi_status(trans_id: str) -> str:
-    """Return Fapshi payment status string for a transaction."""
-    resp = requests.get(f"{FAPSHI_BASE}/payment-status/{trans_id}", headers=FAPSHI_HEADERS, timeout=15)
-    if resp.status_code != 200:
-        return "FAILED"
-    return resp.json().get("status", "FAILED")
+    """Fapshi's status for a transaction.
+
+    Raises ``FapshiUnavailable`` rather than returning ``"FAILED"`` when Fapshi
+    cannot be reached — see the note above. Callers must not treat an exception
+    here as a failed payment.
+    """
+    return fapshi.payment_status(trans_id)
 
 
 def _initiate_fapshi_payout(phone: str, amount: int) -> bool:
-    """Trigger Fapshi Payout API."""
-    payload = {
-        "amount": amount,
-        "phone": phone
-    }
+    """Trigger Fapshi Payout API. True if Fapshi accepted it.
+
+    The bool is the old contract and it is a poor one: it cannot distinguish
+    "refused" from "we never found out", and the caller only logs it, so a
+    merchant who was never paid leaves no queryable trace. Kept for one commit so
+    the call site keeps compiling; the payout fields on ``Order`` replace it.
+    """
     try:
-        resp = requests.post(f"{FAPSHI_BASE}/payout", json=payload, headers=FAPSHI_HEADERS, timeout=15)
-        if resp.status_code in (200, 201):
-            return True
-        logger.error("Fapshi payout failed (%s): %s", resp.status_code, resp.text)
-    except requests.RequestException:
-        logger.exception("Fapshi payout request raised")
+        # No external_id: the old signature has nowhere to carry one. That is
+        # precisely why a failed payout cannot be traced back to an order today.
+        fapshi.payout(phone=phone, amount=amount, external_id="legacy")
+        return True
+    except fapshi.FapshiError:
+        logger.exception("Fapshi payout failed for %s", phone[-3:] if phone else "?")
     return False
 
 
