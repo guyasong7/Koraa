@@ -54,6 +54,9 @@ infrastructure/docker/letsencrypt/
 # Build artifacts
 dist/
 build/
+# tsc's incremental cache. Tracked until now, which meant every `typecheck` run
+# showed up as a modified file and one got committed as "Fixed" (14917ac).
+*.tsbuildinfo
 
 # Editor
 .vscode/

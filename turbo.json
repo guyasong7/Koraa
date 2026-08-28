@@ -5,7 +5,14 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "KORAA_PUBLIC_*",
+        "NEXT_PUBLIC_*",
+        "KORAA_STRICT_PUBLIC_ENV",
+        "VERCEL",
+        "CI"
+      ]
     },
     "dev": {
       "cache": false,

@@ -6,6 +6,11 @@ const MONOREPO_ROOT = path.resolve(__dirname, "../../");
 // Vercel sets VERCEL=1 during its build. On Vercel, standalone output is not
 // needed — Vercel uses its own serverless function tracing mechanism, and
 // forcing standalone here breaks the build pipeline.
+//
+// This only reads as true because turbo.json lists VERCEL in the build task's
+// `env`. Turborepo's strict env mode drops undeclared variables, so without
+// that entry this is false *on Vercel*, silently turning standalone back on and
+// disabling the isDeployBuild checks below.
 const isVercel = !!process.env.VERCEL;
 
 // ── Browser-visible configuration ────────────────────────────────────────────
@@ -136,6 +141,12 @@ function checkPublicEnv(phase: string): void {
     `  Vercel: Project Settings -> Environment Variables, ticking Production`,
     `          and Preview, then redeploy. Values added there do not reach a`,
     `          build that has already run.`,
+    `          If they ARE set there and this still fires, the variable is`,
+    `          missing from turbo.json's "env". Turborepo runs tasks in strict`,
+    `          env mode and drops anything undeclared before next build sees`,
+    `          it, and its Next.js inference covers only NEXT_PUBLIC_* — not`,
+    `          KORAA_PUBLIC_*. That gap is what shipped apiKey:"" to`,
+    `          production with all ten values present in the dashboard.`,
     `  Docker: pass them as --build-arg (see apps/web/Dockerfile).`,
     `  Local:  apps/web/.env.local — gitignored, so it never reaches a host.`,
     ``,
