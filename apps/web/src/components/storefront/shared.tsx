@@ -81,10 +81,16 @@ export function linkList(
   return out.length > 0 ? out : fallback;
 }
 
-/** "1 500 000" with the store's currency in front. */
-export function formatPrice(store: Store, value: string): string {
-  const n = parseFloat(value);
-  const amount = Number.isFinite(n) ? n.toLocaleString() : value;
+/** "1 500 000" with the store's currency in front.
+ *
+ * Takes only the currency rather than a whole `Store`: the checkout knows its
+ * shop's currency but never loads the full storefront payload, and it was
+ * hardcoding "XAF" in five places for want of this signature. Every existing
+ * caller passes a `Store`, which still satisfies it.
+ */
+export function formatPrice(store: Pick<Store, "currency">, value: string | number): string {
+  const n = typeof value === "number" ? value : parseFloat(value);
+  const amount = Number.isFinite(n) ? n.toLocaleString() : String(value);
   return `${store.currency || "XAF"} ${amount}`;
 }
 

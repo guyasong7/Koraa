@@ -426,7 +426,43 @@ const publicApi = axios.create({
 
 export const publicStorefrontApi = {
   getStorefront: (domain: string) => publicApi.get(`/public/storefront/by-domain/?domain=${domain}`),
-  checkout: (domain: string, data: CheckoutData) => publicApi.post(`/public/storefront/${domain}/orders/`, data),
+  /**
+   * Price a cart, hold the stock and record the order. **Charges nothing.**
+   *
+   * The response's `total_amount` is the authoritative figure — priced from the
+   * default variant's `effective_price`, where the cart in the browser sums
+   * `base_price`. Show it before calling `chargeOrder`; when the charge lived in
+   * this same request, a disagreement between the two could only ever surface
+   * after the shopper's money had gone.
+   */
+  checkout: (domain: string, data: CheckoutData) =>
+    publicApi.post<CreatedOrder>(`/public/storefront/${domain}/orders/`, data),
+  /**
+   * Charge a mobile money number for an order that already exists.
+   *
+   * Three outcomes, and the third is the one that needs care:
+   *
+   * - **201** — accepted. Poll `getOrderStatus` while the shopper approves the
+   *   prompt on their handset.
+   * - **4xx/503** — refused, or a charge is already in flight. Nothing new was
+   *   charged. A 400 is usually a mistyped number and is retryable against this
+   *   same order.
+   * - **202 with `charge_accepted: false`** — Fapshi never answered, so the
+   *   charge **may or may not exist**. Do not present it as a failure and do not
+   *   resend it; resending is the one way to take the money twice.
+   */
+  chargeOrder: (orderId: string, data: ChargeRequest) =>
+    publicApi.post<ChargedOrder>(`/public/storefront/orders/${orderId}/pay/`, data),
+  /**
+   * Where a payment has got to. Safe to poll; the backend paces its own calls to
+   * Fapshi, which allows only six a minute per transaction.
+   *
+   * Branch on `settled`, not on `payment_status === "paid"` — a *failed* payment
+   * is also settled and also final, and polling until "paid" would keep polling
+   * a dead payment until the timeout.
+   */
+  getOrderStatus: (orderId: string) =>
+    publicApi.get<OrderStatus>(`/public/storefront/orders/${orderId}/status/`),
   /**
    * Send an enquiry from a storefront's form.
    *
@@ -1149,4 +1185,58 @@ export interface CheckoutData {
     product_id: string;
     quantity: number;
   }>;
+}
+
+/** What `checkout` returns: an order that exists and is priced, but unpaid. */
+export interface CreatedOrder {
+  id: string;
+  total_amount: string;
+  payment_status: PaymentState;
+  items: Array<{
+    id: string;
+    product: string | null;
+    product_name: string;
+    quantity: number;
+    price: string;
+  }>;
+  created_at: string;
+}
+
+/** Fapshi's two mobile money networks, as the backend names them. */
+export type PaymentMedium = "mobile money" | "orange money";
+
+export interface ChargeRequest {
+  phone: string;
+  /**
+   * Omitted lets Fapshi detect the network from the prefix, which its own docs
+   * recommend over a caller-supplied guess. Sent only when a shopper overrode
+   * the pre-selection.
+   */
+  medium?: PaymentMedium;
+}
+
+/** Koraa's own payment vocabulary. Fapshi's status strings never cross the API. */
+export type PaymentState = "pending" | "paid" | "failed" | "refunded";
+
+export interface ChargedOrder {
+  id: string;
+  reference: string;
+  total_amount: string;
+  currency: string;
+  payment_status: PaymentState;
+  /**
+   * False on a 202: Fapshi never confirmed it took the request, so the charge may
+   * or may not exist. Must not be rendered as a failure.
+   */
+  charge_accepted: boolean;
+}
+
+export interface OrderStatus {
+  id: string;
+  reference: string;
+  total_amount: string;
+  currency: string;
+  payment_status: PaymentState;
+  /** Final either way. A failed payment is settled too — see `getOrderStatus`. */
+  settled: boolean;
 }
