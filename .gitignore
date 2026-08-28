@@ -28,18 +28,14 @@ apps/*/out/
 # secrets read by infrastructure/docker/docker-compose.prod.yml.
 .env*
 
-# Then re-admit the two kinds that are public on purpose. These negations must
-# stay below the blanket above — for a given path the last matching rule wins.
+# Then re-admit the one kind that is public on purpose. This negation must stay
+# below the blanket above — for a given path the last matching rule wins.
 #
 # The *.example templates document which variables exist and carry placeholder
-# values, never real ones.
+# values, never real ones. apps/web/.env.production.example is the one to read
+# before adding a variable the browser needs; it also records why the real file
+# is not committed.
 !.env*.example
-# apps/web/.env.production holds the *public* half of the browser bundle's
-# config, committed deliberately: next.config.ts inlines these values into
-# JavaScript served to every visitor, and a build without them ships
-# apiKey:"" plus a localhost API base. The file's own header says what may and
-# may not go in it; read it before adding a line there.
-!apps/web/.env.production
 # TLS material mounted into the nginx container.
 infrastructure/docker/certs/
 # certbot's own state, created on the server by
