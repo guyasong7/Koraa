@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import KoraaLogo from "@/components/KoraaLogo";
@@ -9,14 +9,8 @@ import { MtnLogo } from "@/components/RailLogos";
 import toast from "react-hot-toast";
 import { LuEye, LuEyeOff, LuArrowRight, LuTrendingUp } from "react-icons/lu";
 import { FcGoogle } from "react-icons/fc";
-import {
-  signInWithGoogle,
-  registerWithEmail,
-  startGoogleRedirect,
-  consumeRedirectResult,
-  tookGoogleRedirect,
-} from "@/lib/firebase";
-import { socialAuthErrorMessage } from "@/lib/socialAuthError";
+import { registerWithEmail } from "@/lib/firebase";
+import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 
 export default function RegisterPage() {
   return (
@@ -31,6 +25,9 @@ function RegisterContent() {
   const searchParams = useSearchParams();
   const refCode = searchParams.get("ref") || "";
   const { socialLogin, isLoading } = useAuthStore();
+  // Completes a returning Google redirect on mount and hands back the button's
+  // handler. See hooks/useGoogleAuth.ts for why this is not two copies.
+  const { signIn: handleGoogleLogin } = useGoogleAuth({ referralCode: refCode });
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     email: "",
@@ -82,90 +79,6 @@ function RegisterContent() {
       }
     } finally {
       useAuthStore.setState({ isLoading: false });
-    }
-  };
-
-  // Completes a sign-up that left the page for Google. `consumeRedirectResult`
-  // is single-flight, which is what makes this safe under React Strict Mode —
-  // it double-invokes effects in development, and two concurrent
-  // `getRedirectResult` calls race over one shared Firebase event stream and
-  // trip an internal assertion. See the note in lib/firebase.ts.
-  useEffect(() => {
-    // Read before the first await, so the double-invoked effect cannot both
-    // claim the return leg and report the same failure twice.
-    const returning = tookGoogleRedirect();
-
-    const handleRedirectResult = async () => {
-      try {
-        const result = await consumeRedirectResult();
-        if (!result) return;
-
-        useAuthStore.setState({ isLoading: true });
-        try {
-          const idToken = await result.user.getIdToken();
-          await useAuthStore.getState().socialLogin("google", idToken, undefined, refCode || undefined);
-          const user = useAuthStore.getState().user;
-          if (user && !user.has_merchant) {
-            toast.success("Account connected! Let's set up your store.");
-            router.push("/auth/onboarding");
-          } else {
-            toast.success("Welcome back!");
-            router.push("/dashboard");
-          }
-        } finally {
-          useAuthStore.setState({ isLoading: false });
-        }
-      } catch (err) {
-        // Only worth reporting if a redirect actually happened. On an ordinary
-        // visit there is no sign-up in progress to have failed, and a toast
-        // here would be about nothing.
-        const message = socialAuthErrorMessage(err);
-        if (returning && message) toast.error(message);
-      }
-    };
-    void handleRedirectResult();
-  }, [router, refCode]);
-
-  const handleGoogleLogin = async () => {
-    try {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        useAuthStore.setState({ isLoading: true });
-        await startGoogleRedirect();
-        return;
-      }
-
-      const idToken = await signInWithGoogle();
-      await useAuthStore.getState().socialLogin("google", idToken, undefined, refCode || undefined);
-      const user = useAuthStore.getState().user;
-      if (user && !user.has_merchant) {
-        toast.success("Account connected! Let's set up your store.");
-        router.push("/auth/onboarding");
-      } else {
-        toast.success("Welcome back!");
-        router.push("/dashboard");
-      }
-    } catch (err: any) {
-      // A blocked popup is not a failed sign-up, and telling the user it was
-      // leaves them stuck on a button that will never work. Finish the same
-      // sign-up without a popup instead: the redirect flow leaves the page, and
-      // the effect above picks the result up on the way back.
-      if (err.code === "auth/popup-blocked") {
-        try {
-          useAuthStore.setState({ isLoading: true });
-          await startGoogleRedirect();
-          return;
-        } catch {
-          useAuthStore.setState({ isLoading: false });
-        }
-      }
-
-      // Everything else — a closed popup, an unauthorized domain, a build with
-      // no Firebase credentials, an unreachable API, a token the backend would
-      // not take. The helper logs the real error and answers null for the cases
-      // that are not worth a toast.
-      const message = socialAuthErrorMessage(err);
-      if (message) toast.error(message);
     }
   };
 

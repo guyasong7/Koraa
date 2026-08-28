@@ -2,20 +2,14 @@
 
 import Link from "next/link";
 import KoraaLogo from "@/components/KoraaLogo";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import toast from "react-hot-toast";
 import { LuEye, LuEyeOff, LuArrowRight } from "react-icons/lu";
 import { FcGoogle } from "react-icons/fc";
-import {
-  signInWithGoogle,
-  signInWithEmail,
-  startGoogleRedirect,
-  consumeRedirectResult,
-  tookGoogleRedirect,
-} from "@/lib/firebase";
-import { socialAuthErrorMessage } from "@/lib/socialAuthError";
+import { signInWithEmail } from "@/lib/firebase";
+import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,6 +17,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Completes a returning Google redirect on mount and hands back the button's
+  // handler. See hooks/useGoogleAuth.ts for why this is not two copies.
+  const { signIn: handleGoogleLogin } = useGoogleAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,91 +62,6 @@ export default function LoginPage() {
       useAuthStore.setState({ isLoading: false });
     }
   };
-
-  // Completes a sign-in that left the page for Google. `consumeRedirectResult`
-  // is single-flight, which is what makes this safe under React Strict Mode —
-  // it double-invokes effects in development, and two concurrent
-  // `getRedirectResult` calls race over one shared Firebase event stream and
-  // trip an internal assertion. See the note in lib/firebase.ts.
-  useEffect(() => {
-    // Read before the first await, so the double-invoked effect cannot both
-    // claim the return leg and report the same failure twice.
-    const returning = tookGoogleRedirect();
-
-    const handleRedirectResult = async () => {
-      try {
-        const result = await consumeRedirectResult();
-        if (!result) return;
-
-        useAuthStore.setState({ isLoading: true });
-        try {
-          const idToken = await result.user.getIdToken();
-          await useAuthStore.getState().socialLogin("google", idToken);
-          const user = useAuthStore.getState().user;
-          if (user && !user.has_merchant) {
-            toast.success("Account connected! Let's set up your store.");
-            router.push("/auth/onboarding");
-          } else {
-            toast.success("Welcome back!");
-            router.push("/dashboard");
-          }
-        } finally {
-          useAuthStore.setState({ isLoading: false });
-        }
-      } catch (err) {
-        // Only worth reporting if a redirect actually happened. On an ordinary
-        // visit there is no sign-in in progress to have failed, and a toast
-        // here would be about nothing.
-        const message = socialAuthErrorMessage(err);
-        if (returning && message) toast.error(message);
-      }
-    };
-    void handleRedirectResult();
-  }, [router]);
-
-  const handleGoogleLogin = async () => {
-    try {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        useAuthStore.setState({ isLoading: true });
-        await startGoogleRedirect();
-        return;
-      }
-
-      const idToken = await signInWithGoogle();
-      await useAuthStore.getState().socialLogin("google", idToken);
-      const user = useAuthStore.getState().user;
-      if (user && !user.has_merchant) {
-        toast.success("Account connected! Let's set up your store.");
-        router.push("/auth/onboarding");
-      } else {
-        toast.success("Welcome back!");
-        router.push("/dashboard");
-      }
-    } catch (err: any) {
-      // A blocked popup is not a failed sign-in, and telling the user it was
-      // leaves them stuck on a button that will never work. Finish the same
-      // sign-in without a popup instead: the redirect flow leaves the page, and
-      // the effect above picks the result up on the way back.
-      if (err.code === "auth/popup-blocked") {
-        try {
-          useAuthStore.setState({ isLoading: true });
-          await startGoogleRedirect();
-          return;
-        } catch {
-          useAuthStore.setState({ isLoading: false });
-        }
-      }
-
-      // Everything else — a closed popup, an unauthorized domain, a build with
-      // no Firebase credentials, an unreachable API, a token the backend would
-      // not take. The helper logs the real error and answers null for the cases
-      // that are not worth a toast.
-      const message = socialAuthErrorMessage(err);
-      if (message) toast.error(message);
-    }
-  };
-
 
   return (
     <div className="auth-container">

@@ -23,11 +23,12 @@ const firebaseConfig = {
  * Marks a sign-in failure as "this build has no Firebase credentials", so the
  * UI can say that instead of blaming the user's attempt.
  *
- * `next.config.ts` fails a production build with these missing, so reaching this
- * means either a dev shell with no `.env.local` or a bundle built before that
- * check existed. Worth distinguishing regardless: `initializeApp` accepts a
- * blank config without complaint and the failure only appears later, from
- * `signInWithPopup`, as an error about the request rather than the setup.
+ * `next.config.ts` warns on a production build with these missing (and fails it
+ * when KORAA_STRICT_PUBLIC_ENV=1), so reaching this means either a dev shell
+ * with no `.env.local` or a bundle built past that warning. Worth distinguishing
+ * regardless: `initializeApp` accepts a blank config without complaint and the
+ * failure only appears later, from `signInWithPopup`, as an error about the
+ * request rather than the setup.
  */
 export const FIREBASE_NOT_CONFIGURED = "koraa/firebase-not-configured";
 
@@ -171,12 +172,16 @@ let popupInFlight: Promise<string> | null = null;
  * A popup has to be opened while the browser still considers the click recent,
  * so this is the one path where the deferred load has a cost: if the chunk has
  * not arrived, the window opens after a network fetch and Safari and Firefox
- * will block it. Two things keep that from happening. The sign-in pages call
+ * will block it. Two things keep that from happening. `useGoogleAuth` calls
  * `consumeRedirectResult` on mount, which loads the SDK as soon as the page
  * hydrates — long before a human can aim at the button — so by click time this
  * resolves from an already-settled promise, within the click's own task. And
- * for the case where someone is faster than the network, both callers fall back
- * to `startGoogleRedirect` on `auth/popup-blocked`, which needs no popup at all.
+ * where the popup is refused anyway, the hook falls back to
+ * `startGoogleRedirect`, which needs no popup at all.
+ *
+ * This is the path phones take too. Sending them to `startGoogleRedirect`
+ * instead is the obvious-looking choice and it silently broke mobile sign-in
+ * entirely — see the note above `startGoogleRedirect`.
  */
 export function signInWithGoogle(): Promise<string> {
   // A double-clicked button gets the first popup's token rather than a second
@@ -227,7 +232,30 @@ export function consumeRedirectResult(): Promise<UserCredential | null> {
 // it, and it is cleared by the read that consumes it.
 const REDIRECT_FLAG = "koraa:google-redirect";
 
-/** Leaves the page for Google, remembering that we did so. */
+/**
+ * Leaves the page for Google, remembering that we did so.
+ *
+ * FALLBACK ONLY — do not reach for this as the mobile path.
+ *
+ * The redirect hands off to `<project>.firebaseapp.com/__/auth/handler` and, on
+ * the way back, `getRedirectResult` has to read state written under that origin.
+ * Since Firebase JS SDK 9.13 that read fails wherever third-party storage is
+ * partitioned: Safari with ITP — so every browser on iOS, all of them WebKit —
+ * and Chrome and Firefox with their equivalents. It fails by resolving `null`,
+ * which is indistinguishable from "no redirect was pending", so the user comes
+ * back from Google to a page that does nothing and says nothing.
+ *
+ * `signInWithPopup` has none of that problem and works on phones, which is why
+ * `useGoogleAuth` uses it everywhere and only lands here when the browser will
+ * not open a window at all (a blocker, or an in-app webview). Callers must treat
+ * a null result on the return leg as a failure worth reporting — `useGoogleAuth`
+ * does.
+ *
+ * Making redirect reliable again means serving the handler from our own origin:
+ * a rewrite of /__/auth/* onto the Firebase host, or a custom auth domain in the
+ * Firebase console. Worth doing if in-app webviews turn out to be a meaningful
+ * share of sign-ups.
+ */
 export async function startGoogleRedirect(): Promise<void> {
   try {
     sessionStorage.setItem(REDIRECT_FLAG, "1");
