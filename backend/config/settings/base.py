@@ -409,6 +409,19 @@ CELERY_BEAT_SCHEDULE = {
         "task": "payments.expire_lapsed_subscriptions",
         "schedule": crontab(hour=7, minute=25),
     },
+    #: Not an optimisation — the only backstop under the storefront. Fapshi
+    #: delivers each webhook once and never retries, so a notification lost to a
+    #: deploy or a restart means a buyer has paid and received nothing. Every 15
+    #: minutes, offset off the quarter hour to stay clear of deploy windows.
+    #:
+    #: Idempotent (see ``apps.orders.settlement``) and it only ever *reads* from
+    #: Fapshi to decide. Payout retries are deliberately absent: they move money
+    #: and belong to ``manage.py reconcile_orders --retry-payouts``, run by a
+    #: human.
+    "reconcile-pending-orders": {
+        "task": "orders.reconcile_pending",
+        "schedule": crontab(minute="7,22,37,52"),
+    },
 }
 
 # ──────────────────────────────────────────────────────────────────────────────

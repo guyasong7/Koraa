@@ -250,7 +250,7 @@ def _after_paid(order_id) -> None:
         logger.error("Order %s vanished before its side effects ran", order_id)
         return
 
-    _pay_merchant(order)
+    pay_merchant(order)
     _notify_merchant(order)
 
     # Both of these are documented as never raising, but they are the two steps
@@ -262,8 +262,13 @@ def _after_paid(order_id) -> None:
             logger.exception("Order %s: %s step failed", order_id, step)
 
 
-def _pay_merchant(order: Order) -> None:
+def pay_merchant(order: Order) -> None:
     """Send the merchant their share, and record what happened either way.
+
+    Public because it has two callers: settlement, on the way through
+    ``_after_paid``, and ``reconcile_orders --retry-payouts`` for the orders where
+    that first attempt did not land. Both need identical arithmetic and identical
+    bookkeeping, which is the entire reason this is one function.
 
     The amount is the merchant's cut of what Koraa actually *received* when
     Fapshi told us — ``revenue``, the charge less Fapshi's own fee — falling back
@@ -271,10 +276,17 @@ def _pay_merchant(order: Order) -> None:
     of the gross would mean paying out more than came in whenever Fapshi's fee
     exceeds the platform commission.
 
-    Never raises, and never retries. Fapshi's own documentation warns that misuse
-    can suspend an account, and a retry whose first attempt actually succeeded
-    pays the merchant twice. A failure is written down for
-    ``reconcile_orders --retry-payouts`` to pick up deliberately.
+    Never raises, and never retries *itself*. Fapshi's own documentation warns
+    that misuse can suspend an account, and a retry whose first attempt actually
+    succeeded pays the merchant twice. A failure is written down for
+    ``reconcile_orders --retry-payouts`` to pick up deliberately — which is a
+    human choosing to retry, not this function looping.
+
+    Not idempotent, and cannot be: Fapshi's payout endpoint has no idempotency
+    key, so there is no way to ask "did this externalId already pay out" before
+    sending. The protection is that the only automatic caller runs inside
+    ``settled_at``'s once-only guard, and the manual caller refuses any order
+    whose ``payout_status`` is ``sent`` or ``unknown``.
     """
     merchant = order.store.merchant
     account = (
