@@ -35,8 +35,88 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 }
 
+/**
+ * Confirms giving up a paid term for Free.
+ *
+ * The free branch of `InitiatePaymentView` cancels every active subscription
+ * and sets `tier_expires_at` to null (backend/apps/payments/views.py). The paid
+ * term is destroyed outright — not archived, not pro-rated, not refunded — and
+ * nothing short of buying another full year brings it back.
+ *
+ * Until this dialog existed, a merchant halfway through a Pro year saw the Free
+ * card as an ordinary enabled button reading "Get Started Free". One click and
+ * the rest of the year was gone, with no warning and no way back. So the guard
+ * is not only that a confirmation exists, but that the button stops describing
+ * a downgrade as a sign-up — see `label` below.
+ */
+function DowngradeDialog({
+  planName, daysRemaining, termEndsAt, busy, onCancel, onConfirm,
+}: {
+  planName: string;
+  daysRemaining: number;
+  termEndsAt: string | null;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="modal-overlay"
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div className="modal-panel" style={{ maxWidth: 440, borderRadius: "16px" }}>
+        <div className="modal-body" style={{ padding: "22px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "color-mix(in srgb, var(--danger) 12%, transparent)", color: "var(--danger-text)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+            <LuTriangleAlert size={24} />
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 10px 0", fontFamily: "var(--font-display)" }}>
+            Give up the rest of your {planName} term?
+          </h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: "0 0 12px 0", lineHeight: 1.55 }}>
+            You have{" "}
+            <strong style={{ color: "var(--text-primary)" }}>
+              {daysRemaining} day{daysRemaining === 1 ? "" : "s"}
+            </strong>{" "}
+            of {planName} left{termEndsAt ? `, paid up to ${formatDate(termEndsAt)}` : ""}.
+            Switching to Free ends that immediately.
+          </p>
+          <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0, lineHeight: 1.55 }}>
+            This cannot be undone and the unused time is not refunded — getting
+            {" "}{planName} back means buying another full year. Your storefronts
+            and data stay online either way; only your allowances drop to the
+            Free limits.
+          </p>
+        </div>
+
+        <div className="modal-footer">
+          <button onClick={onCancel} className="btn btn-secondary" style={{ flex: 1, minHeight: 46, padding: "12px", fontSize: 15, borderRadius: "8px", justifyContent: "center" }}>
+            Keep {planName}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={busy}
+            className="btn btn-primary"
+            style={{
+              flex: 1, minHeight: 46, padding: "12px", fontSize: 15, borderRadius: "8px", justifyContent: "center",
+              background: "var(--danger)",
+              color: "#fff",
+              borderColor: "transparent",
+              opacity: busy ? 0.8 : 1,
+              transition: "all 0.2s",
+            }}
+          >
+            {busy ? <LuLoader size={17} className="spin" /> : "Downgrade anyway"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BillingPage() {
   const [loading, setLoading] = useState<string | null>(null);
+  /** Set when Free is clicked from a paid plan — see `DowngradeDialog`. */
+  const [confirmingDowngrade, setConfirmingDowngrade] = useState(false);
 
   const { data: catalogue, isLoading: plansLoading } = useQuery({
     queryKey: ["plan-catalogue"],
@@ -55,14 +135,18 @@ export default function BillingPage() {
       window.location.href = "mailto:sales@koraa.africa?subject=Enterprise Plan Enquiry";
       return;
     }
+    // Free is not a purchase, it is the end of one. Ask before spending the
+    // rest of a paid term; `performDowngrade` is what actually does it.
+    if (planKey === "free") {
+      // The card is inert when Free is already the effective tier, so getting
+      // here means a live paid term. Guarded anyway, because `plan` also reads
+      // "free" once a term lapses and there is nothing to give up in that case.
+      if (currentPlan === "free") return;
+      setConfirmingDowngrade(true);
+      return;
+    }
     setLoading(planKey);
     try {
-      if (planKey === "free") {
-        await paymentApi.initiate("free", "yearly");
-        await refetchSub();
-        toast.success("You are on the Free plan.");
-        return;
-      }
       // Yearly only: `PURCHASABLE_CYCLES` rejects anything else, which is why
       // the monthly toggle that used to sit here 400'd on every click.
       const res = await paymentApi.initiate(planKey, "yearly");
@@ -74,7 +158,27 @@ export default function BillingPage() {
     }
   };
 
+  /** The confirmed downgrade. Only `DowngradeDialog` reaches this. */
+  const performDowngrade = async () => {
+    setLoading("free");
+    try {
+      await paymentApi.initiate("free", "yearly");
+      await refetchSub();
+      setConfirmingDowngrade(false);
+      toast.success("You are now on the Free plan.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Could not switch to the Free plan.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const plans = catalogue?.plans ?? [];
+  // Taken from the catalogue rather than title-casing the key, so the dialog
+  // calls the plan what its card calls it.
+  const currentPlanName =
+    plans.find(p => p.key === currentPlan)?.name
+    ?? currentPlan.replace(/^\w/, c => c.toUpperCase());
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 24px" }}>
@@ -133,8 +237,12 @@ export default function BillingPage() {
             // just lapsed must be able to buy the same one again. Only Free
             // — which cannot be bought and never expires — is inert.
             const inert = isCurrentPlan && plan.key === "free";
+            // Free reached from a paid plan must not read "Get Started Free".
+            // That describes signing up; what the button does is end the term
+            // the merchant paid for. See `DowngradeDialog`.
             const label = isCurrentPlan
               ? plan.key === "free" ? "Current Plan" : state.expiring_soon ? "Renew now" : "Renew early"
+              : plan.key === "free" ? "Downgrade to Free"
               : state.previous_plan === plan.key ? `Reactivate ${plan.name}` : chrome.cta;
 
             return (
@@ -222,7 +330,9 @@ export default function BillingPage() {
                     fontFamily: "Inter, sans-serif",
                   }}
                 >
-                  {loading === plan.key ? "Redirecting…" : label}
+                  {loading === plan.key
+                    ? plan.key === "free" ? "Switching…" : "Redirecting…"
+                    : label}
                 </button>
 
                 {isCurrentPlan && plan.key !== "free" && state.term_ends_at && (
@@ -236,6 +346,19 @@ export default function BillingPage() {
             );
           })}
         </div>
+      )}
+
+      {confirmingDowngrade && (
+        <DowngradeDialog
+          planName={currentPlanName}
+          daysRemaining={state.days_remaining ?? 0}
+          termEndsAt={state.term_ends_at ?? null}
+          busy={loading === "free"}
+          // Not dismissable mid-request: the call is already in flight, and
+          // closing would hide whether it landed.
+          onCancel={() => { if (loading !== "free") setConfirmingDowngrade(false); }}
+          onConfirm={performDowngrade}
+        />
       )}
     </div>
   );
