@@ -1162,11 +1162,87 @@ export async function getPlanCatalogue(): Promise<PlanCatalogue | null> {
   }
 }
 
+/**
+ * What `/payments/initiate/` returns. Shares `ChargeRequest`, `PaymentMedium`
+ * and `PaymentState` with the storefront: it is the same Fapshi direct-pay
+ * against the same three outcomes, and a second vocabulary for it would be one
+ * more place for the 202 to be mistaken for a failure.
+ */
+export interface ChargedPlan {
+  /**
+   * False on a 202: Fapshi never confirmed it took the request, so the charge may
+   * or may not exist. Must not be rendered as a failure.
+   *
+   * Absent on the free downgrade, which charges nothing — so test it as
+   * `=== false` rather than for falsiness.
+   */
+  charge_accepted?: boolean;
+  /**
+   * Absent on a 202 — nothing was confirmed, so there is nothing to poll. Its
+   * absence is exactly why that case needs a human at the Fapshi dashboard.
+   */
+  trans_id?: string;
+  subscription_id?: string;
+  plan?: string;
+  amount?: number;
+  settled: boolean;
+  payment_status?: PaymentState;
+  /** Only on the free downgrade, which settles in the same request. */
+  message?: string;
+}
+
+/** `/payments/callback/?transId=` — one poll of a plan payment. */
+export interface PlanChargeStatus {
+  /** `settlement`'s own verdict. `unknown` means an outage, never a failure. */
+  status: "activated" | "failed" | "pending" | "unknown";
+  /** Final either way. A failed payment is settled too. */
+  settled: boolean;
+  payment_status: PaymentState;
+  plan: string;
+  amount: number;
+  reference: string;
+}
+
 export const paymentApi = {
-  initiate: (plan: string, billing_cycle: string) =>
-    api.post("/payments/initiate/", { plan, billing_cycle }),
-  verifyCallback: (transId: string) =>
-    api.get(`/payments/callback/?transId=${transId}`),
+  /**
+   * Charge a merchant's mobile money number for a plan.
+   *
+   * Direct-pay, like the storefront: the prompt appears on their handset and
+   * they never leave the dashboard. There is no `payment_url` and no return
+   * trip, so **the tab that made this call is the only thing watching** —
+   * `getChargeStatus` has to be polled until it settles, and the backend's
+   * reconcile sweep is what covers the merchant who closes it.
+   *
+   * Same three outcomes as `chargeOrder`, and the same third one to be careful
+   * with:
+   *
+   * - **201** — accepted. Poll `getChargeStatus(trans_id)`.
+   * - **400/409/503** — refused, or a charge is already awaiting approval.
+   *   Nothing new was charged; a 400 is usually a mistyped number and is
+   *   retryable.
+   * - **202 with `charge_accepted: false`** — Fapshi never answered, so the
+   *   charge **may or may not exist**. There is no `trans_id` to poll and
+   *   nothing to show but "we are checking". Never present it as a failure, and
+   *   never resend — resending is the one way to charge for two years at once.
+   *
+   * Passing `plan: "free"` is a downgrade, not a purchase: it takes no `phone`,
+   * returns `{ settled: true }` with no `trans_id`, and destroys what is left of
+   * a paid term. Confirm before calling it.
+   */
+  initiate: (plan: string, billing_cycle: string, charge?: ChargeRequest) =>
+    api.post<ChargedPlan>("/payments/initiate/", { plan, billing_cycle, ...charge }),
+  /**
+   * Where a plan payment has got to. Safe to poll; the backend paces its own
+   * calls to Fapshi, which allows only six a minute per transaction.
+   *
+   * Branch on `settled`, not on `payment_status === "paid"` — a *failed* payment
+   * is settled too, and waiting for "paid" would poll a dead payment until the
+   * timeout.
+   */
+  getChargeStatus: (transId: string) =>
+    api.get<PlanChargeStatus>(
+      `/payments/callback/?transId=${encodeURIComponent(transId)}`,
+    ),
   getSubscription: () =>
     api.get<SubscriptionState>("/payments/subscription/"),
   /** Public plan table. Prices live in `merchants.plans`, never in the UI. */

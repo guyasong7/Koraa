@@ -1,9 +1,13 @@
 "use client";
 import { useState } from "react";
-import { paymentApi, type SubscriptionState } from "@/lib/api";
+import {
+  paymentApi, type PlanCatalogueEntry, type SubscriptionState,
+} from "@/lib/api";
 import {
   CONTACT_SALES_PLAN, POPULAR_PLAN, formatXaf, planBullets,
 } from "@/lib/planCopy";
+import { useAuthStore } from "@/stores/auth";
+import PurchaseDialog from "./PurchaseDialog";
 import toast from "react-hot-toast";
 import {
   LuCheck, LuZap, LuStar, LuBuilding, LuShield, LuTriangleAlert,
@@ -117,6 +121,14 @@ export default function BillingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   /** Set when Free is clicked from a paid plan — see `DowngradeDialog`. */
   const [confirmingDowngrade, setConfirmingDowngrade] = useState(false);
+  /**
+   * The plan being paid for, if any. Purchases happen in `PurchaseDialog` now:
+   * plans are charged on the handset in place, so there is no hosted page to
+   * send the merchant to and no return trip to bring them back.
+   */
+  const [buying, setBuying] = useState<PlanCatalogueEntry | null>(null);
+  /** Only to prefill the number field. The merchant can pay from any wallet. */
+  const profilePhone = useAuthStore(s => s.user?.phone);
 
   const { data: catalogue, isLoading: plansLoading } = useQuery({
     queryKey: ["plan-catalogue"],
@@ -130,14 +142,14 @@ export default function BillingPage() {
   const state: Partial<SubscriptionState> = sub ?? {};
   const currentPlan = state.plan || "free";
 
-  const handleSubscribe = async (planKey: string) => {
-    if (planKey === CONTACT_SALES_PLAN) {
+  const handleSubscribe = async (plan: PlanCatalogueEntry) => {
+    if (plan.key === CONTACT_SALES_PLAN) {
       window.location.href = "mailto:sales@koraa.africa?subject=Enterprise Plan Enquiry";
       return;
     }
     // Free is not a purchase, it is the end of one. Ask before spending the
     // rest of a paid term; `performDowngrade` is what actually does it.
-    if (planKey === "free") {
+    if (plan.key === "free") {
       // The card is inert when Free is already the effective tier, so getting
       // here means a live paid term. Guarded anyway, because `plan` also reads
       // "free" once a term lapses and there is nothing to give up in that case.
@@ -145,17 +157,10 @@ export default function BillingPage() {
       setConfirmingDowngrade(true);
       return;
     }
-    setLoading(planKey);
-    try {
-      // Yearly only: `PURCHASABLE_CYCLES` rejects anything else, which is why
-      // the monthly toggle that used to sit here 400'd on every click.
-      const res = await paymentApi.initiate(planKey, "yearly");
-      window.location.href = res.data.payment_url;
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Payment initiation failed.");
-    } finally {
-      setLoading(null);
-    }
+    // Yearly only: `PURCHASABLE_CYCLES` rejects anything else, which is why the
+    // monthly toggle that used to sit here 400'd on every click. The cycle is
+    // fixed in the dialog, which is the only thing that calls `initiate`.
+    setBuying(plan);
   };
 
   /** The confirmed downgrade. Only `DowngradeDialog` reaches this. */
@@ -318,7 +323,7 @@ export default function BillingPage() {
                 </ul>
 
                 <button
-                  onClick={() => handleSubscribe(plan.key)}
+                  onClick={() => handleSubscribe(plan)}
                   disabled={inert || loading === plan.key}
                   style={{
                     padding: "13px 20px", fontSize: 14, fontWeight: 700,
@@ -330,9 +335,9 @@ export default function BillingPage() {
                     fontFamily: "Inter, sans-serif",
                   }}
                 >
-                  {loading === plan.key
-                    ? plan.key === "free" ? "Switching…" : "Redirecting…"
-                    : label}
+                  {/* Only the Free downgrade is awaited inline; a purchase opens
+                      the dialog immediately and reports its own progress. */}
+                  {loading === plan.key ? "Switching…" : label}
                 </button>
 
                 {isCurrentPlan && plan.key !== "free" && state.term_ends_at && (
@@ -346,6 +351,22 @@ export default function BillingPage() {
             );
           })}
         </div>
+      )}
+
+      {buying && (
+        <PurchaseDialog
+          plan={buying}
+          defaultPhone={profilePhone}
+          // Renewing extends the term rather than replacing it, and the dialog
+          // says so — a merchant with six months left needs to know the year is
+          // added on, not that they are starting over.
+          renewal={currentPlan === buying.key && !state.is_expired}
+          onClose={() => setBuying(null)}
+          // The dialog's own outcome is not the authority on what they hold now:
+          // the poll it settled on could be a moment behind the activation, and
+          // usage allowances read off this query.
+          onActivated={() => { void refetchSub(); }}
+        />
       )}
 
       {confirmingDowngrade && (
