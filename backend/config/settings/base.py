@@ -307,6 +307,12 @@ REST_FRAMEWORK = {
         # actually protects Fapshi is the per-transaction cache gate in
         # `StorefrontOrderStatusView`, not a request count.
         "order-status": "120/minute",
+        # The dashboard's equivalent while a merchant approves a plan charge.
+        # Authenticated, so this counts per user rather than per IP — merchants
+        # behind one office NAT cannot exhaust each other's budget. The
+        # per-transaction cache gate in `PaymentCallbackView` is what protects
+        # Fapshi.
+        "plan-status": "120/minute",
         # Starting a charge is the expensive one — it reaches Fapshi every time —
         # but a shopper legitimately retries after mistyping a number, and each
         # attempt is one call.
@@ -433,6 +439,19 @@ CELERY_BEAT_SCHEDULE = {
     "reconcile-pending-orders": {
         "task": "orders.reconcile_pending",
         "schedule": crontab(minute="7,22,37,52"),
+    },
+    #: The same backstop for plan purchases, and needed for the same reason:
+    #: direct-pay has no redirect, so a merchant who closes the tab before
+    #: approving the prompt on their handset leaves nothing watching the payment.
+    #: The webhook is single-delivery, so without this a merchant can be charged
+    #: for a year and hold a PENDING subscription.
+    #:
+    #: Offset from the orders sweep rather than sharing its minute: both walk
+    #: pending rows one Fapshi call at a time, and running them together doubles
+    #: the burst against the gateway for no gain.
+    "reconcile-pending-subscriptions": {
+        "task": "payments.reconcile_pending",
+        "schedule": crontab(minute="12,42"),
     },
 }
 

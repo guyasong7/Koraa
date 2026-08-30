@@ -1,15 +1,16 @@
 import logging
 
-from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction as db_transaction
 from django.utils import timezone
-from datetime import timedelta
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework import status
 from .models import Subscription, PaymentTransaction, Plan
-from . import fapshi, lifecycle
+from .serializers import SubscriptionChargeRequestSerializer
+from . import fapshi, lifecycle, settlement
 from apps.merchants import plans as plan_catalogue
 
 logger = logging.getLogger(__name__)
@@ -20,229 +21,66 @@ PLAN_PRICES = {
     key: plan_catalogue.price_yearly(key) for key in plan_catalogue.PAID_TIERS
 }
 
-#: Koraa sells annual plans only. Monthly was a straight 1/12 of yearly,
-#: which gave buyers no reason to commit and Koraa no working capital.
-#:
-#: "monthly" is still accepted for reading historic rows — subscriptions
-#: bought before the change keep their 30-day cycle and settle correctly —
-#: but it is no longer offered for new purchases. Do not re-add it to
-#: PURCHASABLE_CYCLES without also restoring a monthly price.
-CYCLE_DAYS = {"monthly": 30, "yearly": 365}
 PURCHASABLE_CYCLES = ("yearly",)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Fapshi — shims over apps.payments.fapshi
+# Settlement moved out. `_settle_transaction`, `_activate_subscription`,
+# `_fail_transaction`, `_check_fapshi_status` and `CYCLE_DAYS` are
+# `apps.payments.settlement` now, and the views below call it like every other
+# caller does.
 #
-# The three functions below used to build their own requests here, and
-# `apps/orders/views.py` imported them across the app boundary. Everything about
-# the wire format now lives in `fapshi.py`; these are signature-compatible
-# wrappers so the settle paths keep working while they are rewritten to call
-# `fapshi` directly. They are deliberately thin and are not the long-term API.
+# The move was forced by `reconcile.py`: a background sweep that had to import a
+# DRF view in order to settle a payment would have inverted the layering, and the
+# invariant that matters here — one place activates a subscription — is easier to
+# hold when that place is not also an HTTP handler. It mirrors
+# `apps.orders.settlement`, which the storefront's money path already uses.
 #
-# One behaviour deliberately does NOT survive the move: `_check_fapshi_status`
-# answered "FAILED" whenever Fapshi did not answer with a 200. Callers believed
-# it, so an outage marked paid orders failed and cancelled live subscriptions.
-# The shim lets `FapshiUnavailable` propagate instead. An uncaught exception in a
-# webhook is not pretty, but it leaves the row pending and recoverable, and a
-# pending row is something `reconcile_orders` can settle later — whereas a row
-# wrongly marked failed has lost the fact that money moved.
+# `_initiate_fapshi_payment` went with the hosted-page redirect, and
+# `_initiate_fapshi_payout` with it — the latter was explicitly kept for one
+# commit so a since-deleted call site in `apps/orders/views.py` would keep
+# importing; nothing has called it since. `fapshi` still exposes `initiate_pay`,
+# because it is a real Fapshi endpoint and that module is the client for all of
+# them, but nothing in Koraa calls it any more.
 # ──────────────────────────────────────────────────────────────────────────────
 
-
-def _initiate_fapshi_payment(amount: int, email: str, redirect_url: str, external_id: str, message: str):
-    """Call Fapshi initiate-pay and return (link, trans_id) or raise on failure."""
-    return fapshi.initiate_pay(
-        amount=amount,
-        email=email,
-        redirect_url=redirect_url,
-        external_id=external_id,
-        message=message,
-    )
-
-
-def _check_fapshi_status(trans_id: str) -> str:
-    """Fapshi's status for a transaction.
-
-    Raises ``FapshiUnavailable`` rather than returning ``"FAILED"`` when Fapshi
-    cannot be reached — see the note above. Callers must not treat an exception
-    here as a failed payment.
-    """
-    return fapshi.payment_status(trans_id)
-
-
-def _initiate_fapshi_payout(phone: str, amount: int) -> bool:
-    """Trigger Fapshi Payout API. True if Fapshi accepted it.
-
-    The bool is the old contract and it is a poor one: it cannot distinguish
-    "refused" from "we never found out", and the caller only logs it, so a
-    merchant who was never paid leaves no queryable trace. Kept for one commit so
-    the call site keeps compiling; the payout fields on ``Order`` replace it.
-    """
-    try:
-        # No external_id: the old signature has nowhere to carry one. That is
-        # precisely why a failed payout cannot be traced back to an order today.
-        fapshi.payout(phone=phone, amount=amount, external_id="legacy")
-        return True
-    except fapshi.FapshiError:
-        logger.exception("Fapshi payout failed for %s", phone[-3:] if phone else "?")
-    return False
-
-
-def _settle_transaction(tx: PaymentTransaction) -> str:
-    """
-    Ask Fapshi what happened to ``tx`` and bring our records in line.
-
-    This is the single place a subscription becomes active, so both the
-    browser redirect and the server-to-server webhook end up identical.
-    The Fapshi status is always fetched from Fapshi — never taken from the
-    caller — which is why the webhook can safely be unauthenticated.
-
-    Idempotent and concurrency-safe. It did not used to be: the guard was
-    ``if tx.status == SUCCESSFUL`` read outside the ``atomic()`` block below and
-    with no row lock, so a webhook arriving while the browser polled let both
-    callers past. Both then activated the subscription — adding two years to the
-    term for one payment — and both completed the referral, paying that bonus
-    twice. ``settled_at`` is now written under ``select_for_update`` in the same
-    transaction as the activation, which is what makes the second caller stop.
-
-    Returns "activated", "failed", "pending" or "unknown". ``unknown`` means
-    Fapshi could not be reached and **nothing was changed**; it is not a failure,
-    and a caller must not present it as one.
-    """
-    try:
-        fapshi_status_str = _check_fapshi_status(tx.fapshi_trans_id)
-    except fapshi.FapshiUnavailable:
-        # The bug this replaces returned "FAILED" here, and callers believed it:
-        # an outage cancelled live subscriptions for payments that had gone
-        # through. Leaving the row alone keeps it settleable by a later pass.
-        logger.warning(
-            "Fapshi unreachable while settling transaction %s; left pending",
-            tx.fapshi_trans_id,
-        )
-        return "unknown"
-    except fapshi.FapshiRejected:
-        logger.exception(
-            "Fapshi rejected a status check for transaction %s", tx.fapshi_trans_id
-        )
-        return "unknown"
-
-    if fapshi_status_str in ("SUCCESSFUL", "SUCCESS"):
-        return _activate_subscription(tx.pk, fapshi_status_str)
-
-    if fapshi_status_str in ("FAILED", "EXPIRED"):
-        return _fail_transaction(tx.pk, fapshi_status_str)
-
-    # CREATED or PENDING — the buyer has not approved on their handset yet.
-    PaymentTransaction.objects.filter(pk=tx.pk, settled_at__isnull=True).update(
-        fapshi_status=fapshi_status_str
-    )
-    return "pending"
-
-
-def _activate_subscription(tx_pk, fapshi_status_str: str) -> str:
-    """Give the buyer the plan they paid for, exactly once."""
-    with db_transaction.atomic():
-        tx = (
-            PaymentTransaction.objects.select_for_update()
-            .select_related("subscription", "user")
-            .get(pk=tx_pk)
-        )
-
-        # The real guard: any concurrent caller queues on the lock above and
-        # arrives here to find the work done.
-        if tx.settled_at:
-            return "activated"
-
-        now = timezone.now()
-        tx.status = PaymentTransaction.Status.SUCCESSFUL
-        tx.fapshi_status = fapshi_status_str
-        tx.settled_at = now
-        tx.save(update_fields=["status", "fapshi_status", "settled_at", "updated_at"])
-
-        sub = tx.subscription
-        merchant = getattr(tx.user, "merchant", None)
-
-        # Renewing before the current term ends adds a year to what is
-        # left rather than throwing it away. The expiry warning goes out a
-        # week early precisely to invite this, so charging for a year and
-        # handing back 365 days minus the unused remainder would be theft.
-        current_expiry = getattr(merchant, "tier_expires_at", None)
-        base = (
-            current_expiry
-            if current_expiry and current_expiry > now
-            else now
-        )
-
-        sub.status = Subscription.Status.ACTIVE
-        sub.starts_at = now
-        sub.expires_at = base + timedelta(
-            days=CYCLE_DAYS.get(sub.billing_cycle, 30)
-        )
-        # A fresh term has not been warned about yet.
-        sub.expiry_notice_sent_at = None
-        sub.save()
-
-        # Any earlier paid plan is superseded by the one just bought.
-        Subscription.objects.filter(
-            user=tx.user, status=Subscription.Status.ACTIVE
-        ).exclude(pk=sub.pk).update(status=Subscription.Status.CANCELLED)
-
-        if merchant is not None:
-            merchant.tier = sub.plan
-            merchant.tier_expires_at = sub.expires_at
-            merchant.save(update_fields=["tier", "tier_expires_at"])
-        else:
-            logger.warning(
-                "Payment %s settled for user %s with no merchant profile",
-                tx.fapshi_trans_id, tx.user_id,
-            )
-
-        # Referral payout: 2% of the first plan payment the referred
-        # user makes.
-        from apps.accounts.models import Referral
-        pending_ref = Referral.objects.filter(
-            referred_user=tx.user, status=Referral.Status.PENDING
-        ).first()
-        if pending_ref:
-            pending_ref.reward_amount = int(tx.amount * 0.02)
-            pending_ref.status = Referral.Status.COMPLETED
-            pending_ref.save(update_fields=["reward_amount", "status"])
-
-    return "activated"
-
-
-def _fail_transaction(tx_pk, fapshi_status_str: str) -> str:
-    """Record a subscription payment Fapshi says did not happen.
-
-    Locked for the same reason the success path is: a concurrent activation must
-    not be overwritten by a stale failure verdict.
-    """
-    with db_transaction.atomic():
-        tx = (
-            PaymentTransaction.objects.select_for_update()
-            .select_related("subscription")
-            .get(pk=tx_pk)
-        )
-        if tx.settled_at:
-            return "activated" if tx.status == PaymentTransaction.Status.SUCCESSFUL else "failed"
-
-        tx.status = (
-            PaymentTransaction.Status.EXPIRED
-            if fapshi_status_str == "EXPIRED"
-            else PaymentTransaction.Status.FAILED
-        )
-        tx.fapshi_status = fapshi_status_str
-        tx.settled_at = timezone.now()
-        tx.save(update_fields=["status", "fapshi_status", "settled_at", "updated_at"])
-
-        if tx.subscription and tx.subscription.status == Subscription.Status.PENDING:
-            tx.subscription.status = Subscription.Status.CANCELLED
-            tx.subscription.save(update_fields=["status"])
-
-    return "failed"
+#: Written to ``PaymentTransaction.fapshi_status`` when a charge was accepted but
+#: we have not asked about it yet. Distinct from Fapshi's own strings so a row
+#: that has genuinely never been polled is visible as such.
+CHARGE_REQUESTED = "REQUESTED"
 
 
 class InitiatePaymentView(APIView):
+    """
+    POST /payments/initiate/  {"plan": ..., "billing_cycle": "yearly",
+                               "phone": ..., "medium": ...}
+
+    Buys a plan by charging a mobile money number in place. The merchant approves
+    the prompt on their handset and the dashboard stays where it is and polls
+    ``/payments/callback/``.
+
+    There is no hosted page and no redirect any more. That matters here for a
+    reason beyond symmetry with the storefront: the old flow sent the merchant to
+    Fapshi and relied on the return trip to ``/dashboard/billing/success`` to
+    trigger the only status check Koraa ever made. A merchant who paid and then
+    closed the tab was charged and never got their plan, because Fapshi delivers
+    its webhook once and never retries. Direct-pay removes the redirect entirely,
+    so the poll below plus ``payments.reconcile_pending`` are what close that gap.
+
+    Three outcomes on the paid path, and the distinction between the last two is
+    the point:
+
+    * **Accepted** — 201. A ``trans_id`` is stored and the browser polls.
+    * **Refused** — 400. Fapshi declined the request, so nothing was charged and
+      nothing will be. The usual cause is a number the merchant can correct.
+    * **No answer** — 202 with ``charge_accepted: false``. Fapshi never
+      confirmed, so **the charge may or may not exist**. Never shown as a
+      failure, and never retried automatically — resending is the one way to
+      take a merchant's money twice.
+
+    ``plan: "free"`` is not a purchase and takes none of this path; see
+    ``_activate_free``.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -253,26 +91,7 @@ class InitiatePaymentView(APIView):
         billing = request.data.get("billing_cycle", "yearly")
 
         if plan_key == "free":
-            # Downgrade / activate free plan immediately.
-            with db_transaction.atomic():
-                Subscription.objects.filter(
-                    user=request.user, status=Subscription.Status.ACTIVE
-                ).update(status=Subscription.Status.CANCELLED)
-                Subscription.objects.create(
-                    user=request.user,
-                    plan=Plan.FREE,
-                    status=Subscription.Status.ACTIVE,
-                    billing_cycle="yearly",
-                    amount_paid=0,
-                    starts_at=timezone.now(),
-                    expires_at=None,
-                )
-                merchant = getattr(request.user, "merchant", None)
-                if merchant is not None:
-                    merchant.tier = Plan.FREE
-                    merchant.tier_expires_at = None
-                    merchant.save(update_fields=["tier", "tier_expires_at"])
-            return Response({"message": "Free plan activated."})
+            return self._activate_free(request)
 
         if plan_key not in PLAN_PRICES:
             return Response({"error": "Invalid plan."}, status=status.HTTP_400_BAD_REQUEST)
@@ -282,52 +101,260 @@ class InitiatePaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        serializer = SubscriptionChargeRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        phone = serializer.validated_data["phone"]
+        medium = serializer.validated_data.get("medium") or None
+
+        in_flight = self._charge_already_in_flight(request.user)
+        if in_flight is not None:
+            return in_flight
+
         amount = PLAN_PRICES[plan_key]
-        redirect_url = f"{settings.KORAA_DASHBOARD_URL}/dashboard/billing/success"
-        message = f"Koraa {plan_key.title()} Plan — 1 year"
 
-        try:
-            link, trans_id = _initiate_fapshi_payment(
-                amount=amount,
-                email=request.user.email,
-                redirect_url=redirect_url,
-                external_id=f"{request.user.id}_{plan_key}_{billing}",
-                message=message,
-            )
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
-
-        # Create a pending subscription + transaction record
+        # The subscription row exists before the charge so that a charge whose
+        # outcome we never learn still leaves a trace. It is PENDING and gives
+        # the merchant nothing until ``settlement.activate_subscription`` runs.
         sub = Subscription.objects.create(
             user=request.user,
             plan=plan_key,
             status=Subscription.Status.PENDING,
             billing_cycle=billing,
             amount_paid=amount,
-            fapshi_trans_id=trans_id,
         )
+
+        try:
+            trans_id = fapshi.direct_pay(
+                amount=amount,
+                phone=phone,
+                # The subscription id, so a webhook resolves back to this row.
+                external_id=str(sub.pk),
+                # Koraa's User has no `get_full_name()` — `full_name` is the field,
+                # and it is `blank=True`, so this is "" for a merchant who never
+                # gave one. `direct_pay` omits the field entirely when it is empty.
+                name=request.user.full_name,
+                email=request.user.email,
+                message=f"Koraa {plan_key.title()} Plan — 1 year",
+                medium=medium,
+            )
+        except fapshi.FapshiRejected as exc:
+            # Nothing was charged. The pending subscription is deleted rather
+            # than left lying about: unlike the unknown branch below there is
+            # provably no money to reconcile against it, and a merchant
+            # correcting their number would otherwise accumulate one dead row
+            # per typo.
+            logger.warning(
+                "Fapshi refused the charge for subscription %s: %s", sub.pk, exc
+            )
+            sub.delete()
+            return Response(
+                {"error": str(exc), "charge_accepted": False},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except fapshi.FapshiUnavailable:
+            # The dangerous branch. Fapshi may have taken the charge before the
+            # connection died, so this is neither a success nor a failure. There
+            # is no transId, so nothing can follow it up automatically — which is
+            # why the subscription is *kept*: a PENDING row with no transaction
+            # is the only record that a charge may exist, and it is what a human
+            # has to work from against the Fapshi dashboard.
+            logger.exception(
+                "Fapshi gave no answer charging subscription %s for %s — "
+                "the charge may exist",
+                sub.pk, request.user.email,
+            )
+            return Response(
+                {
+                    "charge_accepted": False,
+                    "subscription_id": sub.pk,
+                    "plan": plan_key,
+                    "amount": amount,
+                    "settled": False,
+                    "payment_status": "pending",
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        Subscription.objects.filter(pk=sub.pk).update(fapshi_trans_id=trans_id)
         PaymentTransaction.objects.create(
             subscription=sub,
             user=request.user,
             fapshi_trans_id=trans_id,
-            payment_link=link,
             amount=amount,
             plan=plan_key,
             billing_cycle=billing,
+            fapshi_status=CHARGE_REQUESTED,
         )
 
-        return Response({"payment_url": link, "trans_id": trans_id})
+        return Response(
+            {
+                "charge_accepted": True,
+                "trans_id": trans_id,
+                "subscription_id": sub.pk,
+                "plan": plan_key,
+                "amount": amount,
+                "settled": False,
+                "payment_status": "pending",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def _activate_free(self, request):
+        """Switch to Free immediately. Not a purchase — no charge, no polling.
+
+        This destroys whatever is left of a paid term, which is why the dashboard
+        will not reach it without a confirmation dialog. The API stays willing
+        because the merchant's answer to that dialog is the authorisation.
+        """
+        with db_transaction.atomic():
+            Subscription.objects.filter(
+                user=request.user, status=Subscription.Status.ACTIVE
+            ).update(status=Subscription.Status.CANCELLED)
+            Subscription.objects.create(
+                user=request.user,
+                plan=Plan.FREE,
+                status=Subscription.Status.ACTIVE,
+                billing_cycle="yearly",
+                amount_paid=0,
+                starts_at=timezone.now(),
+                expires_at=None,
+            )
+            merchant = getattr(request.user, "merchant", None)
+            if merchant is not None:
+                merchant.tier = Plan.FREE
+                merchant.tier_expires_at = None
+                merchant.save(update_fields=["tier", "tier_expires_at"])
+        return Response({"message": "Free plan activated.", "settled": True})
+
+    def _charge_already_in_flight(self, user):
+        """Refuse a second plan charge while one is still awaiting approval.
+
+        Returns a response to send, or None when charging is safe.
+
+        Without this, a merchant who does not see the prompt on their handset and
+        clicks the plan again is charged twice for one year — and because
+        ``settlement.activate_subscription`` extends from the current expiry
+        rather than from today, the second payment would silently buy a *second*
+        year rather than failing visibly.
+
+        Costs one Fapshi status call, and only when there is something to ask
+        about. Settling first rather than blocking outright means a transaction
+        the merchant has already approved activates here instead of locking them
+        out of their own dashboard.
+        """
+        tx = (
+            PaymentTransaction.objects.select_related("subscription")
+            .filter(user=user, settled_at__isnull=True)
+            .exclude(fapshi_trans_id="")
+            .order_by("-created_at")
+            .first()
+        )
+        if tx is None:
+            return None
+
+        result = settlement.settle_transaction(tx)
+
+        if result == settlement.ACTIVATED:
+            return Response(
+                {
+                    "error": "That payment has already gone through — your plan is active.",
+                    "plan": tx.plan,
+                    "settled": True,
+                    "payment_status": "paid",
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if result == settlement.PENDING:
+            return Response(
+                {
+                    "error": (
+                        "A payment for a plan is already waiting for your approval. "
+                        "Check your phone for the prompt — please do not start another one."
+                    ),
+                    "trans_id": tx.fapshi_trans_id,
+                    "plan": tx.plan,
+                    "settled": False,
+                    "payment_status": "pending",
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if result == settlement.UNKNOWN:
+            # Fapshi is unreachable, so we cannot tell whether the earlier charge
+            # is live. Refusing is the safe side of that: a merchant delayed by a
+            # minute is recoverable, a merchant charged twice is not.
+            return Response(
+                {
+                    "error": (
+                        "We can't reach the payment provider to check your last "
+                        "attempt. Please wait a moment and try again."
+                    ),
+                    "settled": False,
+                    "payment_status": "pending",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        # FAILED — that attempt is dead and settled, so charging again is safe.
+        return None
 
 
 class PaymentCallbackView(APIView):
     """
-    Polled by the dashboard after Fapshi redirects the buyer back.
+    GET /payments/callback/?transId=...
+
+    Polled by the dashboard while a plan charge is awaiting approval on the
+    merchant's handset. Direct-pay has no redirect, so this is the browser's only
+    way to find out — and the ``settled`` flag below is what tells it when to stop
+    asking.
 
     Scoped to the requesting user so one merchant cannot read another's
-    transactions. The webhook below is what guarantees activation when the
-    buyer never makes it back to the browser.
+    transactions. The webhook and ``payments.reconcile_pending`` are what
+    guarantee activation when the merchant never comes back to the browser.
+
+    The response speaks the same contract as the storefront's order-status
+    endpoint — ``settled`` plus a ``payment_status`` of ``paid``/``failed``/
+    ``pending`` — because one frontend hook polls both. ``status`` is kept
+    alongside it for the older dashboard build, which reads ``"activated"``.
+
+    Note what ``unknown`` becomes here: ``settled: false`` with a pending status,
+    never a failure. It means Fapshi could not be reached and nothing was
+    changed, so the right behaviour is to keep waiting.
+
+    Fapshi is asked at most once every ``STATUS_MIN_INTERVAL_SECONDS`` per
+    transaction, across all callers, through a cache gate — the same one
+    ``StorefrontOrderStatusView`` uses, and for the same reason. Fapshi allows six
+    status calls a minute per transaction and answers a seventh with 429; the
+    dashboard polls every two seconds while the merchant is still looking at their
+    phone, which is thirty. Without the gate the frontend's own schedule would
+    rate-limit the payment it is watching. A settled transaction answers from the
+    stored row and asks nothing at all.
+
+    The gate is per-process on LocMem and shared on Redis. Production requires
+    Redis, so the shared case is the real one — and a 429 slipping through anyway
+    is harmless: it surfaces as ``FapshiRateLimited``, a ``FapshiUnavailable``,
+    which settles nothing and reads as pending.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    #: Generously rated. A dashboard makes roughly two dozen calls over the three
+    #: minutes it waits, and the cache gate above is what actually protects
+    #: Fapshi; this only stops a script from spinning. Authenticated, so it counts
+    #: per user rather than per IP and merchants behind one office NAT cannot
+    #: exhaust each other's budget.
+    throttle_scope = "plan-status"
+
+    #: ``settlement.settle_transaction``'s verdicts, mapped onto the polling
+    #: contract. ``unknown`` deliberately reads as pending-and-unsettled: an
+    #: outage is not a failed payment, and presenting it as one is the mistake
+    #: this whole settlement rewrite exists to remove.
+    _POLLING_STATE = {
+        settlement.ACTIVATED: (True, "paid"),
+        settlement.FAILED: (True, "failed"),
+        settlement.PENDING: (False, "pending"),
+        settlement.UNKNOWN: (False, "pending"),
+    }
 
     def get(self, request):
         trans_id = request.query_params.get("transId") or request.query_params.get("trans_id")
@@ -341,10 +368,40 @@ class PaymentCallbackView(APIView):
         except PaymentTransaction.DoesNotExist:
             return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        result = _settle_transaction(tx)
-        if result == "activated":
-            return Response({"status": "activated", "plan": tx.subscription.plan})
-        return Response({"status": result})
+        result = self._current_state(tx)
+        settled, payment_status = self._POLLING_STATE[result]
+
+        return Response({
+            "status": result,
+            "settled": settled,
+            "payment_status": payment_status,
+            "plan": tx.subscription.plan if tx.subscription else tx.plan,
+            "amount": tx.amount,
+            "reference": tx.fapshi_trans_id,
+        })
+
+    def _current_state(self, tx) -> str:
+        """Where ``tx`` stands, asking Fapshi only when that is allowed and useful.
+
+        Reports the stored row rather than pretending nothing is known: a poll
+        that arrives inside the gate window is answered from what the last one
+        learned, which is what makes a two-second client schedule safe.
+        """
+        if tx.settled_at:
+            # Final. Nothing to ask, and the answer cannot change.
+            return (
+                settlement.ACTIVATED
+                if tx.status == PaymentTransaction.Status.SUCCESSFUL
+                else settlement.FAILED
+            )
+
+        gate = f"fapshi:status-gate:{tx.fapshi_trans_id}"
+        # `add` writes only when the key is absent, and atomically — so exactly
+        # one caller per interval gets through, however many are polling.
+        if cache.add(gate, 1, timeout=fapshi.STATUS_MIN_INTERVAL_SECONDS):
+            return settlement.settle_transaction(tx)
+
+        return settlement.PENDING
 
 
 class FapshiWebhookView(APIView):
@@ -392,21 +449,26 @@ class FapshiWebhookView(APIView):
             .first()
         )
         if tx is not None:
-            result = _settle_transaction(tx)
+            result = settlement.settle_transaction(tx)
             logger.info("Fapshi webhook settled subscription %s as %s", trans_id, result)
             return Response({"status": result})
 
         # Not a subscription, so try a storefront order. Imported here rather
         # than at module scope: `apps.orders` imports `apps.payments.fapshi`, and
         # a top-level import back into orders would close that loop.
+        #
+        # Aliased because this module has a `settlement` of its own. Plain
+        # `from apps.orders import settlement` makes the name local to this
+        # method, so the subscription branch above — which runs *before* the
+        # import — raises UnboundLocalError instead of settling the payment.
         from apps.orders.models import Order
-        from apps.orders import settlement
+        from apps.orders import settlement as order_settlement
 
         order = (
             Order.objects.filter(fapshi_trans_id=trans_id).order_by("created_at").first()
         )
         if order is not None:
-            result = settlement.settle_order(order.id)
+            result = order_settlement.settle_order(order.id)
             logger.info("Fapshi webhook settled order %s as %s", trans_id, result)
             return Response({"status": result})
 

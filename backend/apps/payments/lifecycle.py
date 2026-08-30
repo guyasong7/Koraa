@@ -1,7 +1,7 @@
 """
 Subscription lifecycle — the passage of time, as opposed to payment events.
 
-``views._settle_transaction`` handles a merchant *buying* a plan. Nothing
+``settlement.settle_transaction`` handles a merchant *buying* a plan. Nothing
 handled a plan *running out*: ``Merchant.effective_tier`` quietly stopped
 honouring a lapsed tier, which kept enforcement correct, but
 
