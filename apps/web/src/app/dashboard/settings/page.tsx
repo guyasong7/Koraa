@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import React, { Suspense } from "react";
 import { useAuthStore } from "@/stores/auth";
 import { authApi, merchantApi, storeApi, teamApi } from "@/lib/api";
+import { ROOT_DOMAIN, storefrontHost } from "@/lib/rootDomain";
 
 import toast from "react-hot-toast";
 import {
@@ -856,9 +857,15 @@ function DomainTab() {
   const [selectedStoreId, setSelectedStoreId] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // What a merchant is told to set at their own registrar to point a domain
+  // they own at their Koraa store. 76.76.21.21 is Vercel's apex address; the
+  // CNAME host has to be a name that actually resolves under the root domain,
+  // so `cname` needs its own CNAME to cname.vercel-dns.com at our registrar —
+  // without it these instructions send merchants to a name that answers
+  // nothing, and the failure looks like their registrar's fault.
   const [dnsRecords, setDnsRecords] = useState([
     { id: 1, type: "A Record", host: "@", value: "76.76.21.21" },
-    { id: 2, type: "CNAME", host: "www", value: "cname.koraa.africa" },
+    { id: 2, type: "CNAME", host: "www", value: `cname.${ROOT_DOMAIN}` },
   ]);
   const [editingDnsId, setEditingDnsId] = useState<number | null>(null);
   const [editDnsType, setEditDnsType] = useState("");
@@ -1036,7 +1043,7 @@ function DomainTab() {
               <label className="label">Select Store</label>
               <select className="input" value={selectedStoreId} onChange={e => setSelectedStoreId(e.target.value)} required>
                 {stores.map(store => (
-                  <option key={store.id} value={store.id}>{store.name} ({store.slug}.koraa.africa)</option>
+                  <option key={store.id} value={store.id}>{store.name} ({storefrontHost(store.slug)})</option>
                 ))}
               </select>
             </div>
@@ -1368,7 +1375,7 @@ function TeamTab() {
               <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Store to share</label>
               <select className="input" value={inviteStore} onChange={e => setInviteStore(e.target.value)} required>
                 {stores.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.slug}.koraa.africa)</option>
+                  <option key={s.id} value={s.id}>{s.name} ({storefrontHost(s.slug)})</option>
                 ))}
               </select>
               <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Only this store. Your other stores stay private.</p>

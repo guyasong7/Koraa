@@ -4,29 +4,49 @@
 # Run on the instance:
 #   ./infrastructure/aws/setup-letsencrypt.sh
 #
-# Why sslip.io. No domain is owned yet and the frontend is a *.vercel.app
-# deployment, so there is no zone to put in front of this origin. That rules out a
-# Cloudflare Origin CA certificate, which is only trusted by Cloudflare. The
-# instance's own hostname is no help either: Let's Encrypt will not issue for
-# *.amazonaws.com. sslip.io answers any <dashed-ip>.sslip.io with that IP, and
-# Let's Encrypt does issue for it — so the browser on the HTTPS Vercel page gets a
-# publicly trusted certificate to talk to, which mixed-content rules require.
+# Why sslip.io is still in here. It was the only option while no domain was
+# owned: the frontend was a *.vercel.app deployment with no zone of its own, which
+# rules out a Cloudflare Origin CA certificate (trusted only by Cloudflare), and
+# Let's Encrypt will not issue for the instance's own *.amazonaws.com hostname.
+# sslip.io answers any <dashed-ip>.sslip.io with that IP and Let's Encrypt does
+# issue for it, which gave the browser on the HTTPS Vercel page a publicly trusted
+# certificate to talk to — mixed-content rules require one.
+#
+# koraa.cm is owned now, so api.koraa.cm leads the list and names the certificate.
+# sslip.io stays in it, and that is the point of issuing for both rather than
+# swapping: KORAA_PUBLIC_API_URL is inlined into the client bundle at build time,
+# so the frontend already in production keeps calling whichever host it was built
+# with until it is rebuilt. A certificate covering only the new name would make
+# every call from that bundle fail the TLS handshake — a dead site, reported to
+# the user as a network error with nothing pointing at the certificate. Drop
+# sslip.io from DOMAINS on the run *after* the frontend has been redeployed
+# against api.koraa.cm.
 #
 # Validation is HTTP-01 over the shared certbot_webroot volume, so nginx keeps
 # serving throughout — no --standalone, no window with port 80 unbound.
 #
-# ── Moving to a real domain later ─────────────────────────────────────────────
-#   1. Point an A record at this Elastic IP (44.215.174.165).
-#   2. DOMAIN=api.yourdomain.com ./infrastructure/aws/setup-letsencrypt.sh
-#   3. Update server_name in infrastructure/nginx/koraa-api.conf.
+# ── Adding or removing a name ─────────────────────────────────────────────────
+#   1. Point DNS at this Elastic IP (44.215.174.165) — an A record, or a CNAME to
+#      the sslip.io name.
+#   2. DOMAINS="api.example.com 44-215-174-165.sslip.io" ./setup-letsencrypt.sh
+#      The first name becomes the certificate's lineage directory. Keep it first
+#      across runs: changing which name leads makes certbot start a new lineage
+#      rather than expand the existing one.
+#   3. Add it to server_name in infrastructure/nginx/koraa-api.conf.
 #   4. Update ALLOWED_HOSTS / KORAA_* / CORS_* in backend/.env.prod.
-#   5. Set NEXT_PUBLIC_API_URL on Vercel.
+#   5. Set KORAA_PUBLIC_API_URL on Vercel and redeploy — a saved value does not
+#      reach a build that has already run.
 # To go back behind Cloudflare, also revoke the 0.0.0.0/0 rules on 80 and 443 —
 # the Cloudflare ranges were never removed from the security group.
 set -euo pipefail
 
-DOMAIN="${DOMAIN:-44-215-174-165.sslip.io}"
-EMAIL="${LETSENCRYPT_EMAIL:-admin@koraa.africa}"
+# Space-separated, first name leads. DOMAIN is still honoured as a single-name
+# override so existing notes and shell history keep working.
+DOMAINS="${DOMAINS:-${DOMAIN:-api.koraa.cm 44-215-174-165.sslip.io}}"
+# certbot names the lineage — and therefore /etc/letsencrypt/live/<dir> — after
+# the first -d it is given.
+LINEAGE="${DOMAINS%% *}"
+EMAIL="${LETSENCRYPT_EMAIL:-admin@koraa.cm}"
 REPO="${KORAA_REPO:-$HOME/koraa}"
 COMPOSE="docker compose -f $REPO/infrastructure/docker/docker-compose.ec2.yml --env-file $REPO/.env.prod"
 LE_DIR="$REPO/infrastructure/docker/letsencrypt"
@@ -35,21 +55,24 @@ CERT_DIR="$REPO/infrastructure/docker/certs"
 cd "$REPO"
 
 # Fail early and legibly rather than burning a Let's Encrypt rate-limit slot on a
-# hostname that does not point here.
+# hostname that does not point here. Every name in the request is validated
+# separately, and one failure fails the whole order, so all of them are checked.
 echo "── preflight ──"
-resolved=$(getent hosts "$DOMAIN" | awk '{print $1}' | head -1)
 public=$(curl -fsS --max-time 10 https://checkip.amazonaws.com | tr -d '[:space:]' || true)
-echo "  $DOMAIN resolves to : ${resolved:-<nothing>}"
 echo "  this host's public IP: ${public:-<unknown>}"
-if [ -z "$resolved" ]; then
-  echo "  ERROR: $DOMAIN does not resolve. Fix DNS before issuing." >&2
-  exit 1
-fi
-# On the instance, checkip returns the Elastic IP, so these should match.
-if [ -n "$public" ] && [ "$resolved" != "$public" ]; then
-  echo "  WARNING: they differ. HTTP-01 will fail unless something else routes" >&2
-  echo "  $DOMAIN to this box." >&2
-fi
+for domain in $DOMAINS; do
+  resolved=$(getent hosts "$domain" | awk '{print $1}' | head -1)
+  echo "  $domain resolves to : ${resolved:-<nothing>}"
+  if [ -z "$resolved" ]; then
+    echo "  ERROR: $domain does not resolve. Fix DNS before issuing." >&2
+    exit 1
+  fi
+  # On the instance, checkip returns the Elastic IP, so these should match.
+  if [ -n "$public" ] && [ "$resolved" != "$public" ]; then
+    echo "  WARNING: they differ. HTTP-01 will fail unless something else routes" >&2
+    echo "  $domain to this box." >&2
+  fi
+done
 
 # The challenge is served by nginx out of the shared volume, so it has to be up.
 if ! $COMPOSE ps --format '{{.Service}}:{{.State}}' | grep -q '^nginx:running'; then
@@ -75,34 +98,55 @@ echo "  challenge volume    : $WEBROOT_VOLUME"
 
 echo
 echo "── reachability on port 80 ──"
-# Prove the path end to end before certbot does, using the same volume.
+# Prove the path end to end before certbot does, using the same volume. Once per
+# name: api.koraa.cm and the sslip.io name reach different nginx server blocks,
+# and only one of them having the challenge location is a real failure mode.
 token="preflight-$$"
 docker run --rm -v "$WEBROOT_VOLUME:/w" alpine:3 \
   sh -c "mkdir -p /w/.well-known/acme-challenge && printf '%s' '$token' > /w/.well-known/acme-challenge/$token"
-got=$(curl -fsS --max-time 15 "http://$DOMAIN/.well-known/acme-challenge/$token" || true)
+unreachable=""
+for domain in $DOMAINS; do
+  got=$(curl -fsS --max-time 15 "http://$domain/.well-known/acme-challenge/$token" || true)
+  if [ "$got" != "$token" ]; then
+    echo "  ERROR: challenge path is not reachable on $domain." >&2
+    echo "  got: '${got:-<nothing>}'  expected: '$token'" >&2
+    unreachable="yes"
+  else
+    echo "  http://$domain/.well-known/acme-challenge/ is reachable"
+  fi
+done
 docker run --rm -v "$WEBROOT_VOLUME:/w" alpine:3 \
   rm -f "/w/.well-known/acme-challenge/$token"
-if [ "$got" != "$token" ]; then
-  echo "  ERROR: challenge path is not reachable from the internet." >&2
-  echo "  got: '${got:-<nothing>}'  expected: '$token'" >&2
-  echo "  Check that the security group allows 0.0.0.0/0 on port 80." >&2
+if [ -n "$unreachable" ]; then
+  echo "  Check that the security group allows 0.0.0.0/0 on port 80, and that" >&2
+  echo "  each name above appears in server_name in koraa-api.conf." >&2
   exit 1
 fi
-echo "  http://$DOMAIN/.well-known/acme-challenge/ is reachable"
 
 mkdir -p "$LE_DIR" "$CERT_DIR"
 
 echo
 echo "── issuing ──"
+# One -d per name. Word-splitting $DOMAINS is the point here, so no quotes.
+certbot_names=""
+for domain in $DOMAINS; do
+  certbot_names="$certbot_names -d $domain"
+done
+# --expand so adding a name to an existing lineage grows that certificate instead
+# of erroring out; --keep-until-expiring still makes a re-run with no changes a
+# no-op, so this stays safe to run twice.
+# shellcheck disable=SC2086
 docker run --rm \
   -v "$LE_DIR:/etc/letsencrypt" \
   -v "$WEBROOT_VOLUME:/var/www/certbot" \
   certbot/certbot:latest certonly \
   --webroot --webroot-path /var/www/certbot \
-  -d "$DOMAIN" \
+  --cert-name "$LINEAGE" \
+  $certbot_names \
   --email "$EMAIL" \
   --agree-tos --no-eff-email \
   --non-interactive \
+  --expand \
   --keep-until-expiring
 
 # Copy rather than symlink into certs/. A symlink would point at
@@ -111,8 +155,8 @@ docker run --rm \
 # later. The cost is that a renewal is not live until this copy re-runs, which is
 # what the timer below is for.
 install_cert() {
-  sudo cp -L "$LE_DIR/live/$DOMAIN/fullchain.pem" "$CERT_DIR/fullchain.pem"
-  sudo cp -L "$LE_DIR/live/$DOMAIN/privkey.pem"   "$CERT_DIR/privkey.pem"
+  sudo cp -L "$LE_DIR/live/$LINEAGE/fullchain.pem" "$CERT_DIR/fullchain.pem"
+  sudo cp -L "$LE_DIR/live/$LINEAGE/privkey.pem"   "$CERT_DIR/privkey.pem"
   sudo chown "$(id -u):$(id -g)" "$CERT_DIR/fullchain.pem" "$CERT_DIR/privkey.pem"
   chmod 644 "$CERT_DIR/fullchain.pem"
   chmod 600 "$CERT_DIR/privkey.pem"
@@ -137,7 +181,7 @@ sudo tee /usr/local/bin/koraa-renew-cert.sh >/dev/null <<RENEW
 # does nothing when the certificate is not yet due, so running this twice a day
 # is both normal and cheap.
 set -euo pipefail
-DOMAIN="$DOMAIN"
+LINEAGE="$LINEAGE"
 LE_DIR="$LE_DIR"
 CERT_DIR="$CERT_DIR"
 docker run --rm \\
@@ -146,9 +190,9 @@ docker run --rm \\
   certbot/certbot:latest renew --webroot --webroot-path /var/www/certbot --quiet
 # Only touch nginx when the certificate on disk actually changed, so a reload is
 # not issued 60 times for every one renewal.
-if ! cmp -s "\$LE_DIR/live/\$DOMAIN/fullchain.pem" "\$CERT_DIR/fullchain.pem"; then
-  cp -L "\$LE_DIR/live/\$DOMAIN/fullchain.pem" "\$CERT_DIR/fullchain.pem"
-  cp -L "\$LE_DIR/live/\$DOMAIN/privkey.pem"   "\$CERT_DIR/privkey.pem"
+if ! cmp -s "\$LE_DIR/live/\$LINEAGE/fullchain.pem" "\$CERT_DIR/fullchain.pem"; then
+  cp -L "\$LE_DIR/live/\$LINEAGE/fullchain.pem" "\$CERT_DIR/fullchain.pem"
+  cp -L "\$LE_DIR/live/\$LINEAGE/privkey.pem"   "\$CERT_DIR/privkey.pem"
   chmod 644 "\$CERT_DIR/fullchain.pem"
   chmod 600 "\$CERT_DIR/privkey.pem"
   cd "$REPO"
@@ -189,4 +233,4 @@ sudo systemctl enable --now koraa-cert-renew.timer
 systemctl list-timers koraa-cert-renew.timer --no-pager | head -3
 
 echo
-echo "done. API is https://$DOMAIN"
+echo "done. API is https://$LINEAGE (certificate also covers: $DOMAINS)"

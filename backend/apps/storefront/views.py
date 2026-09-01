@@ -494,7 +494,7 @@ def _resolve_store_by_domain(domain: str) -> Store:
     """The published store a hostname belongs to, or 404.
 
     Two ways in, in priority order: an explicit verified StoreDomain mapping,
-    then the subdomain pattern (``bella-fashion.koraa.africa`` and, in dev,
+    then the subdomain pattern (``bella-fashion.koraa.cm`` and, in dev,
     ``bella-fashion.localhost:3000``).
     """
     from apps.domains.models import StoreDomain
@@ -627,7 +627,7 @@ def _availability_block(store, passcode: str = "") -> str:
 
 class PublicStorefrontByDomainView(APIView):
     """
-    GET /api/v1/public/storefront/by-domain/?domain=bella-fashion.koraa.africa
+    GET /api/v1/public/storefront/by-domain/?domain=bella-fashion.koraa.cm
     Resolves a hostname to a store's published config + sections.
     Used by the storefront Next.js app on every request.
 

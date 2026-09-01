@@ -21,11 +21,18 @@ import type { NextRequest } from "next/server";
  * hardcoded to localhost.
  */
 
+// Read here rather than imported from lib/rootDomain, which holds the same
+// value for the dashboard's own labels. Next 16's proxy docs are explicit that
+// this file "is meant to be invoked separately of your render code and in
+// optimized cases deployed to your CDN", so it "should not attempt relying on
+// shared modules or globals" — see
+// node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md.
+// Both copies resolve the same inlined variable, so they cannot disagree.
 const ROOT_DOMAIN = process.env.KORAA_PUBLIC_ROOT_DOMAIN || "localhost:3000";
 
 /**
  * Subdomains that belong to the platform, not to a merchant. Without this,
- * `www.koraa.africa` would be looked up as a store called "www".
+ * `www.koraa.cm` would be looked up as a store called "www".
  */
 const RESERVED = new Set([
   "www", "api", "app", "admin", "dashboard", "auth",
@@ -86,7 +93,7 @@ export const config = {
   // robots.txt and sitemap.xml are named explicitly because they *do* have
   // extensions but are per-shop: each storefront host serves its own, built
   // from that shop's Crawlers settings. Without these two entries the extension
-  // rule above swallows them and a crawler on `shop.koraa.africa/robots.txt`
+  // rule above swallows them and a crawler on `shop.koraa.cm/robots.txt`
   // gets the platform's, or a 404.
   matcher: [
     "/((?!api|_next/static|_next/image|.*\\..*).*)",

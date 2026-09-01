@@ -16,7 +16,7 @@
 # Differences from docker-compose.prod.yml:
 #   - no `web`: Next.js is deployed on Vercel
 #   - no `certbot`: TLS is a Cloudflare Origin CA certificate, valid 15 years
-#   - nginx serves koraa-api.conf (api.koraa.africa only)
+#   - nginx serves koraa-api.conf (api.koraa.cm only)
 #   - Redis eviction policy changed — see the redis service
 #   - Celery's broker moved off the cache database
 #   - log rotation, because everything shares one small root volume

@@ -4,7 +4,7 @@ Stores models.
 A Store is a tenant — the isolated ecommerce storefront.
 Each Store:
   - Belongs to a Merchant
-  - Has a subdomain on koraa.africa (e.g. yourbrand.koraa.africa)
+  - Has a subdomain on koraa.cm (e.g. yourbrand.koraa.cm)
   - Has a chosen Theme/Template
   - Has a Status lifecycle: draft → preview → published → suspended
 
@@ -52,7 +52,7 @@ class Store(models.Model):
         _("subdomain slug"),
         max_length=63,
         unique=True,
-        help_text="Used as subdomain: slug.koraa.africa",
+        help_text="Used as subdomain: slug.koraa.cm",
     )
     tagline = models.CharField(_("tagline"), max_length=255, blank=True)
     description = models.TextField(_("description"), blank=True)

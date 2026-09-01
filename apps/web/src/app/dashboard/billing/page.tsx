@@ -144,7 +144,7 @@ export default function BillingPage() {
 
   const handleSubscribe = async (plan: PlanCatalogueEntry) => {
     if (plan.key === CONTACT_SALES_PLAN) {
-      window.location.href = "mailto:sales@koraa.africa?subject=Enterprise Plan Enquiry";
+      window.location.href = "mailto:sales@koraa.cm?subject=Enterprise Plan Enquiry";
       return;
     }
     // Free is not a purchase, it is the end of one. Ask before spending the

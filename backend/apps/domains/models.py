@@ -29,7 +29,7 @@ class StoreDomain(models.Model):
     domain = models.CharField(
         max_length=255,
         unique=True,
-        help_text="e.g. bella-fashion.koraa.africa or bellafashion.com",
+        help_text="e.g. bella-fashion.koraa.cm or bellafashion.com",
     )
     type = models.CharField(
         max_length=20,

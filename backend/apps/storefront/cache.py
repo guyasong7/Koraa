@@ -14,7 +14,7 @@ cache read.
 ── Why a version counter rather than key deletion ──
 
 The payload key depends on more than the store: absolute media URLs are built
-from the incoming request, so a shop reachable at both ``bella.koraa.africa``
+from the incoming request, so a shop reachable at both ``bella.koraa.cm``
 and ``bella.com`` has two valid payloads. Invalidation therefore cannot just
 delete "the" key — it would have to know every host the shop has ever been
 served on. Instead the key embeds a version, and invalidating means changing

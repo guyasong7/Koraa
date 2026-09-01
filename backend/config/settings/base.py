@@ -343,7 +343,7 @@ SIMPLE_JWT = {
 # ──────────────────────────────────────────────────────────────────────────────
 # The apex domain the platform is served from. Storefronts live on subdomains of
 # it, so it also drives the wildcard regex below.
-KORAA_ROOT_DOMAIN = env("KORAA_ROOT_DOMAIN", default="koraa.africa")
+KORAA_ROOT_DOMAIN = env("KORAA_ROOT_DOMAIN", default="koraa.cm")
 
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
@@ -467,7 +467,7 @@ EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Koraa <noreply@koraa.africa>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Koraa <noreply@koraa.cm>")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Koraa Platform settings
