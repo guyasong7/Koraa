@@ -12,15 +12,24 @@
 # issue for it, which gave the browser on the HTTPS Vercel page a publicly trusted
 # certificate to talk to — mixed-content rules require one.
 #
-# koraa.cm is owned now, so api.koraa.cm leads the list and names the certificate.
-# sslip.io stays in it, and that is the point of issuing for both rather than
-# swapping: KORAA_PUBLIC_API_URL is inlined into the client bundle at build time,
-# so the frontend already in production keeps calling whichever host it was built
-# with until it is rebuilt. A certificate covering only the new name would make
-# every call from that bundle fail the TLS handshake — a dead site, reported to
-# the user as a network error with nothing pointing at the certificate. Drop
-# sslip.io from DOMAINS on the run *after* the frontend has been redeployed
-# against api.koraa.cm.
+# koraa.cm is owned now, so api.koraa.cm is in the list too — and issuing for both
+# rather than swapping is the whole point: KORAA_PUBLIC_API_URL is inlined into the
+# client bundle at build time, so the frontend already in production keeps calling
+# whichever host it was built with until it is rebuilt. A certificate covering
+# only the new name would make every call from that bundle fail the TLS handshake
+# — a dead site, reported to the user as a network error with nothing pointing at
+# the certificate. Drop sslip.io from DOMAINS on the run *after* the frontend has
+# been redeployed against api.koraa.cm.
+#
+# sslip.io leads the list even though it is the name being retired, because the
+# lineage already on the instance is named after it
+# (infrastructure/docker/letsencrypt/live/44-215-174-165.sslip.io/). certbot names
+# a lineage after the first -d it is given, so leading with api.koraa.cm would not
+# expand that certificate — it would start a second one, leave the first orphaned
+# and unrenewed, and point the renewal timer installed below at the new directory.
+# Nothing breaks visibly, which is what makes it worth stating. To rename the
+# lineage once sslip.io is gone, delete the old directory and re-run with
+# api.koraa.cm alone; do that only after the frontend no longer calls sslip.io.
 #
 # Validation is HTTP-01 over the shared certbot_webroot volume, so nginx keeps
 # serving throughout — no --standalone, no window with port 80 unbound.
@@ -40,9 +49,10 @@
 # the Cloudflare ranges were never removed from the security group.
 set -euo pipefail
 
-# Space-separated, first name leads. DOMAIN is still honoured as a single-name
-# override so existing notes and shell history keep working.
-DOMAINS="${DOMAINS:-${DOMAIN:-api.koraa.cm 44-215-174-165.sslip.io}}"
+# Space-separated, first name leads and names the lineage — see the note above on
+# why that is sslip.io and not api.koraa.cm. DOMAIN is still honoured as a
+# single-name override so existing notes and shell history keep working.
+DOMAINS="${DOMAINS:-${DOMAIN:-44-215-174-165.sslip.io api.koraa.cm}}"
 # certbot names the lineage — and therefore /etc/letsencrypt/live/<dir> — after
 # the first -d it is given.
 LINEAGE="${DOMAINS%% *}"
@@ -233,4 +243,8 @@ sudo systemctl enable --now koraa-cert-renew.timer
 systemctl list-timers koraa-cert-renew.timer --no-pager | head -3
 
 echo
-echo "done. API is https://$LINEAGE (certificate also covers: $DOMAINS)"
+# The lineage name is not the host to use — it is just the directory certbot
+# happens to have named after the first -d. Say both, so nobody reads the
+# retired sslip.io name off this line and wires the frontend to it.
+echo "done. certificate lineage: $LINEAGE"
+echo "      names covered      : $DOMAINS"
