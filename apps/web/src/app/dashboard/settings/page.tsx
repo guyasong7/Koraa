@@ -32,8 +32,6 @@ import {
   LuZap,
 } from "react-icons/lu";
 import {
-  sendPhoneOTP,
-  verifyPhoneOTP,
   sendVerificationEmail,
   refreshEmailVerification,
 } from "@/lib/firebase";
@@ -44,7 +42,6 @@ import {
   UploadGlyph,
   UploadedGlyph,
 } from "@/components/UploadGlyphs";
-import type { ConfirmationResult } from "firebase/auth";
 import { paymentApi } from "@/lib/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -365,7 +362,6 @@ function IdentityTab() {
   const [phoneInput, setPhoneInput] = useState("");
   const [phoneStep, setPhoneStep] = useState<"idle" | "sending" | "code" | "done">("idle");
   const [phoneCode, setPhoneCode] = useState("");
-  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [phoneError, setPhoneError] = useState("");
 
   const [identityData, setIdentityData] = useState<any>(null);
@@ -470,35 +466,28 @@ function IdentityTab() {
     }
     setPhoneStep("sending");
     try {
-      const result = await sendPhoneOTP(e164, "recaptcha-container");
-      setConfirmation(result);
+      await merchantApi.sendPhoneOTP(e164);
       setPhoneStep("code");
       toast.success(`SMS sent to ${e164}`);
     } catch (err: any) {
       setPhoneStep("idle");
-      const msg = err?.code === "auth/invalid-phone-number"
-        ? "Invalid phone number. Use international format."
-        : err?.message || "Failed to send SMS. Try again.";
+      const msg = err?.response?.data?.error || err?.message || "Failed to send SMS. Try again.";
       setPhoneError(msg);
     }
   };
 
   const handleVerifySMS = async () => {
-    if (!confirmation || !phoneCode) return;
+    if (!phoneCode) return;
     setPhoneError("");
     setLoading(true);
     try {
-      await verifyPhoneOTP(confirmation, phoneCode);
-      // Save the verified number to the user's profile
       const e164 = normalisePhone(phoneInput);
-      await authApi.updateMe({ phone: e164 } as any);
+      await merchantApi.verifyPhoneOTP(e164, phoneCode);
       await fetchMe();
       setPhoneStep("done");
       toast.success("Phone number verified! ✓");
     } catch (err: any) {
-      const msg = err?.code === "auth/invalid-verification-code"
-        ? "Incorrect code. Please check the SMS and try again."
-        : err?.message || "Verification failed.";
+      const msg = err?.response?.data?.error || err?.message || "Verification failed.";
       setPhoneError(msg);
     } finally {
       setLoading(false);
@@ -622,9 +611,7 @@ function IdentityTab() {
           )}
         </div>
 
-        {/* Phone verification row */}
         <div style={{ padding: 16, background: "var(--surface-900)", border: "1px solid var(--border)" }}>
-          <div id="recaptcha-container" />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <LuPhone size={16} color="var(--brand-600)" />

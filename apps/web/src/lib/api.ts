@@ -82,6 +82,12 @@ export const merchantApi = {
   getStats: () => api.get("/merchants/stats/"),
   uploadIdentity: (data: FormData) => api.patch("/merchants/identity/", data),
   getIdentity: () => api.get("/merchants/identity/"),
+  /** Send a 6-digit OTP via Camoo SMS to the given E.164 number. */
+  sendPhoneOTP: (phone: string) =>
+    api.post<{ message: string }>("/merchants/phone/send-otp/", { phone }),
+  /** Confirm the OTP. On success sets MerchantIdentity.phone_verified = true. */
+  verifyPhoneOTP: (phone: string, otp: string) =>
+    api.post<{ message: string }>("/merchants/phone/verify-otp/", { phone, otp }),
   payouts: {
     list: () => api.get("/merchants/payouts/"),
     add: (data: { provider: string; name: string; phone: string }) => api.post("/merchants/payouts/", data),
