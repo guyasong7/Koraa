@@ -932,6 +932,32 @@ button.stat-card:hover {
 
 /* .auth-glow removed — no decorative gradients */
 
+/* Shared helpers for the Firebase action-URL handler (/_/auth/action).
+   Kept here so the page component stays free of inline style objects. */
+.action-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.action-sub {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.auth-error-box {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 0.8125rem;
+  color: #ef4444;
+  border-radius: var(--radius-md);
+}
+
 /* ─── Divider ─────────────────────────────────────────────────── */
 .divider {
   display: flex;

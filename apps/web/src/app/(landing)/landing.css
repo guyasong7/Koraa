@@ -804,7 +804,7 @@
 
 /* ─── Photo mount ─────────────────────────────────────────────────
    The showcase's photograph. This used to be a browser frame — chrome
-   bar, traffic lights, a fake koraa.africa address — wrapped around a
+   bar, traffic lights, a fake koraa.cm address — wrapped around a
    dashboard capture. Both dashboard PNGs are gone, and chrome around a
    photograph would assert it is a screenshot of the catalogue, which it
    is not. What is left is a mount: hairline edge, soft shadow.
@@ -2857,7 +2857,7 @@
     display: none;
   }
 
-  /* "support@koraa.africa" needs the full column width at this size. */
+  /* "support@koraa.cm" needs the full column width at this size. */
   .lfoot__grid {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -6,10 +6,10 @@
 #
 # Issues ONE certificate covering the apex and every subdomain:
 #
-#     koraa.africa   +   *.koraa.africa
+#     koraa.cm   +   *.koraa.cm
 #
 # Both names have to be on the same certificate because nginx serves the
-# marketing site and every <slug>.koraa.africa storefront from a single server
+# marketing site and every <slug>.koraa.cm storefront from a single server
 # block with a single ssl_certificate.
 #
 # That wildcard is why this uses the DNS-01 challenge. Let's Encrypt will not

@@ -328,7 +328,7 @@ export async function registerWithEmail(
   await sdk.updateProfile(result.user, { displayName: fullName });
 
   try {
-    await sdk.sendEmailVerification(result.user);
+    await sdk.sendEmailVerification(result.user, actionCodeSettings());
   } catch {
     // The account already exists by this point, so a rejection here must not
     // reject the sign-up. It used to: a rate-limited verification email
@@ -340,10 +340,39 @@ export async function registerWithEmail(
   return result.user.getIdToken();
 }
 
+/**
+ * The custom action URL for Firebase email links.
+ *
+ * Firebase bakes a redirect URL into every action email it sends. Without a
+ * custom one, clicking "Verify email" or "Reset password" takes the user to a
+ * generic Firebase-hosted page (koraa-a3ecd.firebaseapp.com) rather than to
+ * our own branded handler. Setting `url` here overrides that.
+ *
+ * The path `/_/auth/action` mirrors Firebase's own convention (it uses `__/auth`
+ * for its hosting-side handler) so it is clearly a platform path and not a
+ * merchant route. The middleware excludes `/_/` from storefront rewrites.
+ *
+ * Falls back to the firebaseapp.com default when AUTH_DOMAIN is not set, which
+ * is the right behaviour in a misconfigured build: the email still works, just
+ * without the branded landing page.
+ */
+function actionCodeSettings(): import("firebase/auth").ActionCodeSettings {
+  // KORAA_PUBLIC_FIREBASE_AUTH_DOMAIN is the Firebase project's auth domain,
+  // e.g. "koraa-a3ecd.firebaseapp.com". We use our own domain for the landing
+  // page and only use AUTH_DOMAIN as a guard — if it is absent, something is
+  // already wrong with the Firebase config and we do not need to add to it.
+  const root = process.env.KORAA_PUBLIC_ROOT_DOMAIN || "";
+  const scheme = root.startsWith("localhost") ? "http" : "https";
+  const continueUrl = root
+    ? `${scheme}://${root}/_/auth/action`
+    : "";
+  return { url: continueUrl || "https://koraa.cm/_/auth/action", handleCodeInApp: true };
+}
+
 /** Asks Firebase to email a password-reset link. */
 export async function sendPasswordReset(email: string): Promise<void> {
   const { auth, sdk } = await loadAuth();
-  await sdk.sendPasswordResetEmail(auth, email);
+  await sdk.sendPasswordResetEmail(auth, email, actionCodeSettings());
 }
 
 /**
@@ -357,7 +386,7 @@ export async function sendPasswordReset(email: string): Promise<void> {
 export async function sendVerificationEmail(): Promise<boolean> {
   const { user, sdk } = await session();
   if (!user) return false;
-  await sdk.sendEmailVerification(user);
+  await sdk.sendEmailVerification(user, actionCodeSettings());
   return true;
 }
 

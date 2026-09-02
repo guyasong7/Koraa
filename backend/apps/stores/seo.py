@@ -35,6 +35,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+from django.conf import settings
 from django.utils import timezone
 
 from apps.products.models import Product
@@ -241,7 +242,7 @@ def _listing_group(store: Store, links: dict) -> Group:
     else:
         group.checks.append(Check(
             key="slug", label="Web address is readable", status=PASS, weight=2,
-            detail=f"koraa.africa/{slug} reads as a shop address.",
+            detail=f"{slug}.{settings.KORAA_STOREFRONT_DOMAIN} reads as a shop address.",
         ))
 
     return group
@@ -284,7 +285,7 @@ def _reachable_group(store: Store, links: dict) -> Group:
     else:
         group.checks.append(Check(
             key="domain", label="Own domain connected", status=WARN, weight=2,
-            detail="You are on a koraa.africa subdomain.",
+            detail=f"You are on a {settings.KORAA_STOREFRONT_DOMAIN} subdomain.",
             fix="A subdomain ranks perfectly well, but reputation you build on your "
                 "own domain stays yours if you ever move.",
             action={"label": "Add a domain", "href": links["store"]},

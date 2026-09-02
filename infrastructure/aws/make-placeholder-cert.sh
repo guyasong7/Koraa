@@ -12,7 +12,7 @@
 # Cloudflare specifically for this purpose:
 #
 #   Cloudflare dashboard → SSL/TLS → Origin Server → Create Certificate
-#     hostnames: koraa.africa, *.koraa.africa
+#     hostnames: koraa.cm, *.koraa.cm
 #   Save the certificate as certs/fullchain.pem and the key as certs/privkey.pem
 #   Then set SSL/TLS → Overview → Full (strict) and:
 #     docker compose -f infrastructure/docker/docker-compose.ec2.yml \
@@ -25,7 +25,7 @@
 set -euo pipefail
 
 CERT_DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../docker" && pwd)/certs}"
-DOMAIN="${KORAA_ROOT_DOMAIN:-koraa.africa}"
+DOMAIN="${KORAA_ROOT_DOMAIN:-koraa.cm}"
 
 mkdir -p "$CERT_DIR"
 

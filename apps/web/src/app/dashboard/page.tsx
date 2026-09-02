@@ -3,6 +3,7 @@
 import PageTitle from "@/components/PageTitle";
 import { useAuthStore } from "@/stores/auth";
 import { storeApi, merchantApi, analyticsApi, Store } from "@/lib/api";
+import { storefrontHost } from "@/lib/rootDomain";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -107,7 +108,7 @@ function StoreRow({ store }: { store: Store }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.name}</p>
-        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{store.slug}.koraa.africa</p>
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{storefrontHost(store.slug)}</p>
       </div>
       <span style={{ padding: "3px 10px", borderRadius: 0, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, flexShrink: 0, display: "flex", alignItems: "center", gap: 5 }}>
         {store.status === "published" && <LuCircle size={7} fill={s.color} stroke="none" />}

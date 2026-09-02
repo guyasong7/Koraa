@@ -45,8 +45,8 @@ const FOOTER_COLUMNS = [
   {
     heading: "Contact",
     links: [
-      { label: "support@koraa.africa", href: "mailto:support@koraa.africa" },
-      { label: "sales@koraa.africa", href: "mailto:sales@koraa.africa" },
+      { label: "support@koraa.cm", href: "mailto:support@koraa.cm" },
+      { label: "sales@koraa.cm", href: "mailto:sales@koraa.cm" },
     ],
   },
 ];

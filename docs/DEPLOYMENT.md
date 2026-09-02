@@ -1,5 +1,19 @@
 # Deploying Koraa
 
+> **This is not how Koraa is currently deployed.** Production is split: the
+> frontend runs on Vercel (project `koraa-web`, serving `koraa.cm`, `www`, and
+> every `<slug>.koraa.cm` storefront), and only the Django API runs on the EC2
+> host, from `infrastructure/docker/docker-compose.ec2.yml` with
+> `infrastructure/nginx/koraa-api.conf`. That stack has no `web` container and no
+> certbot container; its certificate comes from
+> `infrastructure/aws/setup-letsencrypt.sh`.
+>
+> Do **not** follow the DNS table below as-is. It points `koraa.cm` and
+> `*.koraa.cm` at a single host, which would take the Vercel frontend offline.
+> This runbook describes the all-in-one host — one box serving the marketing
+> site, the dashboard, every storefront and the API — which is still a supported
+> shape and is what `docker-compose.prod.yml` builds. Read it for that.
+
 Production runbook for the Docker Compose stack in
 `infrastructure/docker/docker-compose.prod.yml`.
 
@@ -8,9 +22,9 @@ job, gunicorn, a Celery worker, Celery beat, the Next.js server, nginx, and
 certbot. Only nginx publishes ports; everything else talks over the compose
 network.
 
-Examples use `koraa.africa`. Substitute your own domain throughout — and note
-that it also has to be replaced in `infrastructure/nginx/koraa.conf`, which
-hardcodes it in `server_name`.
+Examples use `koraa.cm`, the real root domain. If you are deploying a different
+one, substitute it throughout — and note that it also has to be replaced in
+`infrastructure/nginx/koraa.conf`, which hardcodes it in `server_name`.
 
 ---
 
@@ -25,9 +39,9 @@ build alone wants ~2 GB. Docker Engine 24+ with the Compose v2 plugin
 
 | Type | Name | Purpose |
 |---|---|---|
-| `A` | `koraa.africa` | Marketing site, auth, dashboard |
-| `A` | `*.koraa.africa` | Every merchant storefront (`<slug>.koraa.africa`) |
-| `A` | `api.koraa.africa` | Django API and admin |
+| `A` | `koraa.cm` | Marketing site, auth, dashboard |
+| `A` | `*.koraa.cm` | Every merchant storefront (`<slug>.koraa.cm`) |
+| `A` | `api.koraa.cm` | Django API and admin |
 
 The wildcard is not optional — storefronts are addressed by subdomain, so
 without it every merchant store is unreachable.
@@ -37,7 +51,7 @@ Let's Encrypt only issues wildcards over the DNS-01 challenge. That means an API
 token for whoever hosts your DNS; HTTP-01 cannot do it regardless of how nginx
 is configured. Cloudflare is supported directly. See step 3 for the alternative.
 
-Let DNS propagate before starting. `dig +short storefront-test.koraa.africa`
+Let DNS propagate before starting. `dig +short storefront-test.koraa.cm`
 should return your IP.
 
 ---
@@ -60,7 +74,7 @@ stop the stack from booting if wrong are:
   settings refuse to start on a short or `django-insecure-` key, because
   SimpleJWT signs access tokens with it and a guessable key mints tokens for any
   merchant.
-- **`ALLOWED_HOSTS`** — must include `api.koraa.africa`, `.koraa.africa`, and the
+- **`ALLOWED_HOSTS`** — must include `api.koraa.cm`, `.koraa.cm`, and the
   internal name `backend`. Production settings refuse to start while it is still
   the development default.
 - **`POSTGRES_PASSWORD`** (`.env.prod`) — set before the first boot. It is only
@@ -93,13 +107,13 @@ certificates come from an untrusted root, so browsers reject them — that is
 expected, and the reason for the second command.
 
 This uses DNS-01 rather than a webroot challenge, so nothing needs to be
-listening on port 80 yet. One certificate is issued covering `koraa.africa` and
-`*.koraa.africa`, and copied into `infrastructure/docker/certs/` where nginx
+listening on port 80 yet. One certificate is issued covering `koraa.cm` and
+`*.koraa.cm`, and copied into `infrastructure/docker/certs/` where nginx
 reads it.
 
 **If your DNS is not on Cloudflare**, leave `CLOUDFLARE_DNS_API_TOKEN` empty and
 run `./infrastructure/docker/init-letsencrypt.sh --manual`. certbot prints two
-TXT records for you to create by hand. Add **both** `_acme-challenge.koraa.africa`
+TXT records for you to create by hand. Add **both** `_acme-challenge.koraa.cm`
 records — one is for the apex, one for the wildcard, and replacing the first with
 the second fails validation. Manual issuance cannot be renewed unattended, so
 this becomes a calendar reminder every 60 days. Better options are a certbot DNS
@@ -142,16 +156,16 @@ not username.
 docker compose -f infrastructure/docker/docker-compose.prod.yml \
   --env-file .env.prod ps
 
-curl -I https://koraa.africa                 # 200, marketing site
-curl -I https://api.koraa.africa/api/schema/ # 200, API
-curl -I http://koraa.africa                  # 301 to https
+curl -I https://koraa.cm                 # 200, marketing site
+curl -I https://api.koraa.cm/api/schema/ # 200, API
+curl -I http://koraa.cm                  # 301 to https
 ```
 
-Then check in a browser that TLS is trusted on both `https://koraa.africa` and
-some `https://anything.koraa.africa` — the second is what proves the wildcard
+Then check in a browser that TLS is trusted on both `https://koraa.cm` and
+some `https://anything.koraa.cm` — the second is what proves the wildcard
 certificate is the one being served.
 
-Django admin lives at **`https://api.koraa.africa/admin/`**. It is not reachable
+Django admin lives at **`https://api.koraa.cm/admin/`**. It is not reachable
 on the apex: nginx routes everything except `/api/` and `/media/` there to
 Next.js.
 
@@ -278,7 +292,7 @@ Because it is a build-time value, fixing `.env.prod` alone changes nothing —
 rebuild with `--build`.
 
 **A storefront subdomain gives a TLS warning.**
-The certificate covers the apex but not `*.koraa.africa`. Re-run step 3; the
+The certificate covers the apex but not `*.koraa.cm`. Re-run step 3; the
 bootstrap script requests both names.
 
 **Infinite HTTPS redirect loop.**
@@ -288,7 +302,7 @@ front of nginx terminates TLS and drops the header — set
 redirect.
 
 **CORS errors from a custom merchant domain.**
-Custom domains are not covered by the `*.koraa.africa` CORS regex. Either add
+Custom domains are not covered by the `*.koraa.cm` CORS regex. Either add
 each one to `CORS_ALLOWED_ORIGINS`, or set `NEXT_PUBLIC_API_URL=/api/v1` and
 rebuild, which routes API calls same-origin through nginx so CORS never applies.
 

@@ -477,7 +477,7 @@ def _resolve_store(domain: str):
     if store_domain:
         return store_domain.store
 
-    # e.g. my-store.koraa.africa, or my-store.localhost:3000 in development.
+    # e.g. my-store.koraa.cm, or my-store.localhost:3000 in development.
     slug = domain.split(":")[0].split(".")[0]
     return Store.objects.filter(slug=slug, status=Store.Status.PUBLISHED).first()
 

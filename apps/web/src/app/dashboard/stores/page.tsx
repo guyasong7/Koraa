@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
 import { storeApi, Store, StoreCreateData } from "@/lib/api";
+import { storefrontHost, storefrontUrl } from "@/lib/rootDomain";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import {
@@ -82,9 +83,9 @@ function StoreCard({ store, onPublish, onUnpublish, onDelete }: {
       <div style={{ flex: 1, minWidth: 0 }}>
         <h3 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 4px 0", fontFamily: "Outfit, sans-serif", letterSpacing: "-0.02em" }}>{store.name}</h3>
         <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-          <span>{store.slug}.koraa.africa</span>
+          <span>{storefrontHost(store.slug)}</span>
           {store.status === "published" && (
-            <a href={`http://${store.slug}.localhost:3000`} target="_blank" rel="noopener noreferrer"
+            <a href={store.storefront_url || storefrontUrl(store.slug)} target="_blank" rel="noopener noreferrer"
               style={{ color: "var(--brand-500)", textDecoration: "none", fontSize: 13, fontWeight: 600 }}>
               ↗ Visit
             </a>
@@ -288,7 +289,7 @@ function CreateStoreModal({ onClose }: { onClose: () => void }) {
                 {errors.name && <p style={{ fontSize: 13, color: "var(--danger-text)", marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}><LuTriangleAlert size={13} /> {errors.name}</p>}
                 {slugPreview && !errors.name && (
                   <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
-                    🔗 <strong style={{ color: accent }}>{slugPreview}.koraa.africa</strong>
+                    🔗 <strong style={{ color: accent }}>{storefrontHost(slugPreview)}</strong>
                   </p>
                 )}
               </div>

@@ -15,8 +15,18 @@ import secrets
 import sys
 from pathlib import Path
 
-ROOT_DOMAIN = "koraa.africa"
+ROOT_DOMAIN = "koraa.cm"
 API_HOST = f"api.{ROOT_DOMAIN}"
+# The name the API answered on before koraa.cm was owned, and still answers on:
+# KORAA_PUBLIC_API_URL is inlined into the frontend bundle at build time, so the
+# deployment currently in production keeps calling this host until it is rebuilt
+# against API_HOST. It has to stay in ALLOWED_HOSTS until then — dropping it
+# makes Django reject every live request with DisallowedHost, a 400 on each call
+# that reads as an outage rather than as a settings change. Remove it once
+# api.koraa.cm has a certificate and the frontend has been redeployed.
+LEGACY_API_HOST = "44-215-174-165.sslip.io"
+# An existing S3 bucket, not a domain. Bucket names cannot be renamed, so this
+# keeps the spelling it was created with even though the root domain moved.
 BUCKET = "koraa-africa-media"
 REGION = "us-east-1"
 
@@ -75,7 +85,7 @@ backend_env: dict[str, str] = {
     # network. See backend/.env.prod.example.
     "ALLOWED_HOSTS": (
         f"{ROOT_DOMAIN},www.{ROOT_DOMAIN},{API_HOST},.{ROOT_DOMAIN},"
-        "backend,127.0.0.1"
+        f"{LEGACY_API_HOST},backend,127.0.0.1"
     ),
     "KORAA_ROOT_DOMAIN": ROOT_DOMAIN,
     "KORAA_STOREFRONT_DOMAIN": ROOT_DOMAIN,

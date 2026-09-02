@@ -1,7 +1,7 @@
 # Next.js standalone build. Build from the MONOREPO ROOT, not apps/web:
 #   docker build -f apps/web/Dockerfile \
-#     --build-arg NEXT_PUBLIC_ROOT_DOMAIN=koraa.africa \
-#     --build-arg NEXT_PUBLIC_API_URL=https://api.koraa.africa/api/v1 \
+#     --build-arg NEXT_PUBLIC_ROOT_DOMAIN=koraa.cm \
+#     --build-arg NEXT_PUBLIC_API_URL=https://api.koraa.cm/api/v1 \
 #     ... -t koraa-web:latest .
 #
 # NEXT_PUBLIC_* values are inlined into the client bundle at build time, so they

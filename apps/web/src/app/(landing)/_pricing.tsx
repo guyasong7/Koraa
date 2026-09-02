@@ -143,7 +143,7 @@ export function PricingPlans({
 
               {contact ? (
                 <a
-                  href="mailto:sales@koraa.africa?subject=Enterprise Plan Enquiry"
+                  href="mailto:sales@koraa.cm?subject=Enterprise Plan Enquiry"
                   className="lp-btn lp-btn--outline"
                 >
                   Talk to sales

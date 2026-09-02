@@ -482,7 +482,7 @@ export default async function LandingPage() {
                 <figure className="lp-pay__figure" aria-hidden="true" data-rise>
                   <div className="lp-co__head">
                     <div className="lp-co__store">Maison Ngo</div>
-                    <div className="lp-co__url">maisonngo.koraa.africa/checkout</div>
+                    <div className="lp-co__url">maisonngo.koraa.cm/checkout</div>
                   </div>
                   <div className="lp-co__body">
                     <p className="lp-co__label">Pay with</p>
