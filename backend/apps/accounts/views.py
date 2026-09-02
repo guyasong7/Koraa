@@ -28,6 +28,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 import logging
 
 from .firebase import verify_firebase_id_token
+from . import firebase_admin_links
 
 from .models import EmailVerificationOTP, PasswordResetToken
 from .serializers import (
@@ -89,9 +90,44 @@ class RegisterView(generics.CreateAPIView):
         )
 
     def _send_verification_email(self, user, otp):
+        """
+        Attempt to send a Firebase Admin link-based verification email.
+
+        If Firebase has no account for this address yet (the user just
+        registered with OTP only and has no Firebase UID), fall back to the
+        OTP email so verification still works.
+        """
+        dashboard_url = settings.KORAA_DASHBOARD_URL.rstrip("/")
+        try:
+            action_link = firebase_admin_links.generate_email_verification_link(user.email)
+            html_message = render_to_string("emails/verify_email_link.html", {
+                "action_link": action_link,
+                "user_name": user.full_name or "",
+                "dashboard_url": dashboard_url,
+            })
+            send_mail(
+                subject="Verify your Koraa account",
+                message=(
+                    f"Click to verify your email:\n\n{action_link}\n\n"
+                    "This link expires in 24 hours."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+                html_message=html_message,
+            )
+            return
+        except Exception as exc:
+            logger.warning(
+                "Firebase Admin link generation failed for %s, "
+                "falling back to OTP: %s",
+                user.email, exc,
+            )
+
+        # Fallback: OTP-based email (works even without a Firebase account).
         html_message = render_to_string("emails/verify_email.html", {
             "otp": otp,
-            "dashboard_url": settings.KORAA_DASHBOARD_URL.rstrip("/")
+            "dashboard_url": dashboard_url,
         })
         send_mail(
             subject="Verify your Koraa account",
@@ -162,18 +198,45 @@ class RequestEmailOTPView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer._user
         otp, _ = EmailVerificationOTP.generate(user)
-        html_message = render_to_string("emails/verify_email.html", {
-            "otp": otp,
-            "dashboard_url": settings.KORAA_DASHBOARD_URL.rstrip("/")
-        })
-        send_mail(
-            subject="Your Koraa verification code",
-            message=f"Your code is: {otp}\n\nExpires in 10 minutes.",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=True,
-            html_message=html_message,
-        )
+        dashboard_url = settings.KORAA_DASHBOARD_URL.rstrip("/")
+
+        # Try a Firebase Admin link first; fall back to the OTP email.
+        try:
+            action_link = firebase_admin_links.generate_email_verification_link(user.email)
+            html_message = render_to_string("emails/verify_email_link.html", {
+                "action_link": action_link,
+                "user_name": user.full_name or "",
+                "dashboard_url": dashboard_url,
+            })
+            send_mail(
+                subject="Verify your Koraa account",
+                message=(
+                    f"Click to verify your email:\n\n{action_link}\n\n"
+                    "This link expires in 24 hours."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+                html_message=html_message,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Firebase Admin link generation failed for %s, "
+                "falling back to OTP: %s",
+                user.email, exc,
+            )
+            html_message = render_to_string("emails/verify_email.html", {
+                "otp": otp,
+                "dashboard_url": dashboard_url,
+            })
+            send_mail(
+                subject="Your Koraa verification code",
+                message=f"Your code is: {otp}\n\nExpires in 10 minutes.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+                html_message=html_message,
+            )
         return Response({"message": "Verification code sent."})
 
 
@@ -211,38 +274,68 @@ class PasswordResetRequestView(APIView):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
+        dashboard_url = settings.KORAA_DASHBOARD_URL.rstrip("/")
+
         try:
             user = User.objects.get(email=email)
-            if not user.has_usable_password():
-                # Social/Firebase account — a Django token would set a password
-                # that login never checks, so point them at the flow that works.
-                send_mail(
-                    subject="Reset your Koraa password",
-                    message=(
-                        "Your Koraa account signs in with Google or with an email "
-                        "password managed by Firebase.\n\n"
-                        f"Reset it here: {settings.KORAA_DASHBOARD_URL.rstrip('/')}"
-                        "/auth/forgot-password\n"
-                    ),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[user.email],
-                    fail_silently=True,
-                )
-            else:
-                raw_token, _ = PasswordResetToken.generate(user)
-                reset_url = (
-                    f"{settings.KORAA_DASHBOARD_URL.rstrip('/')}"
-                    f"/auth/reset-password?token={raw_token}"
-                )
-                send_mail(
-                    subject="Reset your Koraa password",
-                    message=f"Click to reset your password:\n\n{reset_url}\n\nExpires in 1 hour.",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[user.email],
-                    fail_silently=True,
-                )
         except User.DoesNotExist:
-            pass  # Prevent email enumeration
+            # Prevent email enumeration — always respond the same.
+            return Response({"message": "If an account exists, a reset link has been sent."})
+
+        # ── Firebase Admin link (preferred path) ──────────────────────────────
+        # Works for all accounts — Firebase, Google, or email/password.
+        # `generate_password_reset_link` raises UserNotFoundError only if the
+        # email has never signed in through Firebase at all (pure OTP account).
+        try:
+            action_link = firebase_admin_links.generate_password_reset_link(email)
+            html_message = render_to_string("emails/password_reset_link.html", {
+                "action_link": action_link,
+                "user_name": user.full_name or "",
+                "dashboard_url": dashboard_url,
+            })
+            send_mail(
+                subject="Reset your Koraa password",
+                message=(
+                    f"Click to reset your password:\n\n{action_link}\n\n"
+                    "This link expires in 1 hour."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=True,
+                html_message=html_message,
+            )
+            return Response({"message": "If an account exists, a reset link has been sent."})
+        except Exception as exc:
+            logger.warning(
+                "Firebase Admin password reset link failed for %s, "
+                "falling back to Django token: %s",
+                email, exc,
+            )
+
+        # ── Fallback: Django token reset ──────────────────────────────────────
+        # Used for pure OTP-only accounts that never created a Firebase session.
+        if not user.has_usable_password():
+            send_mail(
+                subject="Reset your Koraa password",
+                message=(
+                    "Your Koraa account signs in with Google or with an email "
+                    "password managed by Firebase.\n\n"
+                    f"Reset it here: {dashboard_url}/auth/forgot-password\n"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=True,
+            )
+        else:
+            raw_token, _ = PasswordResetToken.generate(user)
+            reset_url = f"{dashboard_url}/auth/reset-password?token={raw_token}"
+            send_mail(
+                subject="Reset your Koraa password",
+                message=f"Click to reset your password:\n\n{reset_url}\n\nExpires in 1 hour.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=True,
+            )
         return Response({"message": "If an account exists, a reset link has been sent."})
 
 
