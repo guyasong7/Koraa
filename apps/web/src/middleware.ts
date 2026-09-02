@@ -94,13 +94,16 @@ export const config = {
   // Skip API routes, Next internals, and anything with a file extension, so
   // assets are never rewritten onto a storefront path.
   //
+  // /__/firebase/* is excluded so Firebase's domain-verification requests pass
+  // through to the next.config.ts rewrite without being intercepted here.
+  //
   // robots.txt and sitemap.xml are named explicitly because they *do* have
   // extensions but are per-shop: each storefront host serves its own, built
   // from that shop's Crawlers settings. Without these two entries the extension
   // rule above swallows them and a crawler on `shop.koraa.cm/robots.txt`
   // gets the platform's, or a 404.
   matcher: [
-    "/((?!api|_next/static|_next/image|.*\\..*).*)",
+    "/((?!api|_next/static|_next/image|__/firebase|.*\\..*).*)",
     "/robots.txt",
     "/sitemap.xml",
   ],

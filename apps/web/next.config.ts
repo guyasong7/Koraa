@@ -288,6 +288,27 @@ const nextConfig: NextConfig = {
   // 2.2s -> 5.0s, for a Lighthouse score of 70 against 83 without it. It is
   // worth revisiting only if the CSS gets much smaller, or once the flight
   // payload stops carrying its own copy.
+
+  // Firebase domain verification.
+  //
+  // When a custom domain is added to Firebase (as an authorised action-email
+  // domain or as a custom auth domain), Firebase verifies ownership by fetching
+  // /__/firebase/init.json from the domain. Without this proxy the request
+  // would 404 on our Next.js app and Firebase would refuse to accept koraa.cm.
+  //
+  // The proxy target is Firebase Hosting's global CDN for the koraa-a3ecd
+  // project. Firebase Hosting is not otherwise used — only this one path is
+  // proxied, and only for the verification handshake and the SDK's own
+  // web-channel keepalive requests.
+  async rewrites() {
+    return [
+      {
+        source: "/__/firebase/:path*",
+        destination:
+          "https://koraa-a3ecd.firebaseapp.com/__/firebase/:path*",
+      },
+    ];
+  },
 };
 
 // Function form so the build phase is available — see `checkPublicEnv`. The
