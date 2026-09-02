@@ -387,11 +387,16 @@ class PhoneSendOTPView(APIView):
             f"Your Koraa verification code is: {otp}. "
             "Valid for 10 minutes. Do not share it."
         )
-        ok, _ = send_sms(to=phone, message=message)
+        ok, sms_resp = send_sms(to=phone, message=message)
 
         if not ok:
+            gateway_msg = (
+                sms_resp.get("message")
+                or sms_resp.get("error")
+                or "Unknown gateway error"
+            )
             return Response(
-                {"error": "Could not send SMS. Please check the number and try again."},
+                {"error": f"SMS gateway error: {gateway_msg}", "detail": sms_resp},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 

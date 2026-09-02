@@ -82,17 +82,17 @@ def send_sms(to: str, message: str, sender: str | None = None) -> tuple[bool, di
         logger.warning("Camoo SMS request failed for %s: %s", to, exc)
         return False, {"error": str(exc)}
 
-    # Success: HTTP 200 AND sms.code == 200
+    # Success: HTTP 200 AND sms.code == 200 (integer in success, string in errors)
     sms_code = data.get("sms", {}).get("code")
     success  = response.status_code == 200 and str(sms_code) == "200"
 
     if success:
-        logger.info("Camoo SMS sent to %s (msg-id: %s)",
-                    to, data.get("sms", {}).get("messages", [{}])[0].get("message-id", "?")
-                    if isinstance(data.get("sms", {}).get("messages"), list) else "?")
+        messages = data.get("sms", {}).get("messages", [])
+        msg_id = messages[0].get("message-id", "?") if isinstance(messages, list) and messages else "?"
+        logger.info("Camoo SMS sent to %s (msg-id: %s)", to, msg_id)
     else:
         logger.warning(
-            "Camoo SMS failed for %s — HTTP %s, sms.code %s, body: %s",
+            "Camoo SMS failed for %s — HTTP %s, sms.code=%s, full response: %s",
             to, response.status_code, sms_code, data,
         )
 
