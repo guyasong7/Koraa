@@ -60,6 +60,10 @@ export function middleware(request: NextRequest) {
   // Already an internal storefront path, or no Host to work with.
   if (!host || pathname.startsWith("/store/")) return NextResponse.next();
 
+  // Platform-owned paths that must never be rewritten onto a storefront.
+  // /_/ is used by the Firebase action-URL handler (/_/auth/action).
+  if (pathname.startsWith("/_/")) return NextResponse.next();
+
   let storeHost: string | null = null;
 
   if (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`) {
