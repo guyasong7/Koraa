@@ -49,6 +49,13 @@ const FOOTER_COLUMNS = [
       { label: "sales@koraa.cm", href: "mailto:sales@koraa.cm" },
     ],
   },
+  {
+    heading: "Legal",
+    links: [
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms of Service", href: "/terms" },
+    ],
+  },
 ];
 
 /* Named because they are what the checkout actually integrates — a factual

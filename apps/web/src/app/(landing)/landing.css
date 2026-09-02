@@ -2919,3 +2919,299 @@
     height: 22px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Legal pages — Privacy Policy & Terms of Service
+
+   Both pages share `.lp-legal`. Inside the (landing) route group
+   they inherit the nav and footer from layout.tsx.
+
+   Layout: a hero band → a two-column body (sticky TOC on the left,
+   prose on the right on wide screens). On mobile the TOC collapses
+   above the prose.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lp-legal {
+  background: var(--surface-900);
+  color: var(--text-primary);
+}
+
+/* ─── Hero band ───────────────────────────────────────────────── */
+.lp-legal__hero {
+  padding: calc(var(--lnav-h) + 64px) 0 64px;
+  background: var(--surface-900);
+  border-bottom: 1px solid var(--border);
+  background-image: radial-gradient(
+    ellipse 900px 400px at 60% 100%,
+    color-mix(in srgb, var(--brand-500) 6%, transparent),
+    transparent 70%
+  );
+}
+
+.lp-legal__wrap {
+  max-width: var(--lp-max);
+  margin: 0 auto;
+  padding-left: var(--lp-gutter);
+  padding-right: var(--lp-gutter);
+}
+
+.lp-legal__eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-text);
+  margin: 0 0 14px;
+}
+
+.lp-legal__title {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: clamp(2.25rem, 4vw, 3.25rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0 0 16px;
+  color: var(--text-primary);
+}
+
+.lp-legal__meta {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  margin: 0 0 28px;
+}
+
+.lp-legal__intro {
+  font-size: 1.125rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 62ch;
+}
+
+/* ─── Body layout ─────────────────────────────────────────────── */
+.lp-legal__body {
+  padding: 72px 0 96px;
+}
+
+.lp-legal__body .lp-legal__wrap {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 64px;
+  align-items: start;
+}
+
+/* ─── Table of contents ───────────────────────────────────────── */
+.lp-legal__toc {
+  position: sticky;
+  top: calc(var(--lnav-h) + 24px);
+  background: var(--surface-900);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 20px 22px 24px;
+}
+
+.lp-legal__toc-heading {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+}
+
+.lp-legal__toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lp-legal__toc a {
+  display: block;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.lp-legal__toc a:hover {
+  background: var(--surface-850);
+  color: var(--text-primary);
+}
+
+/* ─── Prose content ───────────────────────────────────────────── */
+.lp-legal__content {
+  min-width: 0;
+}
+
+.lp-legal__content section {
+  margin-bottom: 52px;
+  padding-bottom: 52px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lp-legal__content section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.lp-legal__content h2 {
+  font-family: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 18px;
+  color: var(--text-primary);
+  /* Offset for sticky nav on anchor jump */
+  scroll-margin-top: calc(var(--lnav-h) + 32px);
+}
+
+.lp-legal__content h3 {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  line-height: 1.4;
+  margin: 28px 0 10px;
+  color: var(--text-primary);
+}
+
+.lp-legal__content p {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+}
+
+.lp-legal__content p:last-child {
+  margin-bottom: 0;
+}
+
+.lp-legal__content a {
+  color: var(--brand-600);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lp-legal__content a:hover {
+  color: var(--brand-700);
+}
+
+.lp-legal__content ul,
+.lp-legal__content ol {
+  margin: 12px 0 20px;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lp-legal__content li {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.lp-legal__content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ─── Data table ──────────────────────────────────────────────── */
+.lp-legal__table-wrap {
+  overflow-x: auto;
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.lp-legal__content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.lp-legal__content th {
+  background: var(--surface-850);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 11px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.lp-legal__content td {
+  padding: 13px 16px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border);
+  vertical-align: top;
+  line-height: 1.55;
+}
+
+.lp-legal__content tbody tr:first-child td {
+  border-top: none;
+}
+
+/* ─── Address block ───────────────────────────────────────────── */
+.lp-legal__address {
+  font-style: normal;
+  font-size: 1rem;
+  line-height: 2;
+  color: var(--text-secondary);
+  background: var(--surface-850);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  margin: 20px 0 24px;
+  display: block;
+}
+
+.lp-legal__address a {
+  color: var(--brand-600);
+}
+
+/* ─── Mobile: collapse TOC above prose ───────────────────────── */
+@media (max-width: 860px) {
+  .lp-legal__body .lp-legal__wrap {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .lp-legal__toc {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .lp-legal__hero {
+    padding-top: calc(var(--lnav-h) + 40px);
+    padding-bottom: 48px;
+  }
+
+  .lp-legal__body {
+    padding: 48px 0 72px;
+  }
+
+  .lp-legal__content h2 {
+    font-size: 1.3125rem;
+  }
+
+  .lp-legal__content section {
+    margin-bottom: 40px;
+    padding-bottom: 40px;
+  }
+
+  .lp-legal__content ul,
+  .lp-legal__content ol {
+    padding-left: 18px;
+  }
+}
+
