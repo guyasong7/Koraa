@@ -449,19 +449,21 @@ function IdentityTab() {
     }
   };
 
-  /** Normalise Cameroon number to E.164 (+237XXXXXXXXX) */
+  /** Strip non-digits, drop leading 237 or 0, always return +237XXXXXXXXX */
   const normalisePhone = (raw: string): string => {
     const digits = raw.replace(/\D/g, "");
-    if (digits.startsWith("237")) return `+${digits}`;
-    if (digits.startsWith("0")) return `+237${digits.slice(1)}`;
+    // Already full: 237XXXXXXXXX
+    if (digits.startsWith("237") && digits.length === 12) return `+${digits}`;
+    // Local format: 6XXXXXXXXX or 2XXXXXXXXX (9 digits)
     return `+237${digits}`;
   };
 
   const handleSendSMS = async () => {
     setPhoneError("");
+    // phoneInput is already local digits only (e.g. "683140781")
     const e164 = normalisePhone(phoneInput);
     if (!/^\+237[62]\d{8}$/.test(e164)) {
-      setPhoneError("Enter a valid Cameroon number (e.g. 6XX XXX XXX or 2XX XXX XXX).");
+      setPhoneError("Enter a valid Cameroon number — 9 digits starting with 6 or 2.");
       return;
     }
     setPhoneStep("sending");
@@ -634,7 +636,13 @@ function IdentityTab() {
               {phoneStep !== "code" ? (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
-                    <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", pointerEvents: "none", display: "flex", alignItems: "center", gap: 6 }}>
+                    {/* Fixed +237 prefix — user types local digits only */}
+                    <span style={{
+                      position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                      fontSize: 14, fontWeight: 600, color: "var(--text-primary)",
+                      pointerEvents: "none", display: "flex", alignItems: "center", gap: 6,
+                      userSelect: "none",
+                    }}>
                       <svg width="18" height="13" viewBox="0 0 900 600" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2 }}>
                         <rect width="300" height="600" fill="#007A5E"/>
                         <rect x="300" width="300" height="600" fill="#CE1126"/>
@@ -643,19 +651,31 @@ function IdentityTab() {
                       </svg>
                       +237
                     </span>
-                    <input className="input" type="tel" placeholder="6XX XXX XXX" value={phoneInput}
-                      onChange={(e) => setPhoneInput(e.target.value)} style={{ paddingLeft: 80 }}
-                      disabled={phoneStep === "sending"} />
+                    <input
+                      className="input"
+                      type="tel"
+                      inputMode="numeric"
+                      placeholder="6XX XXX XXX"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                      style={{ paddingLeft: 84 }}
+                      disabled={phoneStep === "sending"}
+                      maxLength={9}
+                    />
                   </div>
-                  <button className="btn btn-primary btn-sm" onClick={handleSendSMS}
-                    disabled={phoneStep === "sending" || !phoneInput.trim()} style={{ whiteSpace: "nowrap" }}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={handleSendSMS}
+                    disabled={phoneStep === "sending" || phoneInput.trim().length < 9}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
                     {phoneStep === "sending" ? "Sending…" : "Send SMS"}
                   </button>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
-                    Enter the 6-digit code sent to <strong>+237{phoneInput.replace(/\D/g, "").replace(/^237/, "")}</strong>
+                    Enter the 6-digit code sent to <strong>+237{phoneInput}</strong>
                   </p>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input className="input" type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6}

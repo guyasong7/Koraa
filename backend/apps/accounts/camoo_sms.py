@@ -1,22 +1,20 @@
 """
-Camoo SMS — lightweight Python client for the Camoo SMS gateway.
+Camoo SMS — Python client for the Camoo SMS API v1.
 
-Translated from the PHP SDK's Message::create() / send() pattern:
+Official API reference: https://api.camoo.cm/v1/sms.json
 
-    $oMessage = Message::create('API_KEY', 'API_SECRET');
-    $oMessage->from    = 'YourCompany';
-    $oMessage->to      = '+237612345678';
-    $oMessage->message = 'Your OTP is 123456';
-    $oMessage->send();
+Authentication is via custom HTTP headers (NOT Basic Auth, NOT body params):
+    X-Api-Key:    <api_key>
+    X-Api-Secret: <api_secret>
+    User-Agent:   CamooSms/ApiClient
 
-Usage:
+Body is form-encoded:
+    to      — E.164 recipient, e.g. +237612345678
+    from    — Alphanumeric sender ID (max 11 chars)
+    message — SMS body
 
-    from apps.accounts.camoo_sms import send_sms
-    ok, info = send_sms(to='+237612345678', message='Your Koraa code is 482910')
-
-The credentials are read from Django settings, which reads them from the
-environment — CAMOO_API_KEY and CAMOO_API_SECRET. The sender ID defaults to
-'Koraa' (max 11 characters for alphanumeric sender IDs on Camoo).
+Success response shape:
+    { "_message": "success", "sms": { "code": 200, "message-count": 1, ... } }
 """
 
 from __future__ import annotations
@@ -28,11 +26,8 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Camoo SMS REST API endpoint (v1)
-_API_URL = "https://www.camoo.cm/api/v2/sms/send"
-
-# Hard timeout — Camoo is a local gateway; 10 s is generous.
-_TIMEOUT = 10
+_API_URL = "https://api.camoo.cm/v1/sms.json"
+_TIMEOUT = 15
 
 
 def send_sms(to: str, message: str, sender: str | None = None) -> tuple[bool, dict]:
@@ -42,19 +37,16 @@ def send_sms(to: str, message: str, sender: str | None = None) -> tuple[bool, di
     Parameters
     ----------
     to:
-        Recipient phone number in E.164 format, e.g. ``+237612345678``.
-        Camoo accepts the leading ``+`` or the bare country code.
+        Recipient in E.164 format, e.g. ``+237683140781``.
     message:
-        The text body. Keep it under 160 characters for a single-part SMS.
+        Text body (max 160 chars for single-part SMS).
     sender:
-        Alphanumeric sender ID (max 11 chars). Defaults to ``settings.CAMOO_SENDER_ID``
-        or the string ``'Koraa'``.
+        Alphanumeric sender ID (max 11 chars).
+        Defaults to ``settings.CAMOO_SENDER_ID`` or ``'Koraa'``.
 
     Returns
     -------
     (success: bool, response_data: dict)
-        ``success`` is True if Camoo returned status 200 and no error code.
-        ``response_data`` contains the raw decoded JSON for logging.
     """
     api_key    = getattr(settings, "CAMOO_API_KEY",    "")
     api_secret = getattr(settings, "CAMOO_API_SECRET", "")
@@ -62,45 +54,46 @@ def send_sms(to: str, message: str, sender: str | None = None) -> tuple[bool, di
 
     if not api_key or not api_secret:
         logger.error(
-            "Camoo SMS is not configured. "
-            "Set CAMOO_API_KEY and CAMOO_API_SECRET in the environment."
+            "Camoo SMS not configured — set CAMOO_API_KEY and CAMOO_API_SECRET."
         )
         return False, {"error": "Camoo SMS credentials not configured."}
 
-    # Normalise the number — Camoo accepts '+237...' directly.
-    phone = to.strip()
+    headers = {
+        "X-Api-Key":    api_key,
+        "X-Api-Secret": api_secret,
+        "User-Agent":   "CamooSms/ApiClient",
+    }
 
     payload = {
-        "api_key":    api_key,
-        "api_secret": api_secret,
-        "from":       sender_id,
-        "to":         phone,
-        "message":    message,
+        "from":    sender_id,
+        "to":      to.strip(),
+        "message": message,
     }
 
     try:
-        response = requests.post(_API_URL, data=payload, timeout=_TIMEOUT)
+        response = requests.post(
+            _API_URL, headers=headers, data=payload, timeout=_TIMEOUT
+        )
         data = response.json()
     except requests.Timeout:
-        logger.warning("Camoo SMS request timed out for %s", phone)
+        logger.warning("Camoo SMS request timed out for %s", to)
         return False, {"error": "Gateway timeout"}
     except Exception as exc:
-        logger.warning("Camoo SMS request failed for %s: %s", phone, exc)
+        logger.warning("Camoo SMS request failed for %s: %s", to, exc)
         return False, {"error": str(exc)}
 
-    # Camoo returns {"status": "OK", "message": "..."} on success
-    # and {"status": "FAILED", "error_code": ..., "message": "..."} on failure.
-    success = (
-        response.status_code == 200
-        and str(data.get("status", "")).upper() == "OK"
-    )
+    # Success: HTTP 200 AND sms.code == 200
+    sms_code = data.get("sms", {}).get("code")
+    success  = response.status_code == 200 and str(sms_code) == "200"
 
-    if not success:
-        logger.warning(
-            "Camoo SMS delivery failed for %s — status %s, response: %s",
-            phone, response.status_code, data,
-        )
+    if success:
+        logger.info("Camoo SMS sent to %s (msg-id: %s)",
+                    to, data.get("sms", {}).get("messages", [{}])[0].get("message-id", "?")
+                    if isinstance(data.get("sms", {}).get("messages"), list) else "?")
     else:
-        logger.info("Camoo SMS sent to %s", phone)
+        logger.warning(
+            "Camoo SMS failed for %s — HTTP %s, sms.code %s, body: %s",
+            to, response.status_code, sms_code, data,
+        )
 
     return success, data
