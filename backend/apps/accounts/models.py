@@ -210,6 +210,59 @@ class PasswordResetToken(models.Model):
             return None
         return obj
 
+class PhoneVerificationOTP(models.Model):
+    """
+    6-digit OTP sent via Camoo SMS for phone number verification.
+
+    Scoped to (user, phone) so a merchant can verify different numbers
+    without old codes for a previous number interfering. Stored as a
+    SHA-256 hash — the same pattern as EmailVerificationOTP. Expires in
+    10 minutes and is single-use.
+    """
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="phone_otps"
+    )
+    # The number this OTP was sent to, normalised to E.164.
+    phone = models.CharField(max_length=20)
+    otp_hash = models.CharField(max_length=64)  # SHA-256 hex
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Phone Verification OTP"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "phone", "is_used"]),
+        ]
+
+    @classmethod
+    def generate(cls, user, phone: str):
+        """Generate and store a new OTP for (user, phone). Invalidates old ones."""
+        cls.objects.filter(user=user, phone=phone, is_used=False).update(is_used=True)
+        otp = f"{secrets.randbelow(1000000):06d}"
+        otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+        instance = cls.objects.create(
+            user=user,
+            phone=phone,
+            otp_hash=otp_hash,
+            expires_at=timezone.now() + timezone.timedelta(minutes=10),
+        )
+        return otp, instance
+
+    def verify(self, raw_otp: str) -> bool:
+        """Verify a raw OTP. Marks used on success."""
+        if self.is_used or timezone.now() > self.expires_at:
+            return False
+        incoming_hash = hashlib.sha256(raw_otp.encode()).hexdigest()
+        if incoming_hash == self.otp_hash:
+            self.is_used = True
+            self.save(update_fields=["is_used"])
+            return True
+        return False
+
+
 
 class Referral(models.Model):
     """

@@ -493,6 +493,16 @@ KORAA_PLATFORM_COMMISSION_RATE = env.float("KORAA_PLATFORM_COMMISSION_RATE", def
 FIREBASE_PROJECT_ID = env("FIREBASE_PROJECT_ID", default="koraa-a3ecd")
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Camoo SMS
+# Used to send phone-verification OTPs to merchants during identity setup.
+# Credentials from https://www.camoo.cm — API section of your account.
+# ──────────────────────────────────────────────────────────────────────────────
+CAMOO_API_KEY    = env("CAMOO_API_KEY",    default="")
+CAMOO_API_SECRET = env("CAMOO_API_SECRET", default="")
+# Alphanumeric sender ID shown to the recipient (max 11 chars).
+CAMOO_SENDER_ID  = env("CAMOO_SENDER_ID",  default="Koraa")
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Jazzmin Admin Theme
 # ──────────────────────────────────────────────────────────────────────────────
 JAZZMIN_SETTINGS = {

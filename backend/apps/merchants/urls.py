@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     MerchantCreateView, MerchantProfileView, merchant_dashboard_stats,
     MerchantIdentityUploadView, MerchantTeamView, MerchantTeamDetailView,
-    MerchantPayoutAccountListCreateView, MerchantPayoutAccountDetailView
+    MerchantPayoutAccountListCreateView, MerchantPayoutAccountDetailView,
+    PhoneSendOTPView, PhoneVerifyOTPView,
 )
 
 urlpatterns = [
@@ -15,4 +16,8 @@ urlpatterns = [
 
     path("payouts/", MerchantPayoutAccountListCreateView.as_view(), name="merchant-payouts"),
     path("payouts/<uuid:pk>/", MerchantPayoutAccountDetailView.as_view(), name="merchant-payouts-detail"),
+
+    # Phone verification via SMS OTP
+    path("phone/send-otp/", PhoneSendOTPView.as_view(), name="merchant-phone-send-otp"),
+    path("phone/verify-otp/", PhoneVerifyOTPView.as_view(), name="merchant-phone-verify-otp"),
 ]

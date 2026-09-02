@@ -18,6 +18,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from apps.merchants.utils_helpers import get_active_merchant, require_own_merchant
 from apps.stores.access import accessible_stores
+from apps.accounts.models import PhoneVerificationOTP
+from apps.accounts.camoo_sms import send_sms
 from .serializers import (
     MerchantSerializer, MerchantCreateSerializer, 
     MerchantUpdateSerializer, MerchantIdentitySerializer,
@@ -351,3 +353,101 @@ class MerchantPayoutAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
         return MerchantPayoutAccount.objects.filter(merchant=merchant)
 
 
+
+@extend_schema(
+    tags=["merchants"],
+    request={"application/json": {"type": "object", "properties": {
+        "phone": {"type": "string", "example": "+237612345678"},
+    }, "required": ["phone"]}},
+    responses={200: {"type": "object", "properties": {"message": {"type": "string"}}}},
+)
+class PhoneSendOTPView(APIView):
+    """
+    POST /merchants/phone/send-otp/
+
+    Send a 6-digit OTP via Camoo SMS to the supplied phone number.
+    The OTP expires in 10 minutes. Call /merchants/phone/verify-otp/ to confirm.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = "auth"
+
+    def post(self, request):
+        phone = (request.data.get("phone") or "").strip()
+        if not phone:
+            return Response({"error": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not (phone.startswith("+") and phone[1:].isdigit() and len(phone) >= 8):
+            return Response(
+                {"error": "Phone number must be in E.164 format, e.g. +237612345678."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        otp, _ = PhoneVerificationOTP.generate(request.user, phone)
+        message = (
+            f"Your Koraa verification code is: {otp}. "
+            "Valid for 10 minutes. Do not share it."
+        )
+        ok, _ = send_sms(to=phone, message=message)
+
+        if not ok:
+            return Response(
+                {"error": "Could not send SMS. Please check the number and try again."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({"message": f"OTP sent to {phone}."})
+
+
+@extend_schema(
+    tags=["merchants"],
+    request={"application/json": {"type": "object", "properties": {
+        "phone": {"type": "string", "example": "+237612345678"},
+        "otp":   {"type": "string", "example": "482910"},
+    }, "required": ["phone", "otp"]}},
+    responses={200: {"type": "object", "properties": {"message": {"type": "string"}}}},
+)
+class PhoneVerifyOTPView(APIView):
+    """
+    POST /merchants/phone/verify-otp/
+
+    Confirm the OTP received by SMS. On success sets
+    MerchantIdentity.phone_verified = True.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        phone   = (request.data.get("phone") or "").strip()
+        raw_otp = (request.data.get("otp")   or "").strip()
+
+        if not phone or not raw_otp:
+            return Response(
+                {"error": "Both 'phone' and 'otp' are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        otp_obj = (
+            PhoneVerificationOTP.objects
+            .filter(user=request.user, phone=phone, is_used=False)
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not otp_obj or not otp_obj.verify(raw_otp):
+            return Response(
+                {"error": "Invalid or expired OTP. Please request a new code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            merchant = get_active_merchant(request.user)
+            identity, _ = MerchantIdentity.objects.get_or_create(merchant=merchant)
+            identity.phone_verified = True
+            identity.save(update_fields=["phone_verified"])
+
+            if not request.user.phone:
+                request.user.phone = phone
+                request.user.save(update_fields=["phone"])
+        except Exception:
+            pass
+
+        return Response({"message": "Phone number verified successfully."})
