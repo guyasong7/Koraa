@@ -102,8 +102,8 @@ function RegisterContent() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="auth-split__field">
-              <label className="auth-split__label" htmlFor="full_name">Full name</label>
+            <div className="input-group">
+              <label className="input-label" htmlFor="full_name">Full name</label>
               <input
                 id="full_name"
                 type="text"
@@ -121,8 +121,8 @@ function RegisterContent() {
                 form past the photo beside it, and the taller of the two is
                 what set the card's height. */}
             <div className="auth-split__row">
-              <div className="auth-split__field">
-                <label className="auth-split__label" htmlFor="email">Email</label>
+              <div className="input-group">
+                <label className="input-label" htmlFor="email">Email</label>
                 <input
                   id="email"
                   type="email"
@@ -135,8 +135,8 @@ function RegisterContent() {
                 {errors.email && <span className="error-text">{errors.email}</span>}
               </div>
 
-              <div className="auth-split__field">
-                <label className="auth-split__label" htmlFor="phone">Phone (optional)</label>
+              <div className="input-group">
+                <label className="input-label" htmlFor="phone">Phone (optional)</label>
                 <input
                   id="phone"
                   type="tel"
@@ -149,8 +149,8 @@ function RegisterContent() {
             </div>
 
             <div className="auth-split__row">
-              <div className="auth-split__field">
-                <label className="auth-split__label" htmlFor="password">Password</label>
+              <div className="input-group">
+                <label className="input-label" htmlFor="password">Password</label>
                 <div style={{ position: "relative" }}>
                   <input
                     id="password"
@@ -160,15 +160,16 @@ function RegisterContent() {
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     required
-                    /* Clears the toggle. The pill's own padding is 18px, so
-                       anything less than this puts text under the icon. */
+                    /* Clears the toggle, matching the login form's field —
+                       `.input` pads 13px, so 44 leaves the icon its own room
+                       without text running under it. */
                     style={{ paddingRight: 44 }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center" }}
+                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center" }}
                   >
                     {showPassword ? <LuEyeOff size={17} /> : <LuEye size={17} />}
                   </button>
@@ -176,8 +177,8 @@ function RegisterContent() {
                 {errors.password && <span className="error-text">{errors.password}</span>}
               </div>
 
-              <div className="auth-split__field">
-                <label className="auth-split__label" htmlFor="password_confirm">Confirm</label>
+              <div className="input-group">
+                <label className="input-label" htmlFor="password_confirm">Confirm</label>
                 <input
                   id="password_confirm"
                   type="password"
@@ -193,7 +194,7 @@ function RegisterContent() {
 
             <button
               type="submit"
-              className="auth-split__btn auth-split__btn--primary"
+              className="btn btn-primary btn-full"
               disabled={isLoading}
               style={{ marginTop: 10 }}
             >
@@ -217,7 +218,7 @@ function RegisterContent() {
           <div className="auth-split__socials">
             <button
               type="button"
-              className="auth-split__btn auth-split__btn--ghost"
+              className="btn btn-secondary btn-full"
               onClick={() => handleGoogleLogin()}
               disabled={isLoading}
             >

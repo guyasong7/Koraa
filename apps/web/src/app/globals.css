@@ -1258,59 +1258,23 @@ button.stat-card:hover {
   margin: 0;
 }
 
-/* Pill fields and pill buttons, scoped to this card only. The dashboard
-   is deliberately square-cornered and must stay that way — this cannot
-   leak there because it sets a variable on .auth-split, and nothing
-   outside the card inherits it.
+/* Controls in this card are the app's controls, unmodified. There was a
+   pill language here once — `--control-radius: var(--radius-full)`, a
+   recessed `--surface` field ground and a bespoke `.auth-split__btn` — and
+   it made sign-up and onboarding the only two screens in the product whose
+   inputs and buttons were a different shape from every other screen,
+   including the login page a visitor reaches them from.
 
-   Set once here rather than listed per control: the previous version
-   named `.input` and `.auth-split__btn` explicitly, so any control added
-   to this card later would have kept the app's 8px corner and quietly
-   broken the pill language. Anything resolving `--control-radius` now
-   follows without being added to a list. */
-.auth-split {
-  --control-radius: var(--radius-full);
-}
+   So `.input`, `.input-group`, `.input-label` and `.btn` are used here as
+   they are everywhere. What stays below is layout the shared classes have
+   no opinion about: the field rhythm, the paired rows, the social grid and
+   onboarding's step rail and tiles.
 
-.auth-split .input {
-  width: 100%;
-  padding: 13px 18px;
-  font-size: 0.9375rem;
-  /* A step darker than the card, so the field reads as recessed into the
-     paper. The app default is the reverse — a light field on a darker
-     page — which inside this card would make every input a bright slab. */
-  background: var(--surface);
-}
-
-/* Softer than --border-strong, which is heavy on a card this quiet.
-   Scoped away from :focus deliberately: `.auth-split .input` and
-   `.input:focus` weigh the same and this block is later in the file, so
-   without the :not() the ochre focus border would never show. */
-.auth-split .input:not(:focus) {
-  border-color: var(--border);
-}
-
-.auth-split .input:focus {
-  background: var(--surface-900);
-}
-
-.auth-split__field {
+   A field on this card is the same colour as the card, separated by its
+   border alone. That is not an oversight — `.auth-card` behind the login
+   form is also `--surface-900`, so this is what matching login means. */
+.auth-split .input-group {
   margin-bottom: 12px;
-}
-
-.auth-split__label {
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0 0 6px 16px;
-}
-
-/* Indented to the pill's inner edge, so the message reads as belonging
-   to the field rather than to the column. */
-.auth-split .error-text {
-  font-size: 0.8125rem;
-  margin: 5px 0 0 16px;
 }
 
 /* Two columns for names/passwords, so five fields stop pushing the card
@@ -1319,53 +1283,6 @@ button.stat-card:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-}
-
-.auth-split__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  width: 100%;
-  min-height: 50px;
-  padding: 13px 20px;
-  font-family: inherit;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  /* This is not a `.btn`, so it carries no radius of its own — it used to
-     borrow one from the two-selector rule above. It resolves the shared
-     token now, which `.auth-split` has already set to a pill. */
-  border-radius: var(--control-radius);
-  transition:
-    background 0.18s var(--ease-out),
-    border-color 0.18s var(--ease-out);
-}
-
-.auth-split__btn--primary {
-  background: var(--brand-solid);
-  color: var(--on-brand-solid);
-}
-
-.auth-split__btn--primary:hover:not(:disabled) {
-  background: var(--brand-solid-hover);
-}
-
-.auth-split__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.auth-split__btn--ghost {
-  background: var(--surface-900);
-  border-color: var(--border);
-  color: var(--text-primary);
-}
-
-.auth-split__btn--ghost:hover:not(:disabled) {
-  background: var(--surface-850);
-  border-color: var(--surface-500);
 }
 
 /* Side by side as in the reference. `minmax(0, 1fr)` rather than `1fr`
@@ -1521,8 +1438,8 @@ button.stat-card:hover {
   color: var(--text-secondary);
   background: var(--surface);
   border: 1px solid var(--border);
-  /* A tile is a control in this card, so it follows the card's corner
-     rather than naming a pill of its own. */
+  /* A tile is a control, so it follows the shared control radius rather
+     than naming a corner of its own. */
   border-radius: var(--control-radius);
   cursor: pointer;
   transition:
@@ -1557,12 +1474,13 @@ button.stat-card:hover {
 }
 
 /* Back stays narrow. Equal halves would give the same weight to leaving
-   the step as to finishing it. */
-.auth-split__actions .auth-split__btn--ghost {
+   the step as to finishing it. `flex` rather than `btn-full`, which would
+   set both to 100% and let the flex basis fight the width. */
+.auth-split__actions .btn-secondary {
   flex: 0 0 30%;
 }
 
-.auth-split__actions .auth-split__btn--primary {
+.auth-split__actions .btn-primary {
   flex: 1;
 }
 

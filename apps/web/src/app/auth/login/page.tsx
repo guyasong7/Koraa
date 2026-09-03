@@ -159,7 +159,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary btn-full" disabled={isLoading} style={{ marginTop: 4, padding: "14px" }}>
+          <button type="submit" className="btn btn-primary btn-full" disabled={isLoading} style={{ marginTop: 4 }}>
             {isLoading ? (
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="spin-fast"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 60" /></svg>

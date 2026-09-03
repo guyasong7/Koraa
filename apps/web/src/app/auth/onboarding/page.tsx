@@ -129,8 +129,8 @@ export default function OnboardingPage() {
 
           {step === 0 && (
             <>
-              <div className="auth-split__field">
-                <label className="auth-split__label" htmlFor="business_name">
+              <div className="input-group">
+                <label className="input-label" htmlFor="business_name">
                   What is your business called?
                 </label>
                 <input
@@ -144,8 +144,8 @@ export default function OnboardingPage() {
                 />
               </div>
 
-              <div className="auth-split__field">
-                <label className="auth-split__label">What do you sell?</label>
+              <div className="input-group">
+                <label className="input-label">What do you sell?</label>
                 <div className="auth-split__tiles">
                   {BUSINESS_TYPES.map((bt) => (
                     <button
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
 
               <button
                 type="button"
-                className="auth-split__btn auth-split__btn--primary"
+                className="btn btn-primary btn-full"
                 onClick={() => form.business_name.trim() && setStep(1)}
                 disabled={!form.business_name.trim()}
                 style={{ marginTop: 10 }}
@@ -189,8 +189,8 @@ export default function OnboardingPage() {
               }}
             >
               <div className="auth-split__row">
-                <div className="auth-split__field">
-                  <label className="auth-split__label" htmlFor="country">Country</label>
+                <div className="input-group">
+                  <label className="input-label" htmlFor="country">Country</label>
                   <select
                     id="country"
                     className="input"
@@ -203,8 +203,8 @@ export default function OnboardingPage() {
                   </select>
                 </div>
 
-                <div className="auth-split__field">
-                  <label className="auth-split__label" htmlFor="city">City</label>
+                <div className="input-group">
+                  <label className="input-label" htmlFor="city">City</label>
                   <input
                     id="city"
                     type="text"
@@ -217,8 +217,8 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="auth-split__field">
-                <label className="auth-split__label" htmlFor="business_phone">
+              <div className="input-group">
+                <label className="input-label" htmlFor="business_phone">
                   Business phone
                 </label>
                 <input
@@ -234,14 +234,14 @@ export default function OnboardingPage() {
               <div className="auth-split__actions">
                 <button
                   type="button"
-                  className="auth-split__btn auth-split__btn--ghost"
+                  className="btn btn-secondary"
                   onClick={() => setStep(0)}
                 >
                   <LuArrowLeft size={16} /> Back
                 </button>
                 <button
                   type="submit"
-                  className="auth-split__btn auth-split__btn--primary"
+                  className="btn btn-primary"
                   disabled={loading}
                 >
                   {loading ? (
