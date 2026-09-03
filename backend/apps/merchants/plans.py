@@ -15,12 +15,17 @@ advertised limits the enforcement code didn't implement. Everything now
 derives from ``PLANS`` below, and ``/api/payments/plans/`` serves it to
 the frontend so the marketing copy cannot drift from the enforcement.
 
-Billing is annual only. Koraa used to offer monthly and yearly at a
-straight 12x, which gave buyers no reason to commit and gave Koraa no
-working capital. Annual pricing here is the old monthly rate x10 — two
-months free — so the buyer saves and Koraa collects a year upfront.
-Historic monthly subscriptions still read correctly; see
-``payments.views.BILLING_CYCLES``.
+Both cycles are sold. ``price_monthly`` is a tenth of ``price_yearly``, so
+a year bought up front costs ten months rather than twelve — the two-months-
+free discount is expressed in the annual figure and is not a separate rule
+anywhere. Monthly was withdrawn for a while, on the reasoning that a flat
+12x gave buyers no reason to commit and Koraa no working capital; the ÷10
+ladder keeps the incentive to commit while letting a merchant who cannot
+find 50,000 XAF in one go start anyway.
+
+Keep the two in step. ``price_monthly * 10 == price_yearly`` for every tier
+is asserted in ``apps/payments/tests``, because the discount only reads as
+"two months free" while that holds.
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ PLANS: dict[str, dict] = {
         "name": "Free",
         "tagline": "Testing the water",
         "price_yearly": 0,
+        "price_monthly": 0,
         "order": 0,
         "limits": {
             # Kept at 50, not lowered, because live free merchants are
@@ -61,6 +67,7 @@ PLANS: dict[str, dict] = {
         "name": "Starter",
         "tagline": "A shop that's working",
         "price_yearly": 50_000,
+        "price_monthly": 5_000,
         "order": 1,
         "limits": {
             "stores": 3,
@@ -87,6 +94,7 @@ PLANS: dict[str, dict] = {
         "name": "Pro",
         "tagline": "Selling at volume",
         "price_yearly": 150_000,
+        "price_monthly": 15_000,
         "order": 2,
         "limits": {
             "stores": UNLIMITED,
@@ -110,6 +118,7 @@ PLANS: dict[str, dict] = {
         "name": "Enterprise",
         "tagline": "Multiple brands or locations",
         "price_yearly": 350_000,
+        "price_monthly": 35_000,
         "order": 3,
         "limits": {
             "stores": UNLIMITED,
@@ -173,6 +182,26 @@ def price_yearly(tier: str | None) -> int:
     return PLANS[normalise(tier)]["price_yearly"]
 
 
+def price_monthly(tier: str | None) -> int:
+    """Monthly price in XAF. Free is 0.
+
+    A tenth of the annual figure by construction, not by arithmetic here —
+    both are written down in ``PLANS`` so a tier can be repriced without
+    either cycle inheriting a rounding artefact from the other.
+    """
+    return PLANS[normalise(tier)]["price_monthly"]
+
+
+def price(tier: str | None, cycle: str) -> int:
+    """Price for ``tier`` on ``cycle``, which must be monthly or yearly.
+
+    Raises ``KeyError`` on any other cycle. The payments view validates the
+    cycle against its own tuple before reaching here, so an unknown one is a
+    programming error and should not quietly bill the annual amount.
+    """
+    return {"monthly": price_monthly, "yearly": price_yearly}[cycle](tier)
+
+
 def public_catalogue() -> list[dict]:
     """JSON-safe plan list for the pricing page and billing screen.
 
@@ -191,6 +220,7 @@ def public_catalogue() -> list[dict]:
             "name": plan["name"],
             "tagline": plan["tagline"],
             "price_yearly": plan["price_yearly"],
+            "price_monthly": plan["price_monthly"],
             "order": plan["order"],
             "limits": {k: clean(v) for k, v in plan["limits"].items()},
             "features": dict(plan["features"]),
