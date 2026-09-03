@@ -31,6 +31,7 @@ import Link from "next/link";
 import { LuCheck } from "react-icons/lu";
 
 import type { PlanCatalogueEntry } from "@/lib/api";
+import { useIsSignedIn } from "@/hooks/useIsSignedIn";
 import {
   CONTACT_SALES_PLAN,
   POPULAR_PLAN,
@@ -55,6 +56,7 @@ export function PricingPlans({
      second, which is the trick this page is deliberately not playing. */
   const [view, setView] = useState<View>("yearly");
   const monthly = view === "monthly";
+  const signedIn = useIsSignedIn();
 
   return (
     <>
@@ -92,6 +94,21 @@ export function PricingPlans({
              send people to a dead end. */
           const contact = plan.key === CONTACT_SALES_PLAN;
           const free = plan.price_yearly === 0;
+
+          // Where this plan's button goes. A merchant who is already signed in
+          // does not need to register to pick a plan — Billing is where the
+          // same choice is actually made, and the free tier is the one they are
+          // already on, so it points at the dashboard itself.
+          const ctaHref = !signedIn
+            ? "/auth/register"
+            : free
+              ? "/dashboard"
+              : "/dashboard/billing";
+          const ctaLabel = free
+            ? signedIn
+              ? "Go to your dashboard"
+              : "Open a shop"
+            : `Choose ${plan.name}`;
 
           return (
             <div
@@ -150,12 +167,12 @@ export function PricingPlans({
                 </a>
               ) : (
                 <Link
-                  href="/auth/register"
+                  href={ctaHref}
                   className={
                     featured ? "lp-btn lp-btn--on-ink" : "lp-btn lp-btn--outline"
                   }
                 >
-                  {free ? "Open a shop" : `Choose ${plan.name}`}
+                  {ctaLabel}
                 </Link>
               )}
             </div>

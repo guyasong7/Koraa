@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  LuArrowRight,
   LuChartLine,
   LuCheck,
   LuGlobe,
@@ -13,6 +12,7 @@ import {
 } from "react-icons/lu";
 
 import { getPlanCatalogue } from "@/lib/api";
+import HeroCta from "@/components/HeroCta";
 import KoraaLogo from "@/components/KoraaLogo";
 import { RAILS } from "@/components/RailLogos";
 import { universalFeatures, FALLBACK_PLANS } from "@/lib/planCopy";
@@ -197,13 +197,7 @@ export default async function LandingPage() {
                 from their phone, and one dashboard to run both.
               </p>
               <div className="lp-hero__actions" data-hero="actions">
-                <Link
-                  href="/auth/register"
-                  className="lp-btn lp-btn--primary lp-btn--lg"
-                >
-                  Open a shop
-                  <LuArrowRight size={18} aria-hidden="true" />
-                </Link>
+                <HeroCta className="lp-btn lp-btn--primary lp-btn--lg" />
                 <Link href="#pricing" className="lp-btn lp-btn--outline lp-btn--lg">
                   See pricing
                 </Link>
@@ -574,13 +568,7 @@ export default async function LandingPage() {
             expire, so there is nothing to cancel if you change your mind.
           </p>
           <div className="lp-cta__actions">
-            <Link
-              href="/auth/register"
-              className="lp-btn lp-btn--on-ink lp-btn--lg"
-            >
-              Open a shop
-              <LuArrowRight size={18} aria-hidden="true" />
-            </Link>
+            <HeroCta className="lp-btn lp-btn--on-ink lp-btn--lg" />
             <Link href="/domains" className="lp-btn lp-btn--ghost-ink lp-btn--lg">
               Find a domain
             </Link>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { LuMenu, LuX } from "react-icons/lu";
 import KoraaLogo from "./KoraaLogo";
+import { useIsSignedIn } from "@/hooks/useIsSignedIn";
 
 /* Only destinations that exist. /domains is a real route; the old
    /domains/search, /domains/transfer, /domains/premium, /domains/privacy
@@ -16,6 +17,7 @@ const NAV_LINKS = [
 ];
 
 export default function LandingNavbar() {
+  const signedIn = useIsSignedIn();
   const [solid, setSolid] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -60,11 +62,19 @@ export default function LandingNavbar() {
           </div>
 
           <div className="lnav__actions">
-            <Link href="/auth/login" className="lnav__signin">
-              Log in
-            </Link>
-            <Link href="/auth/register" className="lnav__cta">
-              Open your shop
+            {/* "Log in" is noise once you are logged in, and so is being sent
+                to a registration form. Signed in, the pair collapses to one
+                button pointed at the dashboard. */}
+            {!signedIn && (
+              <Link href="/auth/login" className="lnav__signin">
+                Log in
+              </Link>
+            )}
+            <Link
+              href={signedIn ? "/dashboard" : "/auth/register"}
+              className="lnav__cta"
+            >
+              {signedIn ? "Dashboard" : "Open your shop"}
             </Link>
 
             <button
@@ -95,19 +105,21 @@ export default function LandingNavbar() {
 
           <div className="lnav-sheet__actions">
             <Link
-              href="/auth/register"
+              href={signedIn ? "/dashboard" : "/auth/register"}
               className="lp-btn lp-btn--primary"
               onClick={() => setMenuOpen(false)}
             >
-              Open your shop
+              {signedIn ? "Dashboard" : "Open your shop"}
             </Link>
-            <Link
-              href="/auth/login"
-              className="lp-btn lp-btn--outline"
-              onClick={() => setMenuOpen(false)}
-            >
-              Log in
-            </Link>
+            {!signedIn && (
+              <Link
+                href="/auth/login"
+                className="lp-btn lp-btn--outline"
+                onClick={() => setMenuOpen(false)}
+              >
+                Log in
+              </Link>
+            )}
           </div>
         </div>
       )}
