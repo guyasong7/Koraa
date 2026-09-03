@@ -240,12 +240,11 @@ class StoreAIChatView(APIView):
         if not user_msg:
             return Response({"detail": "Message is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # No store is a normal state, not an error. Onboarding creates a
+        # Merchant and nothing else, so every account arrives here with an
+        # empty list — refusing them meant the assistant was broken for
+        # exactly the people with the most questions.
         stores = accessible_stores(request.user).prefetch_related("products")
-        if not stores.exists():
-            return Response(
-                {"detail": "You need a store before you can use the AI."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
         # Only the caller's own account details go into the prompt. A
         # teammate is here to run one shop, so the owner's business profile
@@ -257,6 +256,8 @@ class StoreAIChatView(APIView):
             lines.append(f"Subscription Tier: {own.get_tier_display()}")
         lines.append("")
         lines.append("Stores context:")
+        if not stores:
+            lines.append("- This merchant has not created a store yet.")
         for s in stores:
             lines.append(
                 f"- Store: {s.name} ({s.slug})\n"
@@ -265,6 +266,15 @@ class StoreAIChatView(APIView):
                 f"  Total Products: {s.products.count()}\n"
             )
         context_str = "\n".join(lines)
+        no_store_guidance = (
+            ""
+            if stores
+            else (
+                "\nThis merchant has no store yet. Answer their question, and where "
+                "it helps, point them at Stores in the dashboard sidebar to create "
+                "their first one. Do not claim you cannot help until they have a store.\n"
+            )
+        )
         system_prompt = f"""You are the Koraa Platform AI Assistant. You help merchants manage their online stores on Koraa.
 You must be helpful, professional, and concise.
 
@@ -276,7 +286,7 @@ CRITICAL SECURITY INSTRUCTIONS:
 
 MERCHANT CONTEXT:
 {context_str}
-"""
+{no_store_guidance}"""
         
         messages = [{"role": "system", "content": system_prompt}]
         
