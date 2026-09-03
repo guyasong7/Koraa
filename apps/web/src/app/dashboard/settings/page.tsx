@@ -473,7 +473,14 @@ function IdentityTab() {
       toast.success(`SMS sent to ${e164}`);
     } catch (err: any) {
       setPhoneStep("idle");
-      const msg = err?.response?.data?.error || err?.message || "Failed to send SMS. Try again.";
+      const data = err?.response?.data;
+      // `error` is the gateway message; `detail` is DRF's throttle/auth string.
+      // The 502 body also carries a `detail` object, so only trust strings.
+      const msg =
+        (typeof data?.error === "string" && data.error) ||
+        (typeof data?.detail === "string" && data.detail) ||
+        err?.message ||
+        "Failed to send SMS. Please try again.";
       setPhoneError(msg);
     }
   };

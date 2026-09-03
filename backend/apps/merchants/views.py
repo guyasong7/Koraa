@@ -390,13 +390,24 @@ class PhoneSendOTPView(APIView):
         ok, sms_resp = send_sms(to=phone, message=message)
 
         if not ok:
-            gateway_msg = (
-                sms_resp.get("message")
-                or sms_resp.get("error")
-                or "Unknown gateway error"
-            )
+            # Gateway errors nest code/message under "sms" (code is a string
+            # there, an int on success); local failures — missing credentials,
+            # timeout, connection error — return a flat {"error": ...}.
+            sms_block = sms_resp.get("sms") or {}
+            sms_code = str(sms_block.get("code") or "")
+            gateway_msg = sms_block.get("message") or sms_resp.get("error")
+
+            # Camoo answers 500 when the sender ID is still pending approval or
+            # the account has no credit — its own text says nothing useful.
+            if sms_code == "500" or gateway_msg == "An Internal Error Has Occurred.":
+                user_msg = (
+                    "SMS could not be sent. This usually means the sender ID is still "
+                    "pending approval on the gateway, or the account has insufficient credit."
+                )
+            else:
+                user_msg = gateway_msg or "Unknown gateway error"
             return Response(
-                {"error": f"SMS gateway error: {gateway_msg}", "detail": sms_resp},
+                {"error": user_msg, "detail": sms_resp},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
