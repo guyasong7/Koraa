@@ -123,7 +123,15 @@ class CachedCertsRequest:
         cacheable = method == "GET" and not body and not headers
 
         if cacheable:
-            cached = cache.get(_cache_key(url))
+            try:
+                cached = cache.get(_cache_key(url))
+            except Exception as exc:  # pragma: no cover - cache is optional
+                # Same reasoning as the write below, and this side matters
+                # more: production Redis has a 2s socket timeout, so an
+                # unguarded read turned every blip into "invalid token" for
+                # perfectly good credentials.
+                logger.warning("Could not read Firebase certs from cache: %s", exc)
+                cached = None
             if cached is not None:
                 return _CachedResponse(cached)
 
@@ -142,7 +150,8 @@ class CachedCertsRequest:
                 )
             except Exception as exc:  # pragma: no cover - cache is optional
                 # Losing the cache costs latency, not correctness. A Redis
-                # outage must not take Google sign-in down with it.
+                # outage must not take Google sign-in down with it — in
+                # either direction.
                 logger.warning("Could not cache Firebase certs: %s", exc)
 
         return response

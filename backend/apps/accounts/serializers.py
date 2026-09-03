@@ -42,12 +42,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "email", "full_name", "phone", "avatar",
+            "id", "email", "full_name", "phone", "avatar", "avatar_url",
             "role", "is_verified", "date_joined",
             "merchant_tier", "is_pro", "has_merchant", "merchant_is_verified",
             "date_of_birth", "gender", "id_card_number", "city",
         ]
-        read_only_fields = ["id", "email", "role", "is_verified", "date_joined", "merchant_tier", "is_pro", "has_merchant", "merchant_is_verified"]
+        # `avatar_url` is owned by the identity provider and refreshed on every
+        # social sign-in, so it is not the client's to set — it is absent from
+        # UserUpdateSerializer for the same reason.
+        read_only_fields = ["id", "email", "avatar_url", "role", "is_verified", "date_joined", "merchant_tier", "is_pro", "has_merchant", "merchant_is_verified"]
 
     def get_has_merchant(self, obj):
         return hasattr(obj, 'merchant')

@@ -201,7 +201,11 @@ function ProfileTab() {
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "");
+  // Falls back to the provider's photo, so a Google account sees the picture
+  // the rest of the app is already showing them rather than an empty circle.
+  const [avatarPreview, setAvatarPreview] = useState(
+    user?.avatar || user?.avatar_url || ""
+  );
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,7 +267,12 @@ function ProfileTab() {
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--border)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {avatarPreview ? (
-              <img src={avatarPreview} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img
+                src={avatarPreview}
+                alt="Avatar"
+                referrerPolicy="no-referrer"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             ) : (
               <span style={{ fontSize: 24, fontWeight: 700, color: "var(--text-muted)" }}>{fullName[0]}</span>
             )}

@@ -16,6 +16,7 @@ import dynamic from "next/dynamic";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
 import AppProviders from "@/components/AppProviders";
+import UserAvatar from "@/components/UserAvatar";
 
 /**
  * The chat bubble, out of the dashboard's initial JavaScript.
@@ -156,10 +157,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   );
   if (!isAuthenticated) return null;
 
-  const initial = user?.full_name
-    ? user.full_name.trim()[0].toUpperCase()
-    : user?.email?.[0]?.toUpperCase() || "K";
-
   const { crumbs, title } = describeRoute(pathname);
 
   return (
@@ -284,14 +281,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
             {/* User row */}
             <div style={{ margin: "0 10px 10px", borderRadius: "var(--radius-md)", padding: "10px 12px", display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: "var(--radius-md)",
-                background: "var(--brand-100)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 15, fontWeight: 700, color: "var(--brand-700)", flexShrink: 0,
-              }}>
-                {initial}
-              </div>
+              <UserAvatar
+                user={user}
+                size={38}
+                radius="var(--radius-md)"
+                background="var(--brand-100)"
+                color="var(--brand-700)"
+                fontSize={15}
+              />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {user?.full_name || "Merchant"}
@@ -371,17 +368,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               )}
               <NotificationBell />
               <Link href="/dashboard/settings?tab=profile" style={{ textDecoration: "none" }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: "50%",
-                  background: "var(--brand-600)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 15, fontWeight: 700, color: "#ffffff",
-                  cursor: "pointer", transition: "opacity 0.2s",
-                }}
+                <div
+                  style={{ cursor: "pointer", transition: "opacity 0.2s", display: "flex" }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = "0.85"}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "1"}
                 >
-                  {initial}
+                  <UserAvatar user={user} size={38} fontSize={15} />
                 </div>
               </Link>
             </div>

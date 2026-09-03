@@ -40,6 +40,11 @@ api.interceptors.response.use(
           refresh: refreshToken,
         });
         localStorage.setItem("koraa_access", data.access);
+        // The backend rotates refresh tokens and blacklists the old one after
+        // use (ROTATE_REFRESH_TOKENS + BLACKLIST_AFTER_ROTATION), so keeping
+        // the token we just spent meant the *second* refresh always failed and
+        // logged the user out mid-session.
+        if (data.refresh) localStorage.setItem("koraa_refresh", data.refresh);
         original.headers.Authorization = `Bearer ${data.access}`;
         return api(original);
       } catch {
@@ -508,6 +513,8 @@ export interface UserProfile {
   full_name: string;
   phone: string;
   avatar: string | null;
+  /** Photo from the identity provider. `avatar` wins when both are set. */
+  avatar_url?: string;
   role: "merchant" | "shopper" | "staff" | "admin";
   is_verified: boolean;
   is_pro?: boolean;

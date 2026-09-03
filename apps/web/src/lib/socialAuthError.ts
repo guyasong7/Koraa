@@ -88,6 +88,12 @@ export function socialAuthErrorMessage(
     if (status === 400 || status === 401 || status === 403) {
       return "We could not verify that account. Please try again or use email and password.";
     }
+    // 503 is the backend saying a dependency failed rather than the token being
+    // bad — the certificate cache or Google itself. Retrying genuinely works,
+    // so the copy says to wait rather than to go and check the account.
+    if (status === 503) {
+      return "Sign-in is temporarily unavailable. Please try again in a moment.";
+    }
     if (status >= 500) {
       return "The Koraa server had a problem completing sign-in. Please try again.";
     }

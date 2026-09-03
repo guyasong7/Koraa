@@ -408,6 +408,7 @@ class SocialAuthView(APIView):
 
         email = None
         full_name = None
+        picture = None
 
         try:
             # Verify the Firebase ID token against Google's public certificates.
@@ -420,17 +421,34 @@ class SocialAuthView(APIView):
             email = decoded_token.get("email")
             full_name = decoded_token.get("name") or provided_name
             email_verified = decoded_token.get("email_verified", False)
-        except Exception as exc:
-            # The reason a token failed — wrong audience, bad signature, past
-            # its `exp` — is diagnostic information about our verification
-            # setup, not something an unauthenticated caller should be told.
-            # It goes to the logs; the client gets one flat answer.
+            # Google sends the profile photo as a CDN URL; the client asks for
+            # the `profile` scope, so it is present for Google sign-ins.
+            picture = decoded_token.get("picture") or ""
+        except ValueError as exc:
+            # google-auth raises ValueError for a token that is genuinely bad —
+            # wrong audience, bad signature, past its `exp`. Which of those it
+            # was is diagnostic information about our verification setup, not
+            # something an unauthenticated caller should be told. It goes to
+            # the logs; the client gets one flat answer.
             logger.warning("Firebase token verification failed: %s", exc)
             return Response(
                 {"error": "Invalid or expired sign-in token. Please try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+        except Exception as exc:
+            # Anything else is our problem, not the token's: a Redis blip on
+            # the certificate cache, or Google unreachable. Reporting those as
+            # a bad token sent people off to re-check credentials that were
+            # fine, and made the failure invisible in the logs among real
+            # rejections — so it is a 503, logged with a traceback.
+            logger.exception(
+                "Google sign-in unavailable (%s): %s", type(exc).__name__, exc
+            )
+            return Response(
+                {"error": "Sign-in is temporarily unavailable. Please try again."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         if not email:
             return Response({"error": "Email not provided by provider."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -441,6 +459,7 @@ class SocialAuthView(APIView):
         if created:
             user.full_name = full_name or email.split("@")[0]
             user.is_verified = email_verified
+            user.avatar_url = picture
             user.set_unusable_password()
             user.save()
 
@@ -462,7 +481,12 @@ class SocialAuthView(APIView):
             if email_verified and not user.is_verified:
                 user.is_verified = True
                 user.save(update_fields=["is_verified"])
-            
+            # Refreshed on every sign-in, not just the first: Google rotates
+            # these URLs, and a stale one renders as a broken image. It never
+            # touches `avatar`, so a photo the merchant uploaded still wins.
+            if picture and user.avatar_url != picture:
+                user.avatar_url = picture
+                user.save(update_fields=["avatar_url"])
         refresh = RefreshToken.for_user(user)
         return Response({
             "message": "Login successful.",

@@ -53,6 +53,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     full_name = models.CharField(_("full name"), max_length=255, blank=True)
     phone = models.CharField(_("phone number"), max_length=20, blank=True)
     avatar = models.ImageField(_("avatar"), upload_to="avatars/", blank=True, null=True)
+    # A photo hosted by the identity provider, kept alongside `avatar` rather
+    # than downloaded into it: Google hands us a CDN URL, and copying every
+    # sign-in's photo into our own storage would cost bandwidth and space for
+    # an image Google already serves. `avatar` wins when both are set, so an
+    # upload always beats the provider's picture.
+    avatar_url = models.URLField(_("avatar URL"), max_length=500, blank=True)
 
     # Personal identity fields
     date_of_birth = models.DateField(_("date of birth"), null=True, blank=True)
