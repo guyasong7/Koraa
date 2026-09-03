@@ -16,6 +16,7 @@ import dynamic from "next/dynamic";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
 import AppProviders from "@/components/AppProviders";
+import SessionGuard from "@/components/SessionGuard";
 import UserAvatar from "@/components/UserAvatar";
 
 /**
@@ -168,6 +169,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
        breadcrumb header's NotificationBell, `handleLogout`'s toast, and every
        page passed in as `children`) is below this point. */
     <AppProviders>
+      {/* Ends the session after ten idle minutes or on going offline. Here
+          rather than in AppProviders, which also wraps /auth and the public
+          storefronts — see components/SessionGuard.tsx. */}
+      <SessionGuard />
       <div style={{ minHeight: "100vh", width: "100%" }}>
 
         {/* Mobile overlay */}

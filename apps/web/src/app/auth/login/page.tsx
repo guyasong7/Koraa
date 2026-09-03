@@ -2,14 +2,46 @@
 
 import Link from "next/link";
 import KoraaLogo from "@/components/KoraaLogo";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import toast from "react-hot-toast";
 import { LuEye, LuEyeOff, LuArrowRight } from "react-icons/lu";
 import { FcGoogle } from "react-icons/fc";
 import { signInWithEmail } from "@/lib/firebase";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
+
+/**
+ * Why the user is here, when SessionGuard sent them rather than a link.
+ *
+ * An unexplained bounce to the login page reads as a bug, so every automatic
+ * sign-out names its trigger. Unrecognised values render nothing — the reason
+ * is in a query string, so anyone can put anything there.
+ */
+const SIGNED_OUT_REASONS: Record<string, string> = {
+  idle: "You were signed out after 10 minutes of inactivity.",
+  offline: "You were signed out because your connection dropped.",
+};
+
+/**
+ * The banner explaining an automatic sign-out, in its own component.
+ *
+ * `useSearchParams` opts its caller out of prerendering and Next.js requires a
+ * Suspense boundary to contain that — `next build` fails on the route without
+ * one. Sibling pages wrap their whole body (auth/register, auth/reset-password);
+ * here the boundary is just this line, so the form above it is still in the
+ * initial HTML. A sign-in page is the wrong place to wait for JavaScript.
+ */
+function SignedOutNotice() {
+  const reason = SIGNED_OUT_REASONS[useSearchParams().get("reason") ?? ""];
+  if (!reason) return null;
+
+  return (
+    <div style={{ background: "var(--brand-tint)", border: "1px solid var(--border)", padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "var(--text-secondary)" }}>
+      {reason}
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -78,6 +110,12 @@ export default function LoginPage() {
         <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 28 }}>
           Sign in to manage your store
         </p>
+
+        {!errors.general && (
+          <Suspense fallback={null}>
+            <SignedOutNotice />
+          </Suspense>
+        )}
 
         {errors.general && (
           <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#ef4444" }}>

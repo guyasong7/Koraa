@@ -324,7 +324,13 @@ REST_FRAMEWORK = {
 # JWT — SimpleJWT
 # ──────────────────────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    # Matched to the dashboard's ten-minute idle rule (see
+    # apps/web/src/components/SessionGuard.tsx) so a stolen access token cannot
+    # outlive the UI that enforces it. Short only works because the refresh
+    # below is long and rotation is honoured on the client: lib/api.ts persists
+    # the rotated refresh token, without which BLACKLIST_AFTER_ROTATION would
+    # eject an active user on their second refresh — around twenty minutes in.
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
