@@ -9,6 +9,7 @@
  * cart action revealed on hover as a rule rather than a filled bar.
  */
 import React from "react";
+import Link from "next/link";
 import { useStorefront } from "../../StorefrontProvider";
 import type { StorefrontProduct } from "../../../types/storefront";
 import type { LayoutModule } from "../registry";
@@ -137,7 +138,7 @@ function EditorialHero({ s, store }: SectionProps) {
         <span className="sf-ed-eyebrow">{store.name}</span>
         <h1 className="sf-ed-h sf-d">{str(s.settings.title, `Welcome to ${store.name}`)}</h1>
         <p className="sf-ed-sub">{str(s.settings.subtitle, store.tagline || "Discover our premium collection.")}</p>
-        <button className="sf-ed-cta">{str(s.settings.button_text, "Shop the collection")}</button>
+        <Link href="/shop" className="sf-ed-cta">{str(s.settings.button_text, "Shop the collection")}</Link>
       </div>
     </section>
   );

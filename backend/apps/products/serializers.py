@@ -166,7 +166,7 @@ class ProductCreateSerializer(serializers.ModelSerializer):
         product = super().update(instance, validated_data)
         
         if product.product_type == Product.ProductType.SIMPLE:
-            variant = product.variants.filter(is_default=True).first()
+            variant = product.variants.filter(is_default=True).first() or product.variants.first()
             if variant:
                 if sku is not None:
                     variant.sku = sku

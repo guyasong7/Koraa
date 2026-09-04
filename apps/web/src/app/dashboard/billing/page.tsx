@@ -118,6 +118,7 @@ function DowngradeDialog({
 }
 
 export default function BillingPage() {
+  const [cycle, setCycle] = useState<"yearly" | "monthly">("yearly");
   const [loading, setLoading] = useState<string | null>(null);
   /** Set when Free is clicked from a paid plan — see `DowngradeDialog`. */
   const [confirmingDowngrade, setConfirmingDowngrade] = useState(false);
@@ -157,11 +158,8 @@ export default function BillingPage() {
       setConfirmingDowngrade(true);
       return;
     }
-    // The cycle is chosen in the dialog, which is the only thing that calls
-    // `initiate`. It used to be fixed at yearly here because a monthly toggle
-    // on this page 400'd on every click; both cycles sell now, and the choice
-    // sits next to the amount it changes rather than two screens away from it.
-    setBuying(plan);
+    // The cycle is chosen via the toggle above the grid now, but passed explicitly here.
+    setBuying({ ...plan, defaultCycle: cycle } as PlanCatalogueEntry & { defaultCycle?: string });
   };
 
   /** The confirmed downgrade. Only `DowngradeDialog` reaches this. */
@@ -192,9 +190,33 @@ export default function BillingPage() {
         <h1 style={{ fontSize: 36, fontWeight: 800, fontFamily: "Outfit, sans-serif", marginBottom: 10 }}>
           Choose Your Plan
         </h1>
-        <p style={{ color: "var(--text-muted)", fontSize: 17, marginBottom: 8 }}>
+        <p style={{ color: "var(--text-muted)", fontSize: 17, marginBottom: 24 }}>
           Pay by the year or by the month, in XAF, by MTN MoMo or Orange Money.
         </p>
+
+        {/* Cycle Toggle */}
+        <div style={{ display: "inline-flex", background: "var(--surface-900)", padding: "4px", borderRadius: "12px", border: "1px solid var(--border)" }}>
+          <button
+            onClick={() => setCycle("yearly")}
+            style={{
+              padding: "8px 24px", borderRadius: "8px", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", transition: "all 0.2s",
+              background: cycle === "yearly" ? "var(--brand-600)" : "transparent",
+              color: cycle === "yearly" ? "#fff" : "var(--text-secondary)"
+            }}
+          >
+            Yearly <span style={{ fontSize: 12, opacity: 0.8, fontWeight: 500 }}>(Save 20%)</span>
+          </button>
+          <button
+            onClick={() => setCycle("monthly")}
+            style={{
+              padding: "8px 24px", borderRadius: "8px", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", transition: "all 0.2s",
+              background: cycle === "monthly" ? "var(--brand-600)" : "transparent",
+              color: cycle === "monthly" ? "#fff" : "var(--text-secondary)"
+            }}
+          >
+            Monthly
+          </button>
+        </div>
       </div>
 
       {/* Expiry notice. Shown from a week out, and again once a term has
@@ -305,16 +327,13 @@ export default function BillingPage() {
                   ) : (
                     <>
                       <span style={{ fontSize: 38, fontWeight: 800, fontFamily: "Outfit, sans-serif", color: isPro ? "#fff" : "var(--text-primary)" }}>
-                        {formatXaf(plan.price_yearly)}
+                        {formatXaf(cycle === "yearly" ? plan.price_yearly : plan.price_monthly)}
                       </span>
                       <span style={{ fontSize: 15, color: isPro ? "rgba(255,255,255,0.6)" : "var(--text-muted)", marginLeft: 4 }}>
-                        XAF/yr
+                        XAF/{cycle === "yearly" ? "yr" : "mo"}
                       </span>
-                      {/* The other cycle, so the annual headline does not read
-                          as the only way to pay. Which one is bought is settled
-                          in `PurchaseDialog`, next to the amount it changes. */}
                       <p style={{ fontSize: 13, margin: "6px 0 0", color: isPro ? "rgba(255,255,255,0.55)" : "var(--text-muted)" }}>
-                        or {formatXaf(plan.price_monthly)} XAF a month
+                        {cycle === "yearly" ? `or ${formatXaf(plan.price_monthly)} XAF a month` : `or ${formatXaf(plan.price_yearly)} XAF a year`}
                       </p>
                     </>
                   )}

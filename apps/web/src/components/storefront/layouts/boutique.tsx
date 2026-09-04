@@ -15,6 +15,7 @@
  *    previously inert sort control up as well.
  */
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { useStorefront } from "../../StorefrontProvider";
 import type { StorefrontProduct } from "../../../types/storefront";
 import type { LayoutModule } from "../registry";
@@ -73,7 +74,7 @@ function BoutiqueHero({ s, store }: SectionProps) {
         <span className="sf-bq-eyebrow">{store.name}</span>
         <h1 className="sf-bq-h sf-d">{str(s.settings.title, `Welcome to ${store.name}`)}</h1>
         <p className="sf-bq-sub">{str(s.settings.subtitle, store.tagline || "Discover our premium collection.")}</p>
-        <button className="sf-bq-cta">{str(s.settings.button_text, "Shop Now")} →</button>
+        <Link href="/shop" className="sf-bq-cta">{str(s.settings.button_text, "Shop Now")} →</Link>
       </div>
       <div className="sf-bq-img">
         {image

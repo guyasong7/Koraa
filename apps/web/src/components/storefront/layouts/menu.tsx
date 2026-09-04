@@ -304,7 +304,7 @@ function MenuHero({ s, store }: SectionProps) {
         <span className="sf-mn-eyebrow">{store.name}</span>
         <h1 className="sf-mn-hero-h sf-d">{str(s.settings.title, `Welcome to ${store.name}`)}</h1>
         <p className="sf-mn-hero-p">{str(s.settings.subtitle, store.tagline || "Freshly made, every day.")}</p>
-        <button className="sf-mn-hero-btn">{str(s.settings.button_text, "See the menu")}</button>
+        <Link href="/shop" className="sf-mn-hero-btn">{str(s.settings.button_text, "See the menu")}</Link>
       </div>
     </section>
   );

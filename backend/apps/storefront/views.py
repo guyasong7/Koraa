@@ -1075,5 +1075,4 @@ class PublicStorefrontShowcaseView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        # Return all published stores, ordered by creation date descending
-        return Store.objects.filter(status=Store.Status.PUBLISHED).order_by("-created_at")
+        return Store.objects.filter(status=Store.Status.PUBLISHED, is_showcased=True).order_by("-created_at")

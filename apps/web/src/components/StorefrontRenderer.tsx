@@ -354,7 +354,7 @@ function AnnouncementBar({ s, cfg }: any) {
   );
 }
 
-function Navbar({ store, cfg }: NavbarProps) {
+export function Navbar({ store, cfg }: NavbarProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const links = linkList(cfg.navigation?.links, [
     { label: "Home", url: "#" }, { label: "Shop", url: "#" }, { label: "About", url: "#" },
@@ -370,12 +370,27 @@ function Navbar({ store, cfg }: NavbarProps) {
           {links.map((l, i) => <a key={i} href={l.url} className="sf-link">{l.label}</a>)}
         </nav>
 
-        <div className="sf-search"><LuSearch size={15} className="sf-si" /><input placeholder="Search products…" /></div>
+        <form action="/shop" method="GET" className="sf-search">
+          <LuSearch size={15} className="sf-si" />
+          <input name="q" placeholder="Search products…" />
+        </form>
 
         <div className="sf-actions">
           <div className="sf-btn" style={{ gap: 4 }}>
             <LuGlobe size={18} />
-            <select className="sf-lang" aria-label="Language"><option value="en">EN</option><option value="fr">FR</option></select>
+            <select 
+              className="sf-lang" 
+              onChange={(e) => {
+                if (typeof window !== "undefined") {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("lang", e.target.value);
+                  window.location.href = url.toString();
+                }
+              }}
+            >
+              <option value="en">EN</option>
+              <option value="fr">FR</option>
+            </select>
           </div>
           <CartButton />
           {/* `.sf-links` is display:none under 900px, so without this the menu
@@ -607,7 +622,7 @@ function Newsletter({ s }: any) {
   );
 }
 
-function Footer({ settings, store }: FooterProps) {
+export function Footer({ settings, store }: FooterProps) {
   return (
     <footer className="sf-footer">
       <div className="sf-footer-i">

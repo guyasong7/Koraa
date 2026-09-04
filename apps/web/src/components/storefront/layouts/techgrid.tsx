@@ -15,6 +15,7 @@
  * `color-mix`, so it reads correctly on a dark *and* a light background.
  */
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { useStorefront } from "../../StorefrontProvider";
 import type { StorefrontProduct } from "../../../types/storefront";
 import type { LayoutModule } from "../registry";
@@ -189,7 +190,7 @@ function TechHero({ s, store }: SectionProps) {
           <span className="sf-tg-eyebrow"><LuCpu size={13} /> {store.name}</span>
           <h1 className="sf-tg-h sf-d">{str(s.settings.title, `Welcome to ${store.name}`)}</h1>
           <p className="sf-tg-sub">{str(s.settings.subtitle, store.tagline || "Specified, stocked and supported.")}</p>
-          <button className="sf-tg-cta">{str(s.settings.button_text, "Browse catalogue")}</button>
+          <Link href="/shop" className="sf-tg-cta">{str(s.settings.button_text, "Browse catalogue")}</Link>
         </div>
         <div className="sf-tg-img">
           {image

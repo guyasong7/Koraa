@@ -72,12 +72,12 @@ export default function PurchaseDialog({
 }) {
   const [stage, setStage] = useState<Stage>({ kind: "form" });
   /**
-   * The term being bought. Yearly by default, matching the catalogue's
-   * `default_billing_cycle` and the pricing table's opening view: a merchant
-   * who never touches this row should land on the cycle that costs less per
-   * month, not more.
+   * The term being bought. Starts with the cycle chosen on the billing page
+   * (`defaultCycle`), falling back to yearly if absent.
    */
-  const [cycle, setCycle] = useState<BillingCycle>("yearly");
+  const [cycle, setCycle] = useState<BillingCycle>(
+    ((plan as any).defaultCycle as BillingCycle) || "yearly"
+  );
   /**
    * What will be charged. Read off the plan for the chosen cycle rather than
    * derived — `price_monthly` is a tenth of `price_yearly` today, but that

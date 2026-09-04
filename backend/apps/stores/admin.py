@@ -10,8 +10,8 @@ from .models import Store
 class StoreAdmin(ImagePreviewAdminMixin, admin.ModelAdmin):
     logo_preview = image_preview("logo", label="Logo")
 
-    list_display = ("logo_preview", "name", "slug", "merchant", "status", "currency", "country", "published_at", "created_at")
-    list_filter = ("status", "currency", "country")
+    list_display = ("logo_preview", "name", "slug", "merchant", "status", "is_showcased", "currency", "country", "published_at", "created_at")
+    list_filter = ("status", "is_showcased", "currency", "country")
     search_fields = ("name", "slug", "merchant__business_name", "custom_domain")
     readonly_fields = ("id", "published_at", "created_at", "updated_at")
     raw_id_fields = ("merchant", "theme")

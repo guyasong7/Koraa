@@ -458,6 +458,13 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       .co-outcome h1 { font-size: 26px; font-weight: 800; margin-bottom: 12px; }
       .co-outcome p { opacity: 0.7; line-height: 1.65; margin-bottom: 16px; }
       .co-ref { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; padding: 7px 12px; border-radius: 6px; background: rgba(0,0,0,0.06); margin-bottom: 28px; }
+      
+      @media (max-width: 600px) {
+        .co-body { padding: 20px 16px; gap: 24px; }
+        .co-nav-i { padding: 0 16px; }
+        .co-section { padding: 20px; }
+        .co-outcome { padding: 40px 16px; }
+      }
     `}</style>
   );
 

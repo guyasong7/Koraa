@@ -119,7 +119,7 @@ function ShowcaseHero({ s, store }: SectionProps) {
         <span className="sf-sc-eyebrow"><LuSparkles size={13} /> {store.name}</span>
         <h1 className="sf-sc-h sf-d">{str(s.settings.title, `Welcome to ${store.name}`)}</h1>
         <p className="sf-sc-sub">{str(s.settings.subtitle, store.tagline || "Digital products, delivered the moment you buy.")}</p>
-        <button className="sf-sc-cta">{str(s.settings.button_text, "Browse products")}</button>
+        <Link href="/shop" className="sf-sc-cta">{str(s.settings.button_text, "Browse products")}</Link>
         <div className="sf-sc-trust">
           <span><LuZap size={14} /> Instant delivery</span>
           <span><LuDownload size={14} /> Private download links</span>

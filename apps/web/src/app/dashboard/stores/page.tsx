@@ -450,9 +450,9 @@ export default function StoresPage() {
           sees it and no link preview is ever generated from it. */}
       <PageTitle title="Stores — Koraa Dashboard" />
 
-      <div style={{ padding: "32px", maxWidth: 960, margin: "0 auto" }}>
+      <div className="sf-container" style={{ padding: "clamp(16px, 4vw, 32px)", maxWidth: 960, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 32 }}>
           <div>
             <h1 style={{ fontSize: 30, fontWeight: 800, marginBottom: 6, fontFamily: "Outfit, sans-serif", letterSpacing: "-0.02em" }}>
               Your Stores
@@ -466,7 +466,7 @@ export default function StoresPage() {
               <LuPlus size={16} /> New store
             </button>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 13, color: "#f59e0b", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                 <LuTriangleAlert size={14} /> ID Verification Required
               </span>

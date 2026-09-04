@@ -121,6 +121,9 @@ class Store(models.Model):
         default=Status.DRAFT,
         db_index=True,
     )
+    is_showcased = models.BooleanField(
+        default=False, help_text="Display this store on the public Koraa showcase page"
+    )
     published_at = models.DateTimeField(null=True, blank=True)
 
     # SEO

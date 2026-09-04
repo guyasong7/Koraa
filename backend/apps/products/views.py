@@ -367,7 +367,7 @@ class ProductAIAutoFillView(generics.GenericAPIView):
         b64_img = base64.b64encode(raw_bytes).decode("utf-8")
 
         or_api_key = config("OPENROUTER_API_KEY", default="")
-        or_model = config("OPENROUTER_MODEL", default="openai/gpt-4o-mini")
+        or_model = config("OPENROUTER_MODEL", default="google/gemini-1.5-flash:free")
         or_base_url = "https://openrouter.ai/api/v1/chat/completions"
 
         if not or_api_key:
