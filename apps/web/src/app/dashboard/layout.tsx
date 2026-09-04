@@ -32,6 +32,9 @@ import UserAvatar from "@/components/UserAvatar";
  * prerendering the closed bubble only adds bytes to the HTML and a hydration
  * pass to match them.
  */
+
+
+
 const AIChatWidget = dynamic(() => import("@/components/AIChatWidget"), {
   ssr: false,
 });
@@ -361,7 +364,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {!user?.is_verified && (
+              {!user?.merchant_is_verified && (
                 <Link href="/dashboard/settings?tab=identity" style={{
                   display: "flex", alignItems: "center", gap: 5,
                   background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",

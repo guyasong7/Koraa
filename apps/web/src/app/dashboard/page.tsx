@@ -158,24 +158,24 @@ export default function DashboardPage() {
     <>
       <PageTitle title="Dashboard — Koraa" />
 
-      <div style={{ padding: "32px", maxWidth: 1200, margin: "0 auto" }}>
+      <div className="dash-overview-wrap">
 
         {/* ── Welcome header ── */}
         <div style={{
           background: "var(--surface-900)",
           border: "1px solid var(--border)",
           borderRadius: 0,
-          padding: "32px 36px",
+          padding: "24px 28px",
           marginBottom: 24,
           borderLeft: "4px solid var(--brand-600)",
         }}>
           <p style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 600, marginBottom: 6, letterSpacing: "0.06em", textTransform: "uppercase" }}>
             {greeting}
           </p>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, fontFamily: "Outfit, sans-serif", letterSpacing: "-0.02em" }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, fontFamily: "Outfit, sans-serif", letterSpacing: "-0.02em" }}>
             Welcome back, {firstName}
           </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24, maxWidth: 500, lineHeight: 1.6 }}>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 20, maxWidth: 500, lineHeight: 1.6 }}>
             {stores.length === 0
               ? "You haven't created a store yet. Set one up in under 2 minutes."
               : `You have ${stores.length} store${stores.length > 1 ? "s" : ""}, ${publishedCount} currently live.`}
@@ -369,6 +369,19 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        .dash-overview-wrap {
+          padding: 32px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        @media (max-width: 768px) {
+          .dash-overview-wrap {
+            padding: 16px;
+          }
+        }
+      `}</style>
     </>
   );
 }

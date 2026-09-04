@@ -483,7 +483,7 @@ export default function StorefrontEditor() {
         </aside>
 
         {/* Preview */}
-        <main style={{ flex: 1, background: "var(--surface-950)", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 20px 0" }}>
+        <main className="store-editor-preview" style={{ flex: 1, background: "var(--surface-950)", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 20px 0" }}>
           {/* Device switcher */}
           <div style={{ background: "var(--surface)", borderRadius: 0, border: "1px solid var(--border)", padding: 4, display: "flex", gap: 4, marginBottom: 20, flexShrink: 0 }}>
             {([["desktop", LuMonitor], ["tablet", LuTablet], ["mobile", LuSmartphone]] as const).map(([mode, Icon]) => (
@@ -504,6 +504,14 @@ export default function StorefrontEditor() {
           </div>
         </main>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .store-editor-preview {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
