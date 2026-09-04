@@ -478,8 +478,8 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Koraa <noreply@koraa.cm>
 # ──────────────────────────────────────────────────────────────────────────────
 # Koraa Platform settings
 # ──────────────────────────────────────────────────────────────────────────────
-KORAA_STOREFRONT_DOMAIN = env("KORAA_STOREFRONT_DOMAIN", default="localhost:3000")
-KORAA_DASHBOARD_URL = env("KORAA_DASHBOARD_URL", default="http://localhost:3000")
+KORAA_STOREFRONT_DOMAIN = env("KORAA_STOREFRONT_DOMAIN", default="localhost:3000" if DEBUG else "koraa.cm")
+KORAA_DASHBOARD_URL = env("KORAA_DASHBOARD_URL", default="http://localhost:3000" if DEBUG else "https://koraa.cm")
 # Where this API answers from. Needed because MEDIA_URL is relative in
 # development ("/media/…"), and an emailed invoice carrying the storefront's
 # own logo has to point at something a mail client can fetch. In production
