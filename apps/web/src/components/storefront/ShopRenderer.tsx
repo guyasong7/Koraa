@@ -98,7 +98,7 @@ function ShopCatalog() {
             </div>
           )
         ) : (
-          <div className="sf-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "24px" }}>
+          <div className="sf-grid">
             {toShow.map(p => <ProductCard key={p.id} p={p} store={store} />)}
           </div>
         )}

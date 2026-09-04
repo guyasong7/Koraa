@@ -356,9 +356,10 @@ function AnnouncementBar({ s, cfg }: any) {
 
 export function Navbar({ store, cfg }: NavbarProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const links = linkList(cfg.navigation?.links, [
-    { label: "Home", url: "#" }, { label: "Shop", url: "#" }, { label: "About", url: "#" },
+  const baseLinks = linkList(cfg.navigation?.links, [
+    { label: "Home", url: "/" }, { label: "Shop", url: "/shop" }, { label: "About", url: "#" },
   ]);
+  const links = baseLinks.map(l => l.label.toLowerCase() === "shop" ? { ...l, url: "/shop" } : l);
 
   return (
     <header className="sf-nav">

@@ -84,3 +84,4 @@ storefront_customization_plan.md
 .claude/
 .gemini/
 apps/web/.wrangler/
+.vercel
