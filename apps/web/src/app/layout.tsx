@@ -62,10 +62,59 @@ const FONT_VARS = [inter, outfit, poppins, lato, raleway, nunito]
   .join(" ");
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://koraa.cm"),
   title: "Koraa | Sell Online in Africa",
   description:
     "The premium e-commerce platform built for Cameroonian businesses to sell anywhere.",
-  keywords: ["ecommerce", "cameroon", "online store", "sell online", "koraa", "storefront"],
+  keywords: [
+    "ecommerce",
+    "cameroon",
+    "online store",
+    "sell online",
+    "koraa",
+    "storefront",
+    "koraa Cameroon",
+    "buyam",
+    "digital store",
+    "buea",
+  ],
+  openGraph: {
+    title: "Koraa | Sell Online in Africa",
+    description:
+      "The premium e-commerce platform built for Cameroonian businesses to sell anywhere.",
+    url: "https://koraa.cm",
+    siteName: "Koraa",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "https://i.postimg.cc/wTqpNNVq/koraa-logo-white.png",
+        width: 1200,
+        height: 630,
+        alt: "Koraa — Sell Online in Africa",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Koraa | Sell Online in Africa",
+    description:
+      "Koraa is a Cameroonian e-commerce platform that helps businesses create, customize, and manage professional online stores. Sell products online, accept local payments, and reach more customers.",
+    creator: "@reconraven0x",
+    images: ["https://i.postimg.cc/TYd6bb93/koraa-logo-round.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    nocache: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({
