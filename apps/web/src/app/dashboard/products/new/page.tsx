@@ -249,7 +249,9 @@ export default function NewProductPage() {
 
   const handleSave = (status: "draft" | "active") => {
     if (!form.name.trim()) { toast.error("Product name is required."); return; }
+    if (!form.description.trim()) { toast.error("Product description is required."); return; }
     if (!form.base_price || isNaN(Number(form.base_price))) { toast.error("Enter a valid price."); return; }
+    if (!pendingImages.length) { toast.error("Add at least one product image."); return; }
     if (!storeId) { toast.error("No store selected."); return; }
 
     // Auto-generate SKU if blank
@@ -338,7 +340,7 @@ export default function NewProductPage() {
                 maxLength={500}
               />
             </Field>
-            <Field label="Full description">
+            <Field label="Full description" required>
               <textarea
                 className="input"
                 placeholder="Detailed description, materials, care instructions…"
@@ -468,7 +470,7 @@ export default function NewProductPage() {
             <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <LuImage size={16} color="var(--brand-text)" />
-                <span style={{ fontSize: 14, fontWeight: 700 }}>Product Images</span>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Product Images<span style={{ color: "#ef4444", marginLeft: 3 }}>*</span></span>
               </div>
               {/* Remove-background toggle */}
               <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
@@ -532,7 +534,6 @@ export default function NewProductPage() {
                   type="file"
                   accept="image/*"
                   multiple
-                  capture="environment"
                   style={{ display: "none" }}
                   onChange={e => e.target.files && addFiles(e.target.files)}
                 />

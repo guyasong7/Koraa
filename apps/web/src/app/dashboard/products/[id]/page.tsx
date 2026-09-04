@@ -285,6 +285,7 @@ export default function EditProductPage() {
 
   const handleSave = (status: "draft" | "active") => {
     if (!form.name.trim()) { toast.error("Product name is required."); return; }
+    if (!form.description.trim()) { toast.error("Product description is required."); return; }
     if (!form.base_price || isNaN(Number(form.base_price))) { toast.error("Enter a valid price."); return; }
     if (!storeId) { toast.error("No store selected."); return; }
     updateMutation.mutate(status);
@@ -331,7 +332,7 @@ export default function EditProductPage() {
             <Field label="Short description" hint="Shown on product cards (max 500 chars)">
               <input className="input" value={form.short_description} onChange={e => set("short_description", e.target.value)} maxLength={500} />
             </Field>
-            <Field label="Full description">
+            <Field label="Full description" required>
               <textarea className="input" value={form.description} onChange={e => set("description", e.target.value)} style={{ minHeight: 160, resize: "vertical" }} />
             </Field>
           </Section>
