@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 from .models import FormSubmission, ServiceForm, StorefrontConfig, StorefrontSection
+from apps.stores.models import Store
 
 
 class StorefrontConfigSerializer(serializers.ModelSerializer):
@@ -308,3 +309,10 @@ class FormSubmissionSerializer(serializers.ModelSerializer):
             "id", "answers", "summary", "sender_name", "sender_email",
             "sender_phone", "emailed_at", "created_at",
         ]
+
+class PublicStorefrontShowcaseSerializer(serializers.ModelSerializer):
+    url = serializers.CharField(source='storefront_url', read_only=True)
+
+    class Meta:
+        model = Store
+        fields = ["id", "name", "slug", "tagline", "logo", "url"]

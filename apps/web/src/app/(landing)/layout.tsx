@@ -32,6 +32,7 @@ const FOOTER_COLUMNS = [
       { label: "Payments", href: "/#payments" },
       { label: "Pricing", href: "/#pricing" },
       { label: "Domains", href: "/domains" },
+      { label: "Showcase", href: "/showcase" },
     ],
   },
   {

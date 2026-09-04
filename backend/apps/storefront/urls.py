@@ -14,6 +14,7 @@ from .views import (
     PublicStorefrontConfigView,
     PublicStorefrontSectionsView,
     PublicStorefrontByDomainView,
+    PublicStorefrontShowcaseView,
     PreviewStorefrontView,
     ServiceFormSubmissionDetailView,
     ServiceFormSubmissionListView,
@@ -40,6 +41,7 @@ merchant_patterns = [
 
 # Public (no auth)
 public_patterns = [
+    path("storefront/showcase/", PublicStorefrontShowcaseView.as_view(), name="storefront-showcase"),
     path("storefront/by-domain/", PublicStorefrontByDomainView.as_view(), name="storefront-by-domain"),
     path("storefront/<slug:slug>/config/", PublicStorefrontConfigView.as_view(), name="storefront-public-config"),
     path("storefront/<slug:slug>/sections/", PublicStorefrontSectionsView.as_view(), name="storefront-public-sections"),

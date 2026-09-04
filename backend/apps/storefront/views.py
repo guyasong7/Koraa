@@ -54,6 +54,7 @@ from .serializers import (
     PublicServiceFormSerializer,
     PublicStorefrontConfigSerializer,
     PublicStorefrontSectionSerializer,
+    PublicStorefrontShowcaseSerializer,
     ServiceFormSerializer,
 )
 from .permissions import CanManageStore
@@ -1064,3 +1065,15 @@ class PublicServiceFormSubmitView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
+
+class PublicStorefrontShowcaseView(generics.ListAPIView):
+    """
+    GET /api/v1/public/storefront/showcase/
+    Lists all published stores for the Koraa showcase page.
+    """
+    serializer_class = PublicStorefrontShowcaseSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        # Return all published stores, ordered by creation date descending
+        return Store.objects.filter(status=Store.Status.PUBLISHED).order_by("-created_at")

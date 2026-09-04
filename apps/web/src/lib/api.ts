@@ -464,6 +464,7 @@ const publicApi = axios.create({
 });
 
 export const publicStorefrontApi = {
+  getShowcase: () => publicApi.get<ShowcaseStore[]>("/public/storefront/showcase/"),
   getStorefront: (domain: string) => publicApi.get(`/public/storefront/by-domain/?domain=${domain}`),
   /**
    * Price a cart, hold the stock and record the order. **Charges nothing.**
@@ -1370,4 +1371,13 @@ export interface OrderStatus {
   payment_status: PaymentState;
   /** Final either way. A failed payment is settled too — see `getOrderStatus`. */
   settled: boolean;
+}
+
+export interface ShowcaseStore {
+  id: string;
+  name: string;
+  slug: string;
+  tagline: string | null;
+  logo: string | null;
+  url: string;
 }
