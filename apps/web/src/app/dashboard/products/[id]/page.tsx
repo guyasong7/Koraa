@@ -4,13 +4,13 @@ import PageTitle from "@/components/PageTitle";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { storeApi, productApi } from "@/lib/api";
+import { storeApi, productApi, categoryApi, Category } from "@/lib/api";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import {
   LuArrowLeft, LuLoader, LuPackage, LuSave, LuEye,
   LuTag, LuBox, LuInfo, LuUpload, LuX, LuImage, LuCheck,
-  LuSparkles, LuTrash2
+  LuSparkles, LuTrash2, LuFolder
 } from "react-icons/lu";
 import { FiBarChart2 as LuBarChart2 } from "react-icons/fi";
 import { DigitalFilesPanel, ServiceEnquiryPanel } from "@/components/DigitalDelivery";
@@ -103,6 +103,13 @@ export default function EditProductPage() {
     queryFn: () => productApi.get(storeId, productId).then(r => r.data),
     enabled: !!storeId && !!productId,
   });
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories", storeId],
+    queryFn: () => storeId ? categoryApi.list(storeId).then(r => r.data) : Promise.resolve([]),
+    enabled: !!storeId,
+  });
+  const categories: Category[] = (categoriesData as any)?.results ?? categoriesData ?? [];
 
   useEffect(() => {
     if (productData) {
@@ -516,6 +523,33 @@ export default function EditProductPage() {
                   </div>
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* Organization */}
+          <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", marginBottom: 16 }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}><LuFolder size={14} /> Organization</span>
+            </div>
+            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>Category</label>
+                <div style={{ position: "relative" }}>
+                  <select
+                    className="input"
+                    value={form.category}
+                    onChange={e => set("category", e.target.value)}
+                    style={{ width: "100%", paddingRight: 36, appearance: "none" }}
+                  >
+                    <option value="">No category</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <LuFolder size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
+                </div>
+                <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Helps customers find products in your storefront.</p>
+              </div>
             </div>
           </div>
 

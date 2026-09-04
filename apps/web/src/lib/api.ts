@@ -229,6 +229,34 @@ export const productApi = {
   },
 };
 
+// ─── Categories ───────────────────────────────────────────────────────────
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  image: string | null;
+  parent: string | null;
+  children: Category[];
+  sort_order: number;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const categoryApi = {
+  list: (storeId: string) => api.get<Category[]>(`/stores/${storeId}/categories/`),
+  get: (storeId: string, id: string) => api.get<Category>(`/stores/${storeId}/categories/${id}/`),
+  create: (storeId: string, data: Partial<Category>) =>
+    api.post<Category>(`/stores/${storeId}/categories/`, data),
+  update: (storeId: string, id: string, data: Partial<Category>) =>
+    api.patch<Category>(`/stores/${storeId}/categories/${id}/`, data),
+  delete: (storeId: string, id: string) =>
+    api.delete(`/stores/${storeId}/categories/${id}/`),
+};
+
+
 // ─── Orders ───────────────────────────────────────────────────────────────
 //
 // Not nested under a store, unlike products: the endpoint returns orders from
