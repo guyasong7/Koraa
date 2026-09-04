@@ -6,7 +6,7 @@ import {
   LuCircleCheck, LuClock, LuLoader, LuSmartphone, LuTriangleAlert,
 } from "react-icons/lu";
 
-import { paymentApi, type PaymentMedium, type PlanChargeStatus } from "@/lib/api";
+import { paymentApi, type BillingCycle, type PaymentMedium, type PlanChargeStatus } from "@/lib/api";
 import {
   MEDIUM_MTN, MEDIUM_ORANGE, inferMedium, isPlausibleMsisdn, mediumLabel,
   normaliseMsisdn,
@@ -33,9 +33,9 @@ import { POLL_TIMEOUT_MS, usePaymentPolling } from "@/hooks/usePaymentPolling";
  *
  * 1. **Unconfirmed is not failed.** A 202, or a poll that runs out of time, means
  *    Fapshi never told us either way — the money may well have moved. Saying
- *    "failed" there invites a second payment for a year already bought, and
+ *    "failed" there invites a second payment for a term already bought, and
  *    because activation extends from the current expiry, the second one would
- *    quietly buy a *second* year rather than bouncing.
+ *    quietly buy a *second* term rather than bouncing.
  * 2. **Refused is failed, and retryable.** A 400 charged nothing. Usually a
  *    mistyped number, so the form stays put with the message under the input.
  * 3. **Already in flight is neither.** A 409 means a prompt is already on their
@@ -55,6 +55,7 @@ export interface PurchaseDialogPlan {
   key: string;
   name: string;
   price_yearly: number;
+  price_monthly: number;
 }
 
 export default function PurchaseDialog({
@@ -70,6 +71,20 @@ export default function PurchaseDialog({
   onActivated: () => void;
 }) {
   const [stage, setStage] = useState<Stage>({ kind: "form" });
+  /**
+   * The term being bought. Yearly by default, matching the catalogue's
+   * `default_billing_cycle` and the pricing table's opening view: a merchant
+   * who never touches this row should land on the cycle that costs less per
+   * month, not more.
+   */
+  const [cycle, setCycle] = useState<BillingCycle>("yearly");
+  /**
+   * What will be charged. Read off the plan for the chosen cycle rather than
+   * derived — `price_monthly` is a tenth of `price_yearly` today, but that
+   * ladder lives in `merchants/plans.py` and dividing by ten here would be a
+   * second copy of it waiting to disagree.
+   */
+  const amount = cycle === "monthly" ? plan.price_monthly : plan.price_yearly;
   const [phone, setPhone] = useState(
     defaultPhone && isPlausibleMsisdn(defaultPhone) ? normaliseMsisdn(defaultPhone) : "",
   );
@@ -123,7 +138,7 @@ export default function PurchaseDialog({
     setStage({ kind: "charging" });
 
     try {
-      const res = await paymentApi.initiate(plan.key, "yearly", {
+      const res = await paymentApi.initiate(plan.key, cycle, {
         phone: normaliseMsisdn(phone),
         ...(mediumChosen.current && medium ? { medium } : {}),
       });
@@ -212,11 +227,65 @@ export default function PurchaseDialog({
                 </h2>
                 <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0, lineHeight: 1.55 }}>
                   <strong style={{ color: "var(--text-primary)" }}>
-                    {formatXaf(plan.price_yearly)} XAF
+                    {formatXaf(amount)} XAF
                   </strong>{" "}
-                  for one year
+                  {cycle === "monthly" ? "for one month" : "for one year"}
                   {renewal ? ", added on to the end of your current term." : "."}
                 </p>
+              </div>
+
+              {/* The term, above the number, because it sets the amount quoted
+                  in the line above and the amount on the Pay button. Two radios
+                  rather than a switch: the choice is between two named terms,
+                  and a screen reader should hear which one is current instead of
+                  "toggle, off". Frozen once charging — by then the amount has
+                  been sent and changing it here would misdescribe the charge. */}
+              <label style={labelStyle} htmlFor="plan-cycle-yearly">
+                How long for
+              </label>
+              <div
+                role="radiogroup"
+                aria-label="How long to pay for"
+                style={{ display: "flex", gap: 10, marginBottom: 18 }}
+              >
+                {(["yearly", "monthly"] as BillingCycle[]).map((option) => {
+                  const on = cycle === option;
+                  return (
+                    <button
+                      key={option}
+                      id={`plan-cycle-${option}`}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      disabled={stage.kind === "charging"}
+                      onClick={() => setCycle(option)}
+                      style={{
+                        flex: 1, padding: "10px 12px", fontSize: 13,
+                        textAlign: "left", cursor: "pointer", borderRadius: 8,
+                        background: on
+                          ? "color-mix(in srgb, var(--brand-600) 8%, transparent)"
+                          : "transparent",
+                        border: `1.5px solid ${on ? "var(--brand-600)" : "var(--border)"}`,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <span style={{ display: "block", fontWeight: 600 }}>
+                        {option === "yearly" ? "One year" : "One month"}
+                      </span>
+                      <span
+                        style={{
+                          display: "block", fontSize: 12, marginTop: 2,
+                          color: on ? "var(--brand-600)" : "var(--text-muted)",
+                        }}
+                      >
+                        {formatXaf(
+                          option === "yearly" ? plan.price_yearly : plan.price_monthly,
+                        )}{" "}
+                        XAF{option === "yearly" ? " · 2 months free" : ""}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               <label style={labelStyle} htmlFor="plan-momo">
@@ -293,7 +362,7 @@ export default function PurchaseDialog({
               >
                 {stage.kind === "charging"
                   ? <LuLoader size={17} className="spin" />
-                  : `Pay ${formatXaf(plan.price_yearly)} XAF`}
+                  : `Pay ${formatXaf(amount)} XAF`}
               </button>
             </div>
           </>
@@ -309,7 +378,7 @@ export default function PurchaseDialog({
             <p style={bodyTextStyle}>
               We&apos;ve asked {medium ? mediumLabel(medium) : "your provider"} to charge{" "}
               <strong style={{ color: "var(--text-primary)" }}>
-                {formatXaf(plan.price_yearly)} XAF
+                {formatXaf(amount)} XAF
               </strong>{" "}
               to {normaliseMsisdn(phone)}. Approve the prompt on your handset — this
               window finishes by itself.
@@ -341,7 +410,7 @@ export default function PurchaseDialog({
           >
             <p style={bodyTextStyle}>
               Your payment went through and your allowances are live now
-              {renewal ? " — the year has been added to the end of your term." : "."}
+              {renewal ? " — the new term has been added to the end of your current one." : "."}
             </p>
           </Outcome>
         )}

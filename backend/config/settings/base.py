@@ -450,7 +450,7 @@ CELERY_BEAT_SCHEDULE = {
     #: direct-pay has no redirect, so a merchant who closes the tab before
     #: approving the prompt on their handset leaves nothing watching the payment.
     #: The webhook is single-delivery, so without this a merchant can be charged
-    #: for a year and hold a PENDING subscription.
+    #: for a term and hold a PENDING subscription.
     #:
     #: Offset from the orders sweep rather than sharing its minute: both walk
     #: pending rows one Fapshi call at a time, and running them together doubles

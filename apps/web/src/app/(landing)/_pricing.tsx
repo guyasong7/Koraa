@@ -13,17 +13,23 @@
  * the only thing waiting on JavaScript, and it defaults to the view that
  * matches what is actually sold.
  *
- * ── Why the toggle is a view, not a purchase option ──
+ * ── Why the toggle shows two real prices ──
  *
- * Koraa bills annually and only annually. `PURCHASABLE_CYCLES` rejects
- * `billing_cycle=monthly` with a 400, and this page has form: it once
- * advertised "5,000 XAF/month" tiers the backend refused to sell, which
- * is the drift `lib/planCopy` was created to stop. So the monthly view
- * names the monthly rate the annual price is built from and, in the same
- * breath, says what will actually be charged. The disclosure under the
- * amount is load-bearing — it is the difference between a discount
- * expressed per month and a plan we do not sell. Do not drop it to tidy
- * the card up.
+ * Both cycles are on sale — `PURCHASABLE_CYCLES` takes either — so each view
+ * names a price a merchant can actually be charged, and both come from the
+ * catalogue rather than being derived here. This page has form on that: it
+ * once advertised "5,000 XAF/month" tiers the backend refused to sell, which
+ * is the drift `lib/planCopy` was created to stop. The fix then was a
+ * disclosure saying the charge was really annual; the fix now is that the
+ * sentence is simply true, because monthly is a term you can buy.
+ *
+ * The line under the amount still earns its place, and still must not be
+ * dropped to tidy the card up — it is now what makes the *choice* legible
+ * rather than what makes a number honest. On yearly it names the per-month
+ * equivalence, so the headline annual figure reads as a rate. On monthly it
+ * names the annual alternative, so the merchant paying more per month can see
+ * what committing would have saved. Two views of one ladder, neither hiding
+ * the other.
  */
 
 import { useState } from "react";
@@ -37,7 +43,6 @@ import {
   POPULAR_PLAN,
   formatXaf,
   monthlyEquivalent,
-  monthlyRate,
   planCardBullets,
 } from "@/lib/planCopy";
 
@@ -51,8 +56,9 @@ export function PricingPlans({
   plans: PlanCatalogueEntry[];
   universal: Array<{ key: string; label: string }>;
 }) {
-  /* Yearly is the default because yearly is the thing on sale. Opening on
-     the monthly view would put the smaller number first and the terms
+  /* Yearly leads, matching the catalogue's `default_billing_cycle`. Both
+     cycles sell, so this is no longer about only one being real — it is that
+     opening on monthly would put the smaller number first and the saving
      second, which is the trick this page is deliberately not playing. */
   const [view, setView] = useState<View>("yearly");
   const monthly = view === "monthly";
@@ -128,7 +134,7 @@ export function PricingPlans({
                   <>
                     <span className="lp-plan__amount">
                       {monthly
-                        ? monthlyRate(plan.price_yearly)
+                        ? formatXaf(plan.price_monthly)
                         : formatXaf(plan.price_yearly)}
                     </span>
                     <span className="lp-plan__unit">
@@ -138,14 +144,15 @@ export function PricingPlans({
                 )}
               </div>
 
-              {/* The terms, on both views. On the yearly view this is the
-                  discount made concrete; on the monthly view it is the
-                  disclosure that keeps the smaller number honest. */}
+              {/* The other cycle, on both views, so neither price is shown
+                  without the alternative beside it. On yearly that is the
+                  per-month equivalence; on monthly it is the annual figure
+                  and what committing to it saves. */}
               <p className="lp-plan__billed">
                 {free
                   ? "No card, no expiry"
                   : monthly
-                    ? `Billed annually as ${formatXaf(plan.price_yearly)} XAF`
+                    ? `Or ${formatXaf(plan.price_yearly)} XAF a year, two months free`
                     : `About ${monthlyEquivalent(plan.price_yearly)} XAF a month`}
               </p>
 

@@ -52,7 +52,7 @@ const FACTS = [
   },
   {
     value: "XAF",
-    label: "Priced and billed in CFA francs, once a year.",
+    label: "Priced and billed in CFA francs, by the year or the month.",
   },
   {
     value: "100% uptime",
@@ -143,11 +143,11 @@ const FAQS = [
   },
   {
     q: "How is Koraa billed?",
-    a: "Once a year, in CFA francs, by MTN Mobile Money or Orange Money. There is no monthly plan to buy — the monthly view in the pricing table above is the same annual price divided out, shown per month so it is easier to compare. The annual price is set at ten months rather than twelve, so a year costs less than paying month to month would, and a yearly term is what lets us charge nothing for the free plan.",
+    a: "By the year or by the month, in CFA francs, by MTN Mobile Money or Orange Money. Both are real prices you can pay — pick the term when you pay. The yearly price is set at ten months rather than twelve, so paying for a year costs two months less than paying for twelve single months, which is the only difference between them.",
   },
   {
     q: "What happens when my plan runs out?",
-    a: "Your storefronts stay online and nothing is deleted. The account goes back to the free allowances until you renew, and renewing restores them immediately. Renewing early adds a year to the term you already have rather than replacing it.",
+    a: "Your storefronts stay online and nothing is deleted. The account goes back to the free allowances until you renew, and renewing restores them immediately. Renewing early adds another term to the one you already have rather than replacing it.",
   },
   {
     q: "Can I use a domain I already own?",
@@ -524,10 +524,10 @@ export default async function LandingPage() {
           <Reveal>
             <div className="lp-head lp-head--center">
               <p className="lp-eyebrow">Pricing</p>
-              <h2 className="lp-display lp-h2">Start free, pay once a year</h2>
+              <h2 className="lp-display lp-h2">Start free, pay when it pays</h2>
               <p className="lp-lead">
-                Billed annually in CFA francs, by MTN Mobile Money or Orange
-                Money. Move up when the shop is busy enough to need it.
+                By the year or by the month, in CFA francs, by MTN Mobile Money
+                or Orange Money. Move up when the shop is busy enough to need it.
               </p>
             </div>
           </Reveal>

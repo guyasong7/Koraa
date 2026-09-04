@@ -10,7 +10,7 @@ trip triggered the only status check Koraa ever made — so the browser was, in
 practice, the backstop. There is no return trip now: the merchant approves a
 prompt on their handset and the tab they started from is the only thing watching.
 Close it before the prompt is approved and, without this sweep, a merchant has
-paid for a year and holds a PENDING row.
+paid for a term and holds a PENDING row.
 
 Read-only against Fapshi and safe to run on a timer. It decides nothing itself —
 every write goes through ``settlement.settle_transaction``, whose ``settled_at``

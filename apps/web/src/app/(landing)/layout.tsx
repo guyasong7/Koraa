@@ -139,7 +139,7 @@ export default function LandingLayout({
               <span>
                 &copy; {new Date().getFullYear()} Koraa. All rights reserved.
               </span>
-              <span>Priced and billed in CFA francs, once a year.</span>
+              <span>Priced and billed in CFA francs, by the year or the month.</span>
             </div>
             <div className="lfoot__socials">
               <a href="https://facebook.com" aria-label="Facebook" target="_blank" rel="noopener noreferrer">

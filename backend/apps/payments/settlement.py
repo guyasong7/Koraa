@@ -42,13 +42,18 @@ from .models import PaymentTransaction, Subscription
 
 logger = logging.getLogger(__name__)
 
-#: Koraa sells annual plans only. Monthly was a straight 1/12 of yearly, which
-#: gave buyers no reason to commit and Koraa no working capital.
+#: Term length per cycle, in days. Both cycles are sold: ``price_monthly`` is a
+#: tenth of ``price_yearly``, so the two-months-free discount lives in the
+#: annual price rather than in a rule here.
 #:
-#: "monthly" is still honoured for reading historic rows — subscriptions bought
-#: before the change keep their 30-day cycle and settle correctly — but it is no
-#: longer offered for new purchases. Do not re-add it to ``PURCHASABLE_CYCLES``
-#: without also restoring a monthly price.
+#: Monthly was withdrawn for a while and has been restored. Rows bought in
+#: either period settle correctly without a migration, because the cycle was
+#: always stored on the subscription rather than inferred from the amount.
+#:
+#: Keep in step with ``plans.CYCLES``: a cycle that can be bought but has no
+#: term length here falls through the ``.get`` below and silently settles as 30
+#: days, which on a yearly purchase means charging for a year and granting a
+#: month.
 CYCLE_DAYS = {"monthly": 30, "yearly": 365}
 
 # ── Verdicts ─────────────────────────────────────────────────────────────────
@@ -151,10 +156,12 @@ def activate_subscription(tx_pk, fapshi_status_str: str) -> str:
         sub = tx.subscription
         merchant = getattr(tx.user, "merchant", None)
 
-        # Renewing before the current term ends adds a year to what is left
-        # rather than throwing it away. The expiry warning goes out a week early
-        # precisely to invite this, so charging for a year and handing back 365
-        # days minus the unused remainder would be theft.
+        # Renewing before the current term ends adds the new term to what is
+        # left rather than throwing it away. The expiry warning goes out a week
+        # early precisely to invite this, so charging for a full term and handing
+        # back that term minus the unused remainder would be theft. Note the
+        # cycle bought is the cycle added: a monthly renewal on a yearly term
+        # adds 30 days to it, which is the merchant's choice to make.
         current_expiry = getattr(merchant, "tier_expires_at", None)
         base = current_expiry if current_expiry and current_expiry > now else now
 

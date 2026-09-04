@@ -2,7 +2,7 @@
 Settle plan payments whose Fapshi webhook never arrived.
 
 Fapshi sends each webhook once and never retries, so a notification lost to a
-deploy or a restart is lost permanently — the merchant has paid for a year and
+deploy or a restart is lost permanently — the merchant has paid for a term and
 holds a PENDING subscription. Direct-pay removed the redirect that used to cover
 this by accident, so this command and the beat job that runs it are the backstop.
 Celery beat runs it twice an hour in production; this is also how you run it by

@@ -206,10 +206,12 @@ export default function TermsPage() {
               <h2>6. Payments and billing</h2>
               <h3>6.1 Subscription billing</h3>
               <p>
-                Koraa is billed annually in CFA francs (XAF). There is no
-                monthly billing option. Your subscription renews on the
-                anniversary of the date you upgraded, unless you cancel or
-                downgrade before the renewal date.
+                Koraa is billed in CFA francs (XAF) on the term you choose when
+                you pay: one month or one year. The yearly price is set at ten
+                times the monthly price, so a year costs two months less than
+                twelve single months. Your subscription renews at the end of
+                each term, unless you cancel or downgrade before the renewal
+                date.
               </p>
               <p>
                 Payment is taken by MTN Mobile Money or Orange Money. You must
@@ -221,7 +223,8 @@ export default function TermsPage() {
               <p>
                 If you upgrade before your current term ends, you will be
                 charged the new plan price immediately and your term will
-                extend by one year from the payment date.
+                extend by the term you paid for, measured from the payment
+                date.
               </p>
 
               <h3>6.2 Transaction fees</h3>
