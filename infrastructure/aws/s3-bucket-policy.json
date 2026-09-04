@@ -17,7 +17,9 @@
         "arn:aws:s3:::koraa-africa-media/media/merchants/banners/*",
         "arn:aws:s3:::koraa-africa-media/media/categories/*",
         "arn:aws:s3:::koraa-africa-media/media/avatars/*",
-        "arn:aws:s3:::koraa-africa-media/media/themes/previews/*"
+        "arn:aws:s3:::koraa-africa-media/media/themes/previews/*",
+        "arn:aws:s3:::koraa-africa-media/media/storefront/sections/*",
+        "arn:aws:s3:::koraa-africa-media/media/storefront/config/*"
       ]
     },
     {
