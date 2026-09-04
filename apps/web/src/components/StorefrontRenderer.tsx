@@ -405,12 +405,19 @@ function Navbar({ store, cfg }: NavbarProps) {
 
 function Hero({ s, store }: any) {
   if (!s.enabled) return null;
+  const hasImage = !!s.settings.image;
+  // When no custom image, always show the overlay so the gradient fallback
+  // has the same dark-left treatment as the image variant.
+  // When a custom image is uploaded, only show the overlay if the merchant
+  // explicitly switched it on — otherwise the dark gradient hides the image
+  // and they think the upload failed.
+  const showOverlay = hasImage ? s.settings.overlay === true : s.settings.overlay !== false;
   return (
     <section className="sf-hero">
-      {s.settings.image
+      {hasImage
         ? <img src={s.settings.image} alt="Hero" className="sf-hero-img" />
         : <div className="sf-hero-img" style={{ background: "linear-gradient(135deg, var(--sf-primary), var(--sf-accent, #8a4310))" }} />}
-      {s.settings.overlay !== false && <div className="sf-hero-ov" />}
+      {showOverlay && <div className="sf-hero-ov" />}
       <div className="sf-hero-c">
         <span className="sf-hero-tag">{store.name}</span>
         <h1 className="sf-hero-h sf-d">{s.settings.title || `Welcome to ${store.name}`}</h1>

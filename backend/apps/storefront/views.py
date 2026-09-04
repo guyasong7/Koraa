@@ -584,8 +584,14 @@ def _storefront_payload(store, request) -> dict:
     ).order_by("order")
 
     def asset(field):
+        from django.conf import settings as django_settings
         value = getattr(store, field)
-        return request.build_absolute_uri(value.url) if value else None
+        if not value:
+            return None
+        asset_url = value.url
+        if asset_url.startswith(("http://", "https://")):
+            return asset_url  # Already absolute (S3/R2)
+        return f"{django_settings.KORAA_API_URL.rstrip('/')}{asset_url}"
 
     return {
         "store": {
