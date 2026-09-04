@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useStorefront } from "./StorefrontProvider";
+import { useStorefront } from "../StorefrontProvider";
 import {
   EmptyCatalog,
   FacetProvider,
@@ -9,12 +9,12 @@ import {
   applyFacet,
   deriveFacets,
   useFacet,
-} from "./storefront/shared";
-import { resolveLayout, resolveLayoutKey } from "./storefront/registry";
-import CartDrawer from "./storefront/CartDrawer";
-import ProductDialog from "./storefront/ProductDialog";
-import { CookieBanner } from "./storefront/CookieBanner";
-import { STOREFRONT_DEFAULTS } from "./storefront/theme";
+} from "./shared";
+import { resolveLayout, resolveLayoutKey } from "./registry";
+import CartDrawer from "./CartDrawer";
+import ProductDialog from "./ProductDialog";
+import { CookieBanner } from "./CookieBanner";
+import { STOREFRONT_DEFAULTS } from "./theme";
 import { useSearchParams } from "next/navigation";
 import { Navbar as ClassicNavbar, Footer as ClassicFooter } from "../StorefrontRenderer";
 
@@ -27,7 +27,7 @@ const SORTS: Record<string, (a: any, b: any) => number> = {
 };
 
 function ShopCatalog() {
-  const { store, products, settings } = useStorefront();
+  const { store, products } = useStorefront();
   const { active, setActive } = useFacet();
   const [sort, setSort] = React.useState("featured");
   
@@ -117,23 +117,24 @@ function ShopCatalog() {
 }
 
 export function ShopRenderer() {
-  const { store, settings } = useStorefront();
-  const theme = settings?.theme || STOREFRONT_DEFAULTS.theme;
-  const layout = settings?.layout || STOREFRONT_DEFAULTS.layout;
+  const { store, config, sections } = useStorefront();
+  const layout = config?.layout || "classic";
   const layoutKey = resolveLayoutKey(layout);
   const layoutModule = resolveLayout(layout);
+
+  const footerSection = sections?.find(s => s.type === "footer");
 
   const LayoutNavbar = layoutModule.navbar ?? ClassicNavbar;
   const LayoutFooter = layoutModule.footer ?? ClassicFooter;
 
   const vars = {
-    "--sf-primary": theme.primary_color,
-    "--sf-text": theme.text_color,
-    "--sf-bg": theme.background_color,
-    "--sf-secondary": theme.secondary_color,
-    "--sf-font": theme.font_family,
-    "--sf-heading-font": theme.heading_font || theme.font_family,
-    "--sf-r": theme.button_style === "square" ? "0px" : theme.button_style === "pill" ? "9999px" : "10px",
+    "--sf-primary": config?.primary_color || STOREFRONT_DEFAULTS.primary,
+    "--sf-text": config?.text_color || STOREFRONT_DEFAULTS.text,
+    "--sf-bg": config?.background_color || STOREFRONT_DEFAULTS.background,
+    "--sf-secondary": config?.secondary_color || STOREFRONT_DEFAULTS.secondary,
+    "--sf-font": config?.font || "Inter",
+    "--sf-heading-font": config?.heading_font || config?.font || "Outfit",
+    "--sf-r": config?.button_style === "square" ? "0px" : config?.button_style === "pill" ? "9999px" : "10px",
     ...(layoutModule.vars || {}),
   } as React.CSSProperties;
 
@@ -143,17 +144,17 @@ export function ShopRenderer() {
         <div className={`sf sf-l-${layoutKey}`} style={vars}>
           {layoutModule.styles && <style>{layoutModule.styles}</style>}
           
-          <LayoutNavbar store={store} cfg={settings ?? {}} />
+          <LayoutNavbar store={store} cfg={config ?? {} as any} />
 
           <div className="sf-content" style={{ minHeight: "60vh" }}>
             <ShopCatalog />
           </div>
 
-          <LayoutFooter store={store} settings={settings ?? {}} />
+          <LayoutFooter store={store} settings={footerSection?.settings ?? {}} />
           
           <CartDrawer />
           <ProductDialog />
-          <CookieBanner store={store} />
+          <CookieBanner />
         </div>
       </QuickViewProvider>
     </FacetProvider>

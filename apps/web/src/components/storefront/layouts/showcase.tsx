@@ -14,6 +14,7 @@
  * thing.
  */
 import React from "react";
+import Link from "next/link";
 import { useStorefront } from "../../StorefrontProvider";
 import type { StorefrontProduct } from "../../../types/storefront";
 import type { LayoutModule } from "../registry";
