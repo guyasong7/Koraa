@@ -298,6 +298,17 @@ export default function EditProductPage() {
     updateMutation.mutate(status);
   };
 
+  const handleDeleteProduct = async () => {
+    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
+    try {
+      await productApi.delete(storeId, productId);
+      toast.success("Product deleted successfully");
+      router.push(`/dashboard/products?store=${storeId}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to delete product");
+    }
+  };
+
   const isPending = updateMutation.isPending || isLoadingProduct;
   /** Mirrors `Product.is_stocked`: only physical products have a count. */
   const isStocked = form.product_type === "simple" || form.product_type === "variable";
@@ -319,6 +330,9 @@ export default function EditProductPage() {
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Edit Product</span>
         </div>
         <div className="top-action-buttons" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <button className="btn btn-secondary btn-sm" onClick={handleDeleteProduct} disabled={isPending} style={{ color: "var(--danger)" }}>
+            <LuTrash2 size={14} /> Delete
+          </button>
           <button className="btn btn-secondary btn-sm" onClick={() => handleSave("draft")} disabled={isPending}>
             {isPending ? <LuLoader size={14} className="spin" /> : <LuSave size={14} />} Save draft
           </button>

@@ -364,22 +364,29 @@ class SectionImageUploadView(APIView):
 
         # Build a publicly reachable URL.
         #
-        # request.build_absolute_uri() uses the Host header from the incoming
-        # request. When gunicorn sits behind nginx the header is the *internal*
-        # socket address (127.0.0.1:8000), so the URL stored in
-        # section.settings["image"] would be unreachable from browsers.
-        #
-        # If MEDIA_URL is already absolute (S3 / R2), use it directly.
-        # Otherwise prefix with KORAA_API_URL — the public-facing API origin
-        # already used by the email system for logo URLs.
+        # Priority:
+        #  1. Absolute MEDIA_URL (S3 / R2)  — just prepend the path.
+        #  2. KORAA_API_URL env var          — the intended production setting.
+        #  3. X-Forwarded-Host / X-Forwarded-Proto headers set by nginx — a
+        #     reliable fallback when KORAA_API_URL is still the default
+        #     "http://localhost:8000" because the sysadmin forgot to set it.
         media_url = django_settings.MEDIA_URL
         if media_url.startswith(("http://", "https://")):
-            # Absolute — S3/R2 path already contains the bucket domain.
-            # default_storage.url() gives the canonical form; path alone is
-            # correct for the filesystem backend.
             url = f"{media_url.rstrip('/')}/{path}"
         else:
             api_root = django_settings.KORAA_API_URL.rstrip("/")
+            # Detect the "forgot to set KORAA_API_URL" case and fall back to
+            # the forwarded headers that nginx always sends.
+            if api_root in ("http://localhost:8000", "http://127.0.0.1:8000"):
+                forwarded_host = request.META.get("HTTP_X_FORWARDED_HOST", "")
+                forwarded_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "https")
+                if forwarded_host:
+                    api_root = f"{forwarded_proto}://{forwarded_host}"
+                else:
+                    # Last resort: read the Host header (works for direct access)
+                    host = request.get_host()
+                    scheme = "https" if request.is_secure() else "http"
+                    api_root = f"{scheme}://{host}"
             url = f"{api_root}{media_url}{path}"
 
         # Persist to section.settings
@@ -431,7 +438,17 @@ class StoreAssetUploadView(APIView):
             asset_url = asset.url  # relative (/media/...) or absolute (S3)
             if asset_url.startswith(("http://", "https://")):
                 return asset_url
-            return f"{django_settings.KORAA_API_URL.rstrip('/')}{asset_url}"
+            api_root = django_settings.KORAA_API_URL.rstrip("/")
+            if api_root in ("http://localhost:8000", "http://127.0.0.1:8000"):
+                forwarded_host = request.META.get("HTTP_X_FORWARDED_HOST", "")
+                forwarded_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "https")
+                if forwarded_host:
+                    api_root = f"{forwarded_proto}://{forwarded_host}"
+                else:
+                    host = request.get_host()
+                    scheme = "https" if request.is_secure() else "http"
+                    api_root = f"{scheme}://{host}"
+            return f"{api_root}{asset_url}"
 
         return Response({field: url(field) for field in self.ASSET_DIRS})
 
