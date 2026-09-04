@@ -212,7 +212,7 @@ const STYLES = `
 
 .sf-mobile-menu-btn { display: none; background: none; border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: var(--sf-text); }
 .sf-mobile-menu-btn:hover { background: rgba(0,0,0,0.05); }
-/* The links the merchant typed in, reachable on a phone. `.sf-links` is
+/* The links the merchant typed in, reachable on a phone. .sf-links is
    display:none under 900px, so the burger was the only route to them and it
    had no handler at all. */
 .sf-nav-drop { display: flex; flex-direction: column; padding: 6px 16px 14px; border-top: 1px solid rgba(0,0,0,0.06); background: var(--sf-bg); }
