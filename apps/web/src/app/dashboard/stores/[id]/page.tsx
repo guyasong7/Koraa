@@ -56,10 +56,7 @@ export default function StoreDetailPage() {
 
   if (!store) return null;
 
-  // The backend builds this from KORAA_STOREFRONT_DOMAIN, so it already points
-  // at the right host in dev and in production. The fallback only covers a
-  // store serialised before that field existed.
-  const storefrontUrl: string = store.storefront_url || `http://${store.slug}.localhost:3000`;
+  const storefrontUrl: string = store.storefront_url || `https://${store.slug}.koraa.cm`;
 
   const QUICK_LINKS = [
     { label: "Products", href: `/dashboard/products?store=${id}`, icon: LuPackage, desc: "Manage your product catalogue" },

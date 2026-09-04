@@ -272,11 +272,20 @@ def subscription_state(user) -> dict:
         else 0
     )
 
+    # Renewal is quoted on the cycle the merchant is actually on — a monthly
+    # subscriber shown the annual figure reads it as a tenfold price rise. The
+    # column has choices but no database constraint, so anything outside
+    # ``CYCLES`` is quoted yearly: it is the larger number, and overstating a
+    # renewal is the harmless way to be wrong about it.
+    cycle = sub.billing_cycle if sub else "yearly"
+    if cycle not in plan_catalogue.CYCLES:
+        cycle = "yearly"
+
     return {
         "plan": effective,
         "purchased_plan": purchased,
         "status": "expired" if is_expired else "active",
-        "billing_cycle": sub.billing_cycle if sub else "yearly",
+        "billing_cycle": cycle,
         "expires_at": None if effective == Plan.FREE else expires_at,
         # Unlike expires_at, this survives the drop to free, so the billing
         # screen can say *when* the plan lapsed rather than just that it did.
@@ -285,7 +294,7 @@ def subscription_state(user) -> dict:
         "days_remaining": days_remaining,
         "expiring_soon": bool(days_remaining and days_remaining <= WARNING_DAYS),
         "amount_paid": sub.amount_paid if sub else 0,
-        "renewal_price": plan_catalogue.price_yearly(purchased),
+        "renewal_price": plan_catalogue.price(purchased, cycle),
         # The plan they were last on, kept after the sweep has cleared the
         # merchant's tier, so the billing screen can offer to reactivate the
         # plan they actually had rather than a generic upgrade.

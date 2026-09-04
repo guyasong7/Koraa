@@ -9,36 +9,15 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LuStore, LuPackage, LuShoppingCart, LuTrendingUp, LuArrowUpRight, LuPlus,
   LuGlobe, LuLoader, LuCircle, LuStar, LuChevronRight, LuActivity, LuZap,
+  LuExternalLink,
 } from "react-icons/lu";
 import dynamic from "next/dynamic";
 
-/**
- * The chart, and with it recharts, out of this page's initial JavaScript.
- *
- * `loading` reserves the same 260px the chart occupies so the panel does not
- * change height when the chunk lands — without it the "Recent stores" grid
- * below would jump once on every visit.
- *
- * `ssr: false` because the chart has nothing to render on the server: its data
- * comes from a client-side query, so a server pass would emit an empty SVG and
- * then hydrate over it.
- */
 const RevenueChart = dynamic(() => import("@/components/dashboard/RevenueChart"), {
   ssr: false,
-  loading: () => <div style={{ height: 260 }} />,
+  loading: () => <div style={{ height: 220 }} />,
 });
 
-/**
- * The revenue line, read from the sales report rather than invented.
- *
- * This was seven hard-coded numbers labelled "(mock data)". A chart showing a
- * merchant somebody else's imaginary good week is worse than no chart, and now
- * that `apps/analytics` answers the question there is no reason to keep it.
- *
- * `revenue` is null for an account whose shops bill in different currencies —
- * the report refuses to add XAF to NGN. The panel says so and drops the chart,
- * rather than drawing a line through a total that cannot be spent.
- */
 const CHART_DAYS = 7;
 
 function chartLabel(iso: string): string {
@@ -47,76 +26,38 @@ function chartLabel(iso: string): string {
   return parsed.toLocaleDateString(undefined, { weekday: "short" });
 }
 
-function StatCard({ label, value, sub, icon: Icon, trend, color }: {
-  label: string; value: string | number; sub?: string; icon: any; trend?: string; color: string;
-}) {
-  return (
-    <div style={{
-      background: "var(--surface-900)", border: "1px solid var(--border)", borderRadius: 0,
-      padding: "24px", display: "flex", flexDirection: "column", gap: 12,
-      transition: "box-shadow .2s",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 0,
-          /* `color-mix`, not a `${color}18` hex suffix. The suffix only
-             works on a literal hex, and every colour passed in here is
-             now a token — `var(--brand-text)18` is invalid CSS, which
-             the browser drops silently, so the tint just wasn't there. */
-          background: `color-mix(in srgb, ${color} 9%, transparent)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <Icon size={19} color={color} />
-        </div>
-        {trend && (
-          <span style={{ fontSize: 12, color: "#22c55e", fontWeight: 600, background: "rgba(34,197,94,0.08)", padding: "3px 8px", borderRadius: 0, display: "flex", alignItems: "center", gap: 4 }}>
-            <LuTrendingUp size={11} /> {trend}
-          </span>
-        )}
-      </div>
-      <div>
-        <p style={{ fontSize: 28, fontWeight: 800, fontFamily: "Outfit, sans-serif", color: "var(--text-primary)", lineHeight: 1 }}>{value}</p>
-        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>{label}</p>
-        {sub && <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  draft:     { label: "Draft",     color: "#64748b", bg: "rgba(100,116,139,0.1)" },
-  preview:   { label: "Preview",   color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
-  published: { label: "Live",      color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
-  suspended: { label: "Suspended", color: "#f87171", bg: "rgba(248,113,113,0.1)" },
+  draft:     { label: "Draft",     color: "#64748b", bg: "rgba(100,116,139,0.12)" },
+  preview:   { label: "Preview",   color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
+  published: { label: "Live",      color: "#22c55e", bg: "rgba(34,197,94,0.12)" },
+  suspended: { label: "Suspended", color: "#f87171", bg: "rgba(248,113,113,0.12)" },
 };
 
-function StoreRow({ store }: { store: Store }) {
+function StoreCard({ store }: { store: Store }) {
   const s = STATUS_CFG[store.status] ?? STATUS_CFG.draft;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 20px", borderBottom: "1px solid var(--border)", transition: "background .15s" }}
-      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--surface)"}
-      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
-    >
-      <div style={{
-        width: 40, height: 40, borderRadius: 0, flexShrink: 0,
-        background: "var(--surface-700)",
-        border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
+    <div className="store-card">
+      <div className="store-card-logo">
         {store.logo
-          ? <img src={store.logo} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <LuGlobe size={17} color="var(--brand-500)" />}
+          ? <img src={store.logo} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }} />
+          : <LuGlobe size={20} color="var(--brand-500)" />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.name}</p>
-        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{storefrontHost(store.slug)}</p>
+        <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.name}</p>
+        <p style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{storefrontHost(store.slug)}</p>
       </div>
-      <span style={{ padding: "3px 10px", borderRadius: 0, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, flexShrink: 0, display: "flex", alignItems: "center", gap: 5 }}>
-        {store.status === "published" && <LuCircle size={7} fill={s.color} stroke="none" />}
-        {s.label}
-      </span>
-      <Link href={`/dashboard/stores/${store.id}`} style={{ color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 500, textDecoration: "none", flexShrink: 0 }}>
-        Manage <LuChevronRight size={14} />
-      </Link>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <span style={{ padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, display: "flex", alignItems: "center", gap: 4 }}>
+          {store.status === "published" && <LuCircle size={6} fill={s.color} stroke="none" />}
+          {s.label}
+        </span>
+        <Link href={`/dashboard/stores/${store.id}`} style={{ display: "flex", alignItems: "center", padding: "6px 10px", borderRadius: 8, background: "var(--surface-700)", border: "1px solid var(--border)", color: "var(--text-secondary)", textDecoration: "none", fontSize: 12, fontWeight: 600, gap: 4, transition: "all .15s" }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--brand-500)"; (e.currentTarget as HTMLElement).style.color = "var(--brand-500)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
+        >
+          Manage <LuChevronRight size={13} />
+        </Link>
+      </div>
     </div>
   );
 }
@@ -132,15 +73,11 @@ export default function DashboardPage() {
     queryKey: ["dashboard-stats"],
     queryFn: () => merchantApi.getStats().then(r => r.data),
   });
-  // Every shop the account can reach, which is what the rest of this page
-  // counts too. The analytics page is where one shop at a time lives.
   const { data: salesData, isLoading: salesLoading } = useQuery({
     queryKey: ["analytics", "sales", "", CHART_DAYS],
     queryFn: () => analyticsApi.sales({ days: CHART_DAYS }).then(r => r.data),
   });
 
-  // Numbers for the axis only. The strings stay authoritative — a decimal
-  // parsed into a JavaScript number is a decimal that can be rounded.
   const chartData = (salesData?.series ?? []).map(row => ({
     name: chartLabel(row.date),
     revenue: Number(row.revenue ?? 0),
@@ -154,221 +91,439 @@ export default function DashboardPage() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  const initials = (user?.full_name ?? "M").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+
   return (
     <>
       <PageTitle title="Dashboard — Koraa" />
 
-      <div style={{ padding: "32px", maxWidth: 1200, margin: "0 auto" }}>
+      <div className="overview-shell">
 
-        {/* ── Welcome header ── */}
-        <div style={{
-          background: "var(--surface-900)",
-          border: "1px solid var(--border)",
-          borderRadius: 0,
-          padding: "32px 36px",
-          marginBottom: 24,
-          borderLeft: "4px solid var(--brand-600)",
-        }}>
-          <p style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 600, marginBottom: 6, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {greeting}
-          </p>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, fontFamily: "Outfit, sans-serif", letterSpacing: "-0.02em" }}>
-            Welcome back, {firstName}
-          </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24, maxWidth: 500, lineHeight: 1.6 }}>
-            {stores.length === 0
-              ? "You haven't created a store yet. Set one up in under 2 minutes."
-              : `You have ${stores.length} store${stores.length > 1 ? "s" : ""}, ${publishedCount} currently live.`}
-          </p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {/* ── Top welcome strip ── */}
+        <div className="overview-header">
+          <div className="overview-avatar">{initials}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="overview-greeting">{greeting}</p>
+            <h1 className="overview-name">
+              {firstName}
+              {publishedCount > 0 && (
+                <span className="overview-live-badge">
+                  <LuCircle size={6} fill="#22c55e" stroke="none" /> {publishedCount} Live
+                </span>
+              )}
+            </h1>
+          </div>
+          <div className="overview-header-actions">
             {stores.length === 0 ? (
-              <Link href="/dashboard/stores" className="btn btn-primary">
-                <LuPlus size={15} /> Create your first store
+              <Link href="/dashboard/stores" className="btn btn-primary btn-sm">
+                <LuPlus size={14} /> Create store
               </Link>
             ) : (
               <>
-                <Link href="/dashboard/stores" className="btn btn-primary">
-                  <LuStore size={15} /> Manage stores
+                <Link href="/dashboard/stores" className="btn btn-secondary btn-sm">
+                  <LuStore size={14} /> Stores
                 </Link>
-                <Link href="/dashboard/products" className="btn btn-secondary">
-                  <LuPackage size={15} /> View products
+                <Link href="/dashboard/products" className="btn btn-primary btn-sm">
+                  <LuPackage size={14} /> Products
                 </Link>
               </>
             )}
           </div>
         </div>
 
-        {/* ── Stats ── */}
-        {/* Four cards, four hues, all of them semantic tokens now rather
-            than a violet-and-blue set borrowed from a different product.
-            Ochre and clay are the brand's own two accents; the other two
-            are the app's --warning and --info, which are a gold and a
-            teal precisely so they read as status beside an ochre brand
-            instead of fighting it. Every one is a *-text token, so it
-            stays legible on the card in both themes. */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 1, marginBottom: 24, border: "1px solid var(--border)", outline: "1px solid var(--border)" }}>
-          <StatCard label="Total Stores" value={storesLoading ? "…" : stores.length} sub={`${publishedCount} published`} icon={LuStore} color="var(--brand-text)" />
-          <StatCard label="Products" value={statsLoading ? "…" : (statsData?.total_products ?? 0)} sub="Across all stores" icon={LuPackage} color="var(--clay-text)" />
-          <StatCard label="Orders" value={statsLoading ? "…" : (statsData?.total_orders ?? 0)} sub="All time" icon={LuShoppingCart} color="var(--warning-text)" />
-          {/* Currency from the sales report rather than a hard-coded "XAF": a
-              merchant billing in NGN was being shown their own money under
-              somebody else's symbol. Blank while it loads, and blank for an
-              account whose shops bill differently — the figure is still theirs,
-              the label just isn't one currency. */}
-          <StatCard label="Revenue" value={statsLoading ? "…" : `${(statsData?.total_revenue ?? 0).toLocaleString()}${chartCurrency ? ` ${chartCurrency}` : ""}`} sub="This month" icon={LuTrendingUp} color="var(--info-text)" />
+        {/* ── Stat strip ── */}
+        <div className="stat-strip">
+          {[
+            { label: "Stores",   value: storesLoading ? "…" : stores.length,                                                         icon: LuStore,       color: "var(--brand-500)",   sub: `${publishedCount} live` },
+            { label: "Products", value: statsLoading  ? "…" : (statsData?.total_products ?? 0),                                      icon: LuPackage,     color: "var(--clay-text)",   sub: "All stores" },
+            { label: "Orders",   value: statsLoading  ? "…" : (statsData?.total_orders ?? 0),                                        icon: LuShoppingCart,color: "#f59e0b",            sub: "All time" },
+            { label: "Revenue",  value: statsLoading  ? "…" : `${(statsData?.total_revenue ?? 0).toLocaleString()}${chartCurrency ? ` ${chartCurrency}` : ""}`, icon: LuTrendingUp, color: "var(--info-text)", sub: "This month" },
+          ].map(({ label, value, icon: Icon, color, sub }) => (
+            <div key={label} className="stat-cell">
+              <div className="stat-cell-icon" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
+                <Icon size={16} color={color} />
+              </div>
+              <div>
+                <p className="stat-cell-value">{value}</p>
+                <p className="stat-cell-label">{label}</p>
+                <p className="stat-cell-sub">{sub}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* ── Revenue Graph ── */}
-        <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", borderRadius: 0, padding: "20px 24px", marginBottom: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 16, flexWrap: "wrap" }}>
-            <div>
-              <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Revenue Overview</h2>
-              <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                {mixedCurrencies
-                  ? "Your shops bill in different currencies"
-                  : `Paid orders over the last ${CHART_DAYS} days${chartCurrency ? ` · ${chartCurrency}` : ""}`}
+        {/* ── Bento grid ── */}
+        <div className="overview-bento">
+
+          {/* Revenue chart — full row */}
+          <div className="bento-chart">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 3 }}>Revenue</h2>
+                <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  {mixedCurrencies
+                    ? "Your shops bill in different currencies"
+                    : `Last ${CHART_DAYS} days${chartCurrency ? ` · ${chartCurrency}` : ""}`}
+                </p>
+              </div>
+              <Link href="/dashboard/analytics" className="btn btn-secondary btn-sm">
+                Full analytics <LuArrowUpRight size={13} />
+              </Link>
+            </div>
+            {salesLoading ? (
+              <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <LuLoader size={22} className="spin" color="var(--brand-500)" />
+              </div>
+            ) : mixedCurrencies ? (
+              <p style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 13, color: "var(--text-muted)", maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
+                Different currencies across your stores. Open analytics to see each store in its own currency.
               </p>
-            </div>
-            <Link href="/dashboard/analytics" className="btn btn-secondary btn-sm">
-              Full analytics <LuChevronRight size={14} />
-            </Link>
+            ) : (
+              <RevenueChart data={chartData} currency={chartCurrency} />
+            )}
           </div>
-          {salesLoading ? (
-            <div style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <LuLoader size={22} className="spin" color="var(--brand-500)" />
-            </div>
-          ) : mixedCurrencies ? (
-            // No line, rather than a line through added-up currencies. The
-            // analytics page shows each shop's revenue in its own money.
-            <p style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 13, color: "var(--text-muted)", maxWidth: 460, margin: "0 auto", lineHeight: 1.6 }}>
-              There is no single revenue figure to draw when your shops sell in different currencies.
-              Open the analytics page to see each shop in its own.
-            </p>
-          ) : (
-            <RevenueChart data={chartData} currency={chartCurrency} />
-          )}
-        </div>
-
-        {/* ── Main content grid ── */}
-        <div className="dash-main-grid">
 
           {/* Stores list */}
-          <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", borderRadius: 0, overflow: "hidden" }}>
-            <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Your Stores</h2>
-                <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{stores.length} store{stores.length !== 1 ? "s" : ""}</p>
-              </div>
+          <div className="bento-stores">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700 }}>Your Stores</h2>
               <Link href="/dashboard/stores" className="btn btn-secondary btn-sm">
-                <LuPlus size={13} /> New store
+                <LuPlus size={13} /> New
               </Link>
             </div>
 
             {storesLoading ? (
-              <div style={{ padding: "48px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <LuLoader size={24} className="spin" color="var(--brand-500)" />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 0" }}>
+                <LuLoader size={22} className="spin" color="var(--brand-500)" />
               </div>
             ) : stores.length === 0 ? (
-              <div style={{ padding: "56px 32px", textAlign: "center" }}>
-                <div style={{ width: 48, height: 48, borderRadius: 0, background: "var(--surface-700)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                  <LuStore size={22} color="var(--brand-500)" />
+              <div style={{ textAlign: "center", padding: "40px 16px" }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--surface-700)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+                  <LuStore size={20} color="var(--brand-500)" />
                 </div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>No stores yet</h3>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>Create your first store to start selling across Africa.</p>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 14 }}>No stores yet</p>
                 <Link href="/dashboard/stores" className="btn btn-primary btn-sm">
                   <LuPlus size={13} /> Create store
                 </Link>
               </div>
             ) : (
-              stores.map(store => <StoreRow key={store.id} store={store} />)
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {stores.map(store => <StoreCard key={store.id} store={store} />)}
+              </div>
             )}
           </div>
 
-          {/* Right column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-            {/* Quick actions */}
-            <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", borderRadius: 0, padding: "20px" }}>
-              <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>Quick Actions</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {[
-                  { icon: LuPlus, label: "Create store", sub: "Launch a new storefront", href: "/dashboard/stores", color: "var(--brand-text)" },
-                  { icon: LuPackage, label: "Add product", sub: "List items for sale", href: "/dashboard/products", color: "var(--clay-text)" },
-                  { icon: LuActivity, label: "View analytics", sub: "Track your performance", href: "/dashboard/analytics", color: "var(--warning-text)" },
-                ].map(({ icon: Icon, label, sub, href, color }) => (
-                  <Link key={href} href={href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 10px", borderRadius: 0, background: "transparent", textDecoration: "none", transition: "background .15s", border: "1px solid transparent" }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--surface)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; }}
-                  >
-                    {/* Same tokens and the same `color-mix` as the stat cards
-                        above — and the same bug fixed: the hex-suffix form
-                        left every one of these swatches blank. */}
-                    <div style={{ width: 34, height: 34, borderRadius: 0, background: `color-mix(in srgb, ${color} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 16%, transparent)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <Icon size={16} color={color} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 1 }}>{label}</p>
-                      <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{sub}</p>
-                    </div>
-                    <LuChevronRight size={14} color="var(--text-muted)" />
-                  </Link>
-                ))}
-              </div>
+          {/* Quick actions */}
+          <div className="bento-actions">
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>Quick Actions</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {[
+                { icon: LuPlus,      label: "Create store",    sub: "Launch a new storefront",  href: "/dashboard/stores",    color: "var(--brand-500)" },
+                { icon: LuPackage,   label: "Add product",     sub: "List items for sale",       href: "/dashboard/products",  color: "var(--clay-text)" },
+                { icon: LuActivity,  label: "View analytics",  sub: "Track your performance",    href: "/dashboard/analytics", color: "#f59e0b" },
+              ].map(({ icon: Icon, label, sub, href, color }) => (
+                <Link key={href} href={href} className="quick-action-row">
+                  <div className="quick-action-icon" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)`, color }}>
+                    <Icon size={15} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{label}</p>
+                    <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{sub}</p>
+                  </div>
+                  <LuChevronRight size={13} color="var(--text-muted)" />
+                </Link>
+              ))}
             </div>
-
-            {/* Upgrade card */}
-            {(user?.merchant_tier === "free" || !user?.merchant_tier) && (
-              <div style={{
-                background: "var(--brand-600)",
-                borderRadius: 0,
-                padding: "24px",
-                color: "white",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <LuStar size={14} fill="white" color="white" />
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.8 }}>Starter Plan</span>
-                </div>
-                <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 6, lineHeight: 1.3 }}>Unlock the full<br />Koraa experience</h3>
-                <p style={{ fontSize: 12, opacity: 0.75, marginBottom: 18, lineHeight: 1.5 }}>
-                  Up to 5 stores, 200+ products, advanced analytics and custom domains.
-                </p>
-                <Link href="/dashboard/billing" style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  background: "var(--surface-900)", color: "var(--brand-700)", fontWeight: 700, fontSize: 13,
-                  padding: "10px 0", borderRadius: 0, textDecoration: "none",
-                }}>
-                  <LuZap size={14} /> Upgrade to Starter
-                </Link>
-              </div>
-            )}
-
-            {user?.merchant_tier === "starter" && (
-              <div style={{
-                background: "var(--brand-600)",
-                borderRadius: 0,
-                padding: "24px",
-                color: "white",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <LuStar size={14} fill="white" color="white" />
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.8 }}>Pro Plan</span>
-                </div>
-                <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 6, lineHeight: 1.3 }}>Scale your<br />business</h3>
-                <p style={{ fontSize: 12, opacity: 0.75, marginBottom: 18, lineHeight: 1.5 }}>
-                  Unlimited stores, unlimited products, advanced analytics and premium tools.
-                </p>
-                <Link href="/dashboard/billing" style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  background: "var(--surface-900)", color: "var(--brand-700)", fontWeight: 700, fontSize: 13,
-                  padding: "10px 0", borderRadius: 0, textDecoration: "none",
-                }}>
-                  <LuZap size={14} /> Upgrade to Pro
-                </Link>
-              </div>
-            )}
           </div>
+
+          {/* Upgrade card */}
+          {(user?.merchant_tier === "free" || !user?.merchant_tier) && (
+            <div className="bento-upgrade">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                <LuStar size={13} fill="white" color="white" />
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.75 }}>Starter Plan</span>
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, lineHeight: 1.25, color: "white" }}>
+                Unlock the full<br />Koraa experience
+              </h3>
+              <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 20, lineHeight: 1.55, color: "white" }}>
+                5 stores · 200+ products · Advanced analytics · Custom domains
+              </p>
+              <Link href="/dashboard/billing" style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                background: "white", color: "var(--brand-700)", fontWeight: 700, fontSize: 13,
+                padding: "10px 0", borderRadius: 10, textDecoration: "none",
+              }}>
+                <LuZap size={14} /> Upgrade to Starter
+              </Link>
+            </div>
+          )}
+
+          {user?.merchant_tier === "starter" && (
+            <div className="bento-upgrade">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                <LuStar size={13} fill="white" color="white" />
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.75 }}>Pro Plan</span>
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, lineHeight: 1.25, color: "white" }}>Scale your<br />business</h3>
+              <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 20, lineHeight: 1.55, color: "white" }}>
+                Unlimited stores · Unlimited products · Premium tools
+              </p>
+              <Link href="/dashboard/billing" style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                background: "white", color: "var(--brand-700)", fontWeight: 700, fontSize: 13,
+                padding: "10px 0", borderRadius: 10, textDecoration: "none",
+              }}>
+                <LuZap size={14} /> Upgrade to Pro
+              </Link>
+            </div>
+          )}
         </div>
       </div>
+
+      <style>{`
+        /* ── Shell ── */
+        .overview-shell {
+          padding: 28px 32px;
+          max-width: 1280px;
+          margin: 0 auto;
+        }
+
+        /* ── Welcome header ── */
+        .overview-header {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 24px;
+        }
+        .overview-avatar {
+          width: 46px;
+          height: 46px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, var(--brand-600), var(--brand-400));
+          color: white;
+          font-weight: 800;
+          font-size: 17px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          font-family: Outfit, sans-serif;
+          letter-spacing: -0.02em;
+        }
+        .overview-greeting {
+          font-size: 11px;
+          color: var(--text-muted);
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          margin-bottom: 2px;
+        }
+        .overview-name {
+          font-size: 22px;
+          font-weight: 800;
+          font-family: Outfit, sans-serif;
+          letter-spacing: -0.025em;
+          color: var(--text-primary);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .overview-live-badge {
+          font-size: 11px;
+          font-weight: 700;
+          color: #22c55e;
+          background: rgba(34,197,94,0.1);
+          padding: 3px 9px;
+          border-radius: 20px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-family: inherit;
+          letter-spacing: 0;
+        }
+        .overview-header-actions {
+          display: flex;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+
+        /* ── Stat strip ── */
+        .stat-strip {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1px;
+          background: var(--border);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          overflow: hidden;
+          margin-bottom: 20px;
+        }
+        .stat-cell {
+          background: var(--surface-900);
+          padding: 18px 20px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+        .stat-cell-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .stat-cell-value {
+          font-size: 22px;
+          font-weight: 800;
+          font-family: Outfit, sans-serif;
+          color: var(--text-primary);
+          letter-spacing: -0.02em;
+          line-height: 1;
+          margin-bottom: 2px;
+        }
+        .stat-cell-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-secondary);
+        }
+        .stat-cell-sub {
+          font-size: 10px;
+          color: var(--text-muted);
+          margin-top: 1px;
+        }
+
+        /* ── Bento grid ── */
+        .overview-bento {
+          display: grid;
+          grid-template-columns: 1fr 340px;
+          grid-template-rows: auto auto;
+          gap: 16px;
+        }
+        .bento-chart {
+          grid-column: 1 / 2;
+          background: var(--surface-900);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 22px 24px;
+        }
+        .bento-stores {
+          grid-column: 1 / 2;
+          background: var(--surface-900);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 20px;
+        }
+        .bento-actions {
+          grid-column: 2 / 3;
+          grid-row: 1 / 2;
+          background: var(--surface-900);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 20px;
+          align-self: start;
+        }
+        .bento-upgrade {
+          grid-column: 2 / 3;
+          grid-row: 2 / 3;
+          background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
+          border-radius: 14px;
+          padding: 22px;
+          align-self: start;
+        }
+
+        /* ── Store card ── */
+        .store-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: var(--surface);
+          transition: border-color .15s;
+        }
+        .store-card:hover {
+          border-color: color-mix(in srgb, var(--brand-500) 30%, transparent);
+        }
+        .store-card-logo {
+          width: 38px;
+          height: 38px;
+          border-radius: 8px;
+          background: var(--surface-700);
+          border: 1px solid var(--border);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          overflow: hidden;
+        }
+
+        /* ── Quick action row ── */
+        .quick-action-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px;
+          border-radius: 9px;
+          text-decoration: none;
+          transition: background .15s;
+        }
+        .quick-action-row:hover {
+          background: var(--surface-700);
+        }
+        .quick-action-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 1024px) {
+          .stat-strip {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .overview-bento {
+            grid-template-columns: 1fr;
+          }
+          .bento-chart,
+          .bento-stores,
+          .bento-actions,
+          .bento-upgrade {
+            grid-column: 1 / 2;
+            grid-row: auto;
+          }
+        }
+        @media (max-width: 640px) {
+          .overview-shell {
+            padding: 16px;
+          }
+          .stat-strip {
+            grid-template-columns: repeat(2, 1fr);
+            border-radius: 10px;
+          }
+          .stat-cell {
+            padding: 14px 14px;
+            gap: 10px;
+          }
+          .stat-cell-value {
+            font-size: 18px;
+          }
+          .overview-header-actions {
+            display: none;
+          }
+          .overview-name {
+            font-size: 18px;
+          }
+        }
+      `}</style>
     </>
   );
 }

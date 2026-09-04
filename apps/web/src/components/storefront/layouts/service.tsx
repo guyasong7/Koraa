@@ -22,12 +22,14 @@ import {
   EmptyCatalog,
   SectionProps,
   applyFacet,
+  bool,
   deriveFacets,
   formatPrice,
   requestEnquiry,
   str,
   useCardAction,
   useFacet,
+  useQuickViewTrigger,
 } from "../shared";
 import { LuArrowRight, LuCircleCheck, LuClock, LuPhone } from "react-icons/lu";
 
@@ -92,9 +94,10 @@ const BOOKING = { cart: "Book this", soldOut: "Unavailable", enquire: "Get a quo
 function OfferingRow({ p, store }: { p: StorefrontProduct; store: SectionProps["store"] }) {
   const action = useCardAction();
   const act = action(p, BOOKING);
+  const trigger = useQuickViewTrigger(p);
 
   return (
-    <div className="sf-sv-row">
+    <div className="sf-sv-row sf-card-tap" {...trigger}>
       <div className="sf-sv-body">
         <p className="sf-sv-name sf-d">{p.name}</p>
         {p.short_description && <p className="sf-sv-desc">{p.short_description}</p>}

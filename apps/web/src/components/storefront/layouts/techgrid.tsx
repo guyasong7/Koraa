@@ -29,6 +29,7 @@ import {
   str,
   useCardAction,
   useFacet,
+  useQuickViewTrigger,
 } from "../shared";
 import { LuCheck, LuCpu, LuDownload, LuMail, LuShoppingBag, LuX } from "react-icons/lu";
 
@@ -139,9 +140,10 @@ function TechCard({ p, store }: { p: StorefrontProduct; store: SectionProps["sto
   const action = useCardAction();
   const act = action(p, { cart: "Add", soldOut: "Unavailable", digital: "Buy" });
   const flag = p.is_on_sale ? "Sale" : p.is_featured ? "Pick" : null;
+  const trigger = useQuickViewTrigger(p);
 
   return (
-    <article className="sf-tg-card">
+    <article className="sf-tg-card sf-card-tap" {...trigger}>
       <div className="sf-tg-ci">
         <ProductMedia product={p} placeholder={<LuCpu size={34} color="var(--tg-dim)" />} />
         {flag && <span className="sf-tg-flag">{flag}</span>}

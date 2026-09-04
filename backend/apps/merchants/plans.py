@@ -34,6 +34,17 @@ from __future__ import annotations
 #: a float infinity is simpler and safer than sprinkling ``None`` checks.
 UNLIMITED = float("inf")
 
+#: The cycles a plan can be bought on, and the only values
+#: ``Subscription.billing_cycle`` should ever hold.
+#:
+#: Named here because three things have to agree about it and none of them is
+#: a natural home for the list: ``payments.views.PURCHASABLE_CYCLES`` decides
+#: what a POST may ask for, ``price`` below turns the choice into an amount,
+#: and ``payments.settlement.CYCLE_DAYS`` turns it into a term length. A cycle
+#: that reaches one of those without the others knowing charges for one term
+#: and grants another, so they read from here rather than repeating it.
+CYCLES = ("monthly", "yearly")
+
 
 PLANS: dict[str, dict] = {
     "free": {
@@ -193,11 +204,11 @@ def price_monthly(tier: str | None) -> int:
 
 
 def price(tier: str | None, cycle: str) -> int:
-    """Price for ``tier`` on ``cycle``, which must be monthly or yearly.
+    """Price for ``tier`` on ``cycle``, which must be one of ``CYCLES``.
 
-    Raises ``KeyError`` on any other cycle. The payments view validates the
-    cycle against its own tuple before reaching here, so an unknown one is a
-    programming error and should not quietly bill the annual amount.
+    Raises ``KeyError`` on any other cycle. Callers validate against
+    ``CYCLES`` before reaching here, so an unknown one is a programming error
+    and must not quietly bill the annual amount for a 30-day term.
     """
     return {"monthly": price_monthly, "yearly": price_yearly}[cycle](tier)
 

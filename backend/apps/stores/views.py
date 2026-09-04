@@ -96,13 +96,12 @@ class StoreDetailView(generics.RetrieveUpdateDestroyAPIView):
         return accessible_stores(self.request.user)
 
     def destroy(self, request, *args, **kwargs):
-        """Soft-delete: suspend instead of hard delete. Owner only."""
+        """Hard delete: removes the store and all associated data completely. Owner only."""
         store = self.get_object()
         if not store_access(request.user, store).is_owner:
-            raise PermissionDenied("Only the store owner can take this store down.")
-        store.status = Store.Status.SUSPENDED
-        store.save(update_fields=["status"])
-        return Response({"message": "Store suspended."}, status=status.HTTP_200_OK)
+            raise PermissionDenied("Only the store owner can delete this store.")
+        store.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def _manageable_store(user, pk):

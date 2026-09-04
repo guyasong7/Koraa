@@ -206,22 +206,39 @@ export default function TermsPage() {
               <h2>6. Payments and billing</h2>
               <h3>6.1 Subscription billing</h3>
               <p>
-                Koraa is billed annually in CFA francs (XAF). There is no
-                monthly billing option. Your subscription renews on the
-                anniversary of the date you upgraded, unless you cancel or
-                downgrade before the renewal date.
+                Koraa is billed in CFA francs (XAF) on the term you choose when
+                you pay: one month or one year. The yearly price is set at ten
+                times the monthly price, so a year costs two months less than
+                twelve single months.
               </p>
               <p>
-                Payment is taken by MTN Mobile Money or Orange Money. You must
-                ensure your mobile money account has sufficient funds on the
-                billing date. If a payment fails we will retry and notify you;
-                if it remains unpaid after 14 days, the account will revert to
-                the free plan.
+                Your subscription does not renew automatically. We do not store
+                a payment mandate and will never charge you without your
+                approving that specific payment on your handset, so there is
+                nothing to cancel: a term simply ends on its expiry date unless
+                you choose to pay for another one. We notify you seven days
+                before a term expires.
               </p>
               <p>
-                If you upgrade before your current term ends, you will be
-                charged the new plan price immediately and your term will
-                extend by one year from the payment date.
+                Payment is taken by MTN Mobile Money or Orange Money, and each
+                payment is approved by you on your phone at the time it is
+                taken. If a payment is declined, nothing is charged and your
+                current plan is unaffected; you are free to try again. We do
+                not retry payments on your behalf.
+              </p>
+              <p>
+                When a paid term expires without being renewed, the account
+                returns to the free plan and its allowances at that point. Your
+                storefronts stay online and nothing is deleted — see section 5.
+                You can restore your allowances at any time by paying for a new
+                term.
+              </p>
+              <p>
+                If you renew or upgrade before your current term ends, you will
+                be charged immediately and the term you paid for is added to the
+                time you already have, rather than replacing it. If you
+                downgrade to the free plan before your term ends, the remaining
+                time is forfeited and is not refunded.
               </p>
 
               <h3>6.2 Transaction fees</h3>
@@ -355,8 +372,12 @@ export default function TermsPage() {
                 <li>You violate any provision of these Terms</li>
                 <li>We are required to do so by law or regulatory order</li>
                 <li>We determine that your activity poses a risk to the platform, other users, or third parties</li>
-                <li>Your subscription payment fails and remains unpaid after 14 days</li>
               </ul>
+              <p>
+                Not paying for a new term is not a ground for suspension or
+                termination. A term that expires simply returns the account to
+                the free plan, as described in section 6.1.
+              </p>
               <p>
                 Where we terminate for a material breach, no refund will be
                 given for unused subscription time. Where we terminate for any

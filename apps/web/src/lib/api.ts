@@ -229,6 +229,34 @@ export const productApi = {
   },
 };
 
+// ─── Categories ───────────────────────────────────────────────────────────
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  image: string | null;
+  parent: string | null;
+  children: Category[];
+  sort_order: number;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const categoryApi = {
+  list: (storeId: string) => api.get<Category[]>(`/stores/${storeId}/categories/`),
+  get: (storeId: string, id: string) => api.get<Category>(`/stores/${storeId}/categories/${id}/`),
+  create: (storeId: string, data: Partial<Category>) =>
+    api.post<Category>(`/stores/${storeId}/categories/`, data),
+  update: (storeId: string, id: string, data: Partial<Category>) =>
+    api.patch<Category>(`/stores/${storeId}/categories/${id}/`, data),
+  delete: (storeId: string, id: string) =>
+    api.delete(`/stores/${storeId}/categories/${id}/`),
+};
+
+
 // ─── Orders ───────────────────────────────────────────────────────────────
 //
 // Not nested under a store, unlike products: the endpoint returns orders from
@@ -1108,12 +1136,23 @@ export interface BlueprintCatalogue {
   store: { id: string; name: string; tagline: string };
 }
 
+/** A cycle a plan can be bought on — `merchants.plans.CYCLES`. */
+export type BillingCycle = "monthly" | "yearly";
+
 /** One tier as served by `/payments/plans/`, derived from `merchants.plans`. */
 export interface PlanCatalogueEntry {
   key: string;
   name: string;
   tagline: string;
   price_yearly: number;
+  /**
+   * A tenth of `price_yearly`, so a year costs ten months rather than twelve.
+   *
+   * Sent by the server rather than divided down here. The frontend used to
+   * derive it, which put a pricing rule in two languages — and `merchants.plans`
+   * exists precisely because the same pricing fact written in two places drifts.
+   */
+  price_monthly: number;
   order: number;
   /** Null means unlimited — the backend cannot send Infinity as JSON. */
   limits: Record<string, number | null>;
@@ -1147,7 +1186,10 @@ export interface SubscriptionState {
 /** The whole `/payments/plans/` payload. */
 export interface PlanCatalogue {
   currency: string;
-  billing_cycle: string;
+  /** The cycles on sale. Both, since `PURCHASABLE_CYCLES` reopened monthly. */
+  billing_cycles: BillingCycle[];
+  /** What to lead with, and what a client offering no choice should post. */
+  default_billing_cycle: BillingCycle;
   plans: PlanCatalogueEntry[];
 }
 
@@ -1242,7 +1284,7 @@ export const paymentApi = {
    * returns `{ settled: true }` with no `trans_id`, and destroys what is left of
    * a paid term. Confirm before calling it.
    */
-  initiate: (plan: string, billing_cycle: string, charge?: ChargeRequest) =>
+  initiate: (plan: string, billing_cycle: BillingCycle, charge?: ChargeRequest) =>
     api.post<ChargedPlan>("/payments/initiate/", { plan, billing_cycle, ...charge }),
   /**
    * Where a plan payment has got to. Safe to poll; the backend paces its own

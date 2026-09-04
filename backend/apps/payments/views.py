@@ -15,13 +15,25 @@ from apps.merchants import plans as plan_catalogue
 
 logger = logging.getLogger(__name__)
 
-#: Derived, never hand-maintained. ``apps.merchants.plans`` is the only
-#: place a price is written down.
+#: Derived, never hand-maintained. ``apps.merchants.plans`` is the only place a
+#: price is written down. These are the annual figures; the amount actually
+#: charged is ``plan_catalogue.price(plan, cycle)``, because both cycles sell.
+#: Kept because it is also the set of purchasable paid tiers, which is what the
+#: plan check in ``post`` reads it for.
 PLAN_PRICES = {
     key: plan_catalogue.price_yearly(key) for key in plan_catalogue.PAID_TIERS
 }
 
-PURCHASABLE_CYCLES = ("yearly",)
+#: Both cycles sell. Read from the catalogue rather than repeated, so a cycle
+#: cannot become purchasable here without also having a price and a term length
+#: — see ``plans.CYCLES``.
+PURCHASABLE_CYCLES = plan_catalogue.CYCLES
+
+#: What the merchant reads on their handset beside the amount. The term has to
+#: be named in the prompt: it is the last thing standing between them and the
+#: charge, and it is the only place the difference between the two cycles is
+#: visible at the moment of paying.
+CYCLE_TERMS = {"monthly": "1 month", "yearly": "1 year"}
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Settlement moved out. `_settle_transaction`, `_activate_subscription`,
@@ -85,9 +97,11 @@ class InitiatePaymentView(APIView):
 
     def post(self, request):
         plan_key = request.data.get("plan", "").lower()
-        # Annual only. The field is still read so an older dashboard build
-        # posting billing_cycle=monthly gets a clear 400 rather than being
-        # silently charged the yearly amount for a 30-day cycle.
+        # Absent means yearly: a client that posts no cycle at all predates
+        # monthly being sold, and yearly is what it meant. An explicit value
+        # outside PURCHASABLE_CYCLES is refused below rather than falling back
+        # to this default — the failure to avoid is taking one cycle's price
+        # for the other cycle's term.
         billing = request.data.get("billing_cycle", "yearly")
 
         if plan_key == "free":
@@ -97,7 +111,7 @@ class InitiatePaymentView(APIView):
             return Response({"error": "Invalid plan."}, status=status.HTTP_400_BAD_REQUEST)
         if billing not in PURCHASABLE_CYCLES:
             return Response(
-                {"error": "Koraa plans are billed yearly. Send billing_cycle='yearly'."},
+                {"error": "billing_cycle must be 'monthly' or 'yearly'."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -110,7 +124,10 @@ class InitiatePaymentView(APIView):
         if in_flight is not None:
             return in_flight
 
-        amount = PLAN_PRICES[plan_key]
+        # Priced on the cycle, not from PLAN_PRICES: that map holds the annual
+        # figures, and charging one of them for a 30-day term is the exact
+        # mistake the cycle check above exists to prevent.
+        amount = plan_catalogue.price(plan_key, billing)
 
         # The subscription row exists before the charge so that a charge whose
         # outcome we never learn still leaves a trace. It is PENDING and gives
@@ -134,7 +151,7 @@ class InitiatePaymentView(APIView):
                 # gave one. `direct_pay` omits the field entirely when it is empty.
                 name=request.user.full_name,
                 email=request.user.email,
-                message=f"Koraa {plan_key.title()} Plan — 1 year",
+                message=f"Koraa {plan_key.title()} Plan — {CYCLE_TERMS[billing]}",
                 medium=medium,
             )
         except fapshi.FapshiRejected as exc:
@@ -502,7 +519,13 @@ class PlanCatalogueView(APIView):
     def get(self, request):
         return Response({
             "currency": "XAF",
-            "billing_cycle": "yearly",
+            # Both cycles, and which one to lead with. A client that does not
+            # offer the choice should post ``default_billing_cycle``; the
+            # pricing page opens on it because yearly is the one carrying the
+            # discount, and opening on monthly would put the smaller number
+            # first and the terms second.
+            "billing_cycles": list(PURCHASABLE_CYCLES),
+            "default_billing_cycle": "yearly",
             "plans": plan_catalogue.public_catalogue(),
         })
 

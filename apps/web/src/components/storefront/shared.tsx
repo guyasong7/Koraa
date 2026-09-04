@@ -9,7 +9,7 @@
  */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { LuHeart, LuMail, LuPin, LuShoppingBag, LuX } from "react-icons/lu";
-import { useCartStore } from "../../stores/cart";
+import { useCartCount, useCartStore } from "../../stores/cart";
 import { useStorefrontTracker } from "../../lib/analytics";
 import { useStorefront } from "../StorefrontProvider";
 import { pinterestSaveUrl, useImageAttrs, useSiteSettings } from "./siteSettings";
@@ -102,13 +102,32 @@ export function initials(name: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+/**
+ * False on the server and on the first client render, true after.
+ *
+ * The cart is persisted in `localStorage`, which the server cannot see, so
+ * anything that renders a basket — the navbar count, the drawer — disagrees
+ * with the server's HTML on a shopper who has items and reloads. React reports
+ * that as a hydration error in the console. Gating on this renders the empty
+ * state first and fills it in a tick later, which costs nothing visible and is
+ * the difference between a clean console and a page of red.
+ */
+export function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
 // ── Facets ────────────────────────────────────────────────────────────────────
 //
-// `StorefrontProduct` carries no category, so the only groupings available are
-// the flags the API does send. The classic `Categories` section already
-// derived exactly these three and rendered them as inert buttons; layouts that
-// filter reuse the same derivation so a tab strip and a sidebar can never
-// disagree about what the store contains.
+// A facet is one tab in the category strip. The merchant's own categories come
+// first — those are the groupings a shopper thinks in — followed by the two
+// flags the payload also carries. Categories are derived from the products
+// present rather than fetched separately, so a category with nothing in it
+// never becomes a tab that leads to an empty grid.
+//
+// Category ids are prefixed so they cannot collide with `all`/`featured`/`sale`
+// however a merchant names a category.
 
 export interface Facet {
   id: string;
@@ -116,9 +135,29 @@ export interface Facet {
   count: number;
 }
 
+const CAT_PREFIX = "cat:";
+
+/** The facet id for a category, or `all` when the product has none. */
+export function categoryFacetId(categoryId: string): string {
+  return `${CAT_PREFIX}${categoryId}`;
+}
+
 export function deriveFacets(products: StorefrontProduct[]): Facet[] {
   const all = products || [];
   const facets: Facet[] = [{ id: "all", label: "All Products", count: all.length }];
+
+  // Insertion order, which is the API's order — featured first, then newest —
+  // so the strip is stable between loads without a second sort.
+  const cats = new Map<string, Facet>();
+  for (const p of all) {
+    if (!p.category) continue;
+    const id = categoryFacetId(p.category.id);
+    const seen = cats.get(id);
+    if (seen) seen.count += 1;
+    else cats.set(id, { id, label: p.category.name, count: 1 });
+  }
+  facets.push(...cats.values());
+
   const featured = all.filter(p => p.is_featured);
   if (featured.length > 0) {
     facets.push({ id: "featured", label: "Featured", count: featured.length });
@@ -134,6 +173,10 @@ export function applyFacet(products: StorefrontProduct[], id: string): Storefron
   const all = products || [];
   if (id === "featured") return all.filter(p => p.is_featured);
   if (id === "sale") return all.filter(p => p.is_on_sale);
+  if (id.startsWith(CAT_PREFIX)) {
+    const categoryId = id.slice(CAT_PREFIX.length);
+    return all.filter(p => p.category?.id === categoryId);
+  }
   return all;
 }
 
@@ -170,6 +213,116 @@ export function useFacet(): FacetState {
 export function useHasSection(type: SectionType): boolean {
   const { sections } = useStorefront();
   return (sections || []).some(s => s.type === type && s.enabled);
+}
+
+// ── Quick view ────────────────────────────────────────────────────────────────
+//
+// A Koraa storefront is one page, so there is nowhere to send a shopper who
+// wants to read a product's description. The card opens a dialog instead. The
+// state lives above the section list, next to the facet, because the dialog is
+// mounted once by the root renderer and every layout's own card needs to reach
+// it — see `ProductDialog`, which supplies the markup.
+
+interface QuickViewState {
+  product: StorefrontProduct | null;
+  open: (p: StorefrontProduct) => void;
+  close: () => void;
+}
+
+const QuickViewCtx = createContext<QuickViewState | null>(null);
+
+export function QuickViewProvider({ children }: { children: React.ReactNode }) {
+  const [product, setProduct] = useState<StorefrontProduct | null>(null);
+  return (
+    <QuickViewCtx.Provider
+      value={{ product, open: setProduct, close: () => setProduct(null) }}
+    >
+      {children}
+    </QuickViewCtx.Provider>
+  );
+}
+
+/**
+ * Open a product's detail dialog.
+ *
+ * Falls back to doing nothing outside a provider rather than throwing: a layout
+ * rendered in isolation by a test should still mount.
+ */
+export function useQuickView(): QuickViewState {
+  const ctx = useContext(QuickViewCtx);
+  return ctx ?? { product: null, open: () => {}, close: () => {} };
+}
+
+/**
+ * Props that make any card open the dialog — spread onto the card's root.
+ *
+ * Keyboard-reachable, because the card is a `div` in every layout and a shopper
+ * on a keyboard has no other way to read a description. Controls inside the
+ * card (add to cart, zoom, Pinterest) already stop propagation, so they keep
+ * working.
+ */
+export function useQuickViewTrigger(p: StorefrontProduct) {
+  const { open } = useQuickView();
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": `View details for ${p.name}`,
+    onClick: () => open(p),
+    onKeyDown: (event: React.KeyboardEvent) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open(p);
+      }
+    },
+  };
+}
+
+// ── Cart control ──────────────────────────────────────────────────────────────
+
+/**
+ * The bag in a navbar, and the only correct way to render the count.
+ *
+ * Two things were wrong with what each navbar did by hand. It selected
+ * `state.getCartCount` — the *method*, which is referentially stable — so the
+ * component never re-subscribed to `items` and the number stayed at whatever it
+ * first rendered; that was the reported "add to cart is lagging". And it linked
+ * straight to `/checkout`, so there was no way to look at a basket without
+ * starting to pay for it. This opens the drawer instead.
+ *
+ * `count` is suppressed until mount because the basket comes out of
+ * `localStorage`, which the server cannot read.
+ */
+export function CartButton({
+  className = "sf-btn",
+  badgeClassName = "sf-badge",
+  size = 20,
+  label,
+}: {
+  className?: string;
+  /** A layout with its own badge geometry passes its own class. */
+  badgeClassName?: string;
+  size?: number;
+  label?: string;
+}) {
+  const openCart = useCartStore(state => state.openCart);
+  const mounted = useMounted();
+  const count = useCartCount();
+  const shown = mounted ? count : 0;
+
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={openCart}
+      style={{ position: "relative", background: "none", border: "none", cursor: "pointer", font: "inherit" }}
+      aria-label={label ?? `Open cart, ${shown} item${shown === 1 ? "" : "s"}`}
+    >
+      <LuShoppingBag size={size} />
+      {/* Hidden at zero. An empty shop showed a permanent "0" badge, which
+          reads as a broken counter rather than an empty basket. */}
+      {shown > 0 && <span className={badgeClassName}>{shown > 99 ? "99+" : shown}</span>}
+    </button>
+  );
 }
 
 // ── Product imagery ───────────────────────────────────────────────────────────
@@ -538,14 +691,21 @@ export function StockNote({ p }: { p: StorefrontProduct }) {
 export function ProductCard({ p, store }: { p: StorefrontProduct; store: Store }) {
   const action = useCardAction();
   const act = action(p);
+  const trigger = useQuickViewTrigger(p);
 
   return (
-    <div className="sf-card">
+    <div className="sf-card sf-card-tap" {...trigger}>
       <div className="sf-ci">
         <ProductMedia product={p} />
         {p.is_on_sale && <span className="sf-cbadge">SALE</span>}
         {!p.is_on_sale && p.is_featured && <span className="sf-cbadge">FEATURED</span>}
-        <button className="sf-wl"><LuHeart size={14} /></button>
+        <button
+          className="sf-wl"
+          aria-label="Save for later"
+          onClick={event => event.stopPropagation()}
+        >
+          <LuHeart size={14} />
+        </button>
         <PinSaveButton product={p} store={store} />
       </div>
       <div className="sf-cb">

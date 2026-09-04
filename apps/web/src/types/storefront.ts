@@ -167,12 +167,26 @@ export interface StorefrontProduct {
   name: string;
   slug: string;
   short_description: string;
+  /**
+   * The merchant's full write-up. Optional because a storefront serialised
+   * before the product dialog existed does not send it; readers fall back to
+   * `short_description`.
+   */
+  description?: string;
   base_price: string;
   compare_at_price: string | null;
   is_featured: boolean;
   is_on_sale: boolean;
   in_stock: boolean;
   image: string | null;
+  /** Every photograph, primary first. Absent on an older payload. */
+  images?: string[];
+  /**
+   * The product's category, or null when it has none or the merchant hid it.
+   * Drives the storefront's category strip — the tabs are derived from what the
+   * catalogue actually contains, so an empty category never shows up.
+   */
+  category?: { id: string; name: string; slug: string } | null;
   /**
    * What kind of thing this is, which decides the card's action: a physical
    * product goes in the basket, a digital one is bought and downloaded, a

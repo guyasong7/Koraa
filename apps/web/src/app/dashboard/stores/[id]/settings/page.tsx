@@ -261,42 +261,36 @@ export default function StorefrontEditor() {
   const schema = activeSection ? SECTIONS_SCHEMA[activeSection.type] : null;
   const editableSections = sections.filter(s => SECTIONS_SCHEMA[s.type]);
 
-  const TAB_STYLE = (t: string) => ({
-    flex: 1, padding: "11px 4px", fontSize: 12, fontWeight: 600, background: "none", border: "none",
-    borderBottom: activeTab === t ? "2px solid var(--brand-500)" : "2px solid transparent",
-    color: activeTab === t ? "var(--brand-500)" : "var(--text-secondary)",
-    cursor: "pointer",
-  });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--surface-950)", overflow: "hidden" }}>
+    <div className="sf-editor-root">
 
       {/* Topbar */}
-      <header style={{ height: 58, background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={() => router.push(`/dashboard/stores/${store.id}`)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13 }}>← Back</button>
-          <div style={{ width: 1, height: 18, background: "var(--border)" }} />
-          <span style={{ fontWeight: 700, fontSize: 15 }}>Storefront Editor</span>
-          <span style={{ fontSize: 11, background: "rgba(168,85,247,0.1)", color: "var(--brand-500)", padding: "2px 10px", borderRadius: 0, fontWeight: 700 }}>{store.name}</span>
+      <header className="sf-topbar">
+        <div className="sf-topbar-left">
+          <button onClick={() => router.push(`/dashboard/stores/${store.id}`)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>← Back</button>
+          <div style={{ width: 1, height: 18, background: "var(--border)", flexShrink: 0 }} />
+          <span style={{ fontWeight: 700, fontSize: 14, whiteSpace: "nowrap" }}>Storefront Editor</span>
+          <span className="sf-store-badge">{store.name}</span>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {saved && <span style={{ fontSize: 13, color: "#22c55e", display: "flex", alignItems: "center", gap: 4 }}><LuCheck size={13} /> Saved</span>}
-          <button onClick={() => router.push(`/dashboard/stores/${store.id}/blueprint`)} className="btn btn-secondary" style={{ padding: "7px 14px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><LuSparkles size={13} /> Blueprint</button>
-          <button onClick={handleSave} disabled={saving} className="btn btn-secondary" style={{ padding: "7px 14px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><LuSave size={13} /> {saving ? "Saving…" : "Save Draft"}</button>
-          <button onClick={handlePublish} disabled={saving} className="btn btn-primary" style={{ padding: "7px 14px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><LuGlobe size={13} /> Publish</button>
-          <button className="btn btn-secondary" style={{ padding: "7px 14px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }} onClick={() => window.open(store.storefront_url, "_blank")}><LuEye size={13} /> View Live</button>
+        <div className="sf-topbar-right">
+          {saved && <span style={{ fontSize: 12, color: "#22c55e", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}><LuCheck size={12} /> Saved</span>}
+          <button onClick={() => router.push(`/dashboard/stores/${store.id}/blueprint`)} className="btn btn-secondary sf-btn-icon" title="Blueprint"><LuSparkles size={14} /> <span className="sf-btn-label">Blueprint</span></button>
+          <button onClick={handleSave} disabled={saving} className="btn btn-secondary sf-btn-icon" title="Save Draft"><LuSave size={14} /> <span className="sf-btn-label">{saving ? "Saving…" : "Save"}</span></button>
+          <button onClick={handlePublish} disabled={saving} className="btn btn-primary sf-btn-icon" title="Publish"><LuGlobe size={14} /> <span className="sf-btn-label">Publish</span></button>
+          <button className="btn btn-secondary sf-btn-icon" title="View Live" onClick={() => window.open(store.storefront_url, "_blank")}><LuEye size={14} /> <span className="sf-btn-label">Live</span></button>
         </div>
       </header>
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div className="sf-body">
 
         {/* Sidebar */}
-        <aside style={{ width: 300, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <aside className="sf-sidebar">
           {/* Tabs */}
-          <div style={{ display: "flex", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-            <button style={TAB_STYLE("sections")} onClick={() => { setActiveTab("sections"); setActiveSectionId(null); }}>Sections</button>
-            <button style={TAB_STYLE("brand")}    onClick={() => { setActiveTab("brand");    setActiveSectionId(null); }}>Brand</button>
-            <button style={TAB_STYLE("store")}    onClick={() => { setActiveTab("store");    setActiveSectionId(null); }}>Store</button>
+          <div className="sf-tabs">
+            <button className={`sf-tab${activeTab === "sections" ? " active" : ""}`} onClick={() => { setActiveTab("sections"); setActiveSectionId(null); }}>Sections</button>
+            <button className={`sf-tab${activeTab === "brand" ? " active" : ""}`}    onClick={() => { setActiveTab("brand");    setActiveSectionId(null); }}>Brand</button>
+            <button className={`sf-tab${activeTab === "store" ? " active" : ""}`}    onClick={() => { setActiveTab("store");    setActiveSectionId(null); }}>Store</button>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
@@ -483,19 +477,19 @@ export default function StorefrontEditor() {
         </aside>
 
         {/* Preview */}
-        <main style={{ flex: 1, background: "var(--surface-950)", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 20px 0" }}>
+        <main className="sf-preview">
           {/* Device switcher */}
-          <div style={{ background: "var(--surface)", borderRadius: 0, border: "1px solid var(--border)", padding: 4, display: "flex", gap: 4, marginBottom: 20, flexShrink: 0 }}>
+          <div style={{ background: "var(--surface)", borderRadius: 20, border: "1px solid var(--border)", padding: 4, display: "flex", gap: 2, marginBottom: 16, flexShrink: 0 }}>
             {([["desktop", LuMonitor], ["tablet", LuTablet], ["mobile", LuSmartphone]] as const).map(([mode, Icon]) => (
               <button key={mode} onClick={() => setPreviewMode(mode)}
-                style={{ padding: 8, borderRadius: "50%", border: "none", cursor: "pointer", background: previewMode === mode ? "rgba(168,85,247,0.12)" : "transparent", color: previewMode === mode ? "var(--brand-500)" : "var(--text-secondary)" }}>
-                <Icon size={18} />
+                style={{ padding: "7px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: previewMode === mode ? "rgba(168,85,247,0.12)" : "transparent", color: previewMode === mode ? "var(--brand-500)" : "var(--text-secondary)", transition: "all .15s" }}>
+                <Icon size={16} />
               </button>
             ))}
           </div>
 
           {/* Iframe */}
-          <div style={{ transition: "width 0.3s", background: "var(--surface-900)", boxShadow: "0 24px 48px rgba(0,0,0,0.12)", borderRadius: "14px 14px 0 0", overflow: "hidden", border: "1px solid var(--border)", borderBottom: "none", width: previewMode === "desktop" ? "100%" : previewMode === "tablet" ? 768 : 390, height: "100%", maxHeight: "100%" }}>
+          <div style={{ transition: "width 0.3s ease", background: "var(--surface-900)", boxShadow: "0 20px 40px rgba(0,0,0,0.15)", borderRadius: "14px 14px 0 0", overflow: "hidden", border: "1px solid var(--border)", borderBottom: "none", width: previewMode === "desktop" ? "100%" : previewMode === "tablet" ? "min(768px, 100%)" : "min(390px, 100%)", height: "100%", maxHeight: "100%" }}>
             <iframe ref={iframeRef}
               src={`/store/preview/${store.id}?token=${token}`}
               style={{ width: "100%", height: "100%", border: "none" }}
@@ -504,6 +498,146 @@ export default function StorefrontEditor() {
           </div>
         </main>
       </div>
+
+      <style>{`
+        /* ── Root layout ── */
+        .sf-editor-root {
+          display: flex;
+          flex-direction: column;
+          height: 100dvh;
+          background: var(--surface-950);
+          overflow: hidden;
+        }
+
+        /* ── Topbar ── */
+        .sf-topbar {
+          height: auto;
+          min-height: 54px;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border);
+          padding: 8px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          flex-shrink: 0;
+          flex-wrap: wrap;
+        }
+        .sf-topbar-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+          overflow: hidden;
+        }
+        .sf-store-badge {
+          font-size: 11px;
+          background: rgba(168,85,247,0.1);
+          color: var(--brand-500);
+          padding: 2px 9px;
+          border-radius: 20px;
+          font-weight: 700;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 140px;
+        }
+        .sf-topbar-right {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          flex-shrink: 0;
+          flex-wrap: wrap;
+        }
+        .sf-btn-icon {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 11px;
+          font-size: 13px;
+        }
+
+        /* ── Body ── */
+        .sf-body {
+          display: flex;
+          flex: 1;
+          overflow: hidden;
+        }
+
+        /* ── Sidebar ── */
+        .sf-sidebar {
+          width: 300px;
+          background: var(--surface);
+          border-right: 1px solid var(--border);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        /* ── Tabs ── */
+        .sf-tabs {
+          display: flex;
+          border-bottom: 1px solid var(--border);
+          flex-shrink: 0;
+        }
+        .sf-tab {
+          flex: 1;
+          padding: 13px 4px;
+          font-size: 12px;
+          font-weight: 600;
+          background: none;
+          border: none;
+          border-bottom: 2px solid transparent;
+          color: var(--text-secondary);
+          cursor: pointer;
+          transition: color .15s, border-color .15s;
+        }
+        .sf-tab.active {
+          border-bottom-color: var(--brand-500);
+          color: var(--brand-500);
+        }
+
+        /* ── Preview ── */
+        .sf-preview {
+          flex: 1;
+          background: var(--surface-950);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 16px 16px 0;
+          overflow: hidden;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+          .sf-topbar {
+            padding: 8px 12px;
+          }
+          .sf-btn-label {
+            display: none;
+          }
+          .sf-btn-icon {
+            padding: 8px;
+          }
+          .sf-store-badge {
+            max-width: 90px;
+          }
+          .sf-body {
+            flex-direction: column;
+          }
+          .sf-sidebar {
+            width: 100%;
+            border-right: none;
+            border-bottom: 1px solid var(--border);
+            /* On mobile, cap the sidebar at 50vh so users can still scroll down to see the preview hint */
+            max-height: 55dvh;
+          }
+          .sf-preview {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }

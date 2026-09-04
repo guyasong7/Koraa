@@ -38,6 +38,7 @@ from django.core.cache import cache
 from rest_framework.test import APIClient
 
 from apps.merchants.models import Merchant
+from apps.merchants import plans as plan_catalogue
 from apps.payments import fapshi, views
 from apps.payments.models import PaymentTransaction, Plan, Subscription
 
@@ -51,6 +52,9 @@ CALLBACK_URL = "/api/v1/payments/callback/"
 #: number would pass while the real price moved.
 PLAN = Plan.STARTER
 PRICE = views.PLAN_PRICES[PLAN]
+#: The same tier on the other cycle. ``test_plans`` pins the ÷10 relationship
+#: between the two; here they only have to be told apart.
+MONTHLY_PRICE = plan_catalogue.price_monthly(PLAN)
 
 
 @pytest.fixture
@@ -176,11 +180,13 @@ class TestValidation:
         assert buy(auth, plan="platinum").status_code == 400
         assert charged == []
 
-    def test_monthly_billing_is_refused_rather_than_charged_yearly(self, auth, charged):
-        """Monthly is still honoured for reading historic rows but is not sold.
-        An older dashboard build posting it must get a clear 400 — the failure to
-        avoid is charging a year's price for a 30-day cycle."""
-        response = buy(auth, billing_cycle="monthly")
+    def test_an_unknown_billing_cycle_is_refused_rather_than_defaulted(
+        self, auth, charged
+    ):
+        """Both cycles sell now, so this is the guard that carries the weight the
+        blanket monthly refusal used to. Quietly falling back to a default would
+        take one cycle's price for the other cycle's term."""
+        response = buy(auth, billing_cycle="weekly")
 
         assert response.status_code == 400
         assert charged == []
@@ -214,6 +220,71 @@ class TestValidation:
     def test_anonymous_callers_cannot_buy(self, client, charged):
         assert buy(client).status_code in (401, 403)
         assert charged == []
+
+
+# ── The two cycles ────────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+class TestBillingCycle:
+    """Both cycles are sold, and each must charge its own price for its own term.
+
+    Monthly was withdrawn for a while and ``initiate`` refused it outright with a
+    400. The refusal was the safe move at the time precisely because of the
+    failure this class now guards instead: a cycle and an amount that disagree,
+    charging a year's price for a 30-day term or the reverse. The amount lands on
+    the subscription and the cycle drives ``settlement.CYCLE_DAYS``, so the two
+    are only ever correct together.
+    """
+
+    def test_monthly_charges_the_monthly_price(self, auth, charged):
+        response = buy(auth, billing_cycle="monthly")
+
+        assert response.status_code == 201
+        assert response.data["amount"] == MONTHLY_PRICE
+        assert charged[0]["amount"] == MONTHLY_PRICE
+
+    def test_yearly_charges_the_yearly_price(self, auth, charged):
+        response = buy(auth, billing_cycle="yearly")
+
+        assert response.status_code == 201
+        assert response.data["amount"] == PRICE
+        assert charged[0]["amount"] == PRICE
+
+    def test_the_two_prices_are_not_the_same_number(self):
+        """Guards the tests above from passing vacuously: were the catalogue to
+        return one figure for both cycles, every assertion here would hold."""
+        assert MONTHLY_PRICE != PRICE
+
+    def test_the_cycle_is_stored_with_the_amount_it_was_priced_at(
+        self, auth, charged, buyer
+    ):
+        """``settlement`` reads the cycle off this row to set the expiry, so a
+        charge taken on one cycle and stored as the other grants the wrong term
+        for money that has already moved."""
+        buy(auth, billing_cycle="monthly")
+
+        sub = Subscription.objects.get(user=buyer)
+        assert sub.billing_cycle == "monthly"
+        assert sub.amount_paid == MONTHLY_PRICE
+
+    def test_a_cycle_left_out_entirely_is_billed_yearly(self, auth, charged):
+        """A client that posts no cycle at all predates monthly being sold, so
+        yearly is what it meant — and it is the figure it will have shown."""
+        response = auth.post(
+            INITIATE_URL, {"plan": PLAN, "phone": PHONE}, format="json"
+        )
+
+        assert response.status_code == 201
+        assert response.data["amount"] == PRICE
+
+    def test_the_handset_prompt_names_the_term(self, auth, charged):
+        """The prompt is the last thing standing between the merchant and the
+        charge, and an amount on its own does not say whether it buys a month or
+        a year."""
+        buy(auth, billing_cycle="monthly")
+
+        assert "1 month" in charged[0]["message"]
 
 
 # ── The accepted charge ───────────────────────────────────────────────────────

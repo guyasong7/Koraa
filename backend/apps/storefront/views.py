@@ -344,6 +344,9 @@ class SectionImageUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
+        from django.conf import settings as django_settings
+        from django.core.files.storage import default_storage as _ds
+
         store = get_merchant_store(request)
         try:
             section = StorefrontSection.objects.get(pk=pk, store=store)
@@ -358,7 +361,33 @@ class SectionImageUploadView(APIView):
         ext = uploaded.name.split(".")[-1].lower()
         filename = f"storefront/sections/{uuid_module.uuid4()}.{ext}"
         path = default_storage.save(filename, ContentFile(uploaded.read()))
-        url = request.build_absolute_uri(f"/media/{path}")
+
+        # Build a publicly reachable URL.
+        #
+        # Priority:
+        #  1. Absolute MEDIA_URL (S3 / R2)  — just prepend the path.
+        #  2. KORAA_API_URL env var          — the intended production setting.
+        #  3. X-Forwarded-Host / X-Forwarded-Proto headers set by nginx — a
+        #     reliable fallback when KORAA_API_URL is still the default
+        #     "http://localhost:8000" because the sysadmin forgot to set it.
+        media_url = django_settings.MEDIA_URL
+        if media_url.startswith(("http://", "https://")):
+            url = f"{media_url.rstrip('/')}/{path}"
+        else:
+            api_root = django_settings.KORAA_API_URL.rstrip("/")
+            # Detect the "forgot to set KORAA_API_URL" case and fall back to
+            # the forwarded headers that nginx always sends.
+            if api_root in ("http://localhost:8000", "http://127.0.0.1:8000"):
+                forwarded_host = request.META.get("HTTP_X_FORWARDED_HOST", "")
+                forwarded_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "https")
+                if forwarded_host:
+                    api_root = f"{forwarded_proto}://{forwarded_host}"
+                else:
+                    # Last resort: read the Host header (works for direct access)
+                    host = request.get_host()
+                    scheme = "https" if request.is_secure() else "http"
+                    api_root = f"{scheme}://{host}"
+            url = f"{api_root}{media_url}{path}"
 
         # Persist to section.settings
         section.settings = {**section.settings, "image": url}
@@ -402,8 +431,24 @@ class StoreAssetUploadView(APIView):
             store.save(update_fields=updated)
 
         def url(field):
+            from django.conf import settings as django_settings
             asset = getattr(store, field)
-            return request.build_absolute_uri(asset.url) if asset else None
+            if not asset:
+                return None
+            asset_url = asset.url  # relative (/media/...) or absolute (S3)
+            if asset_url.startswith(("http://", "https://")):
+                return asset_url
+            api_root = django_settings.KORAA_API_URL.rstrip("/")
+            if api_root in ("http://localhost:8000", "http://127.0.0.1:8000"):
+                forwarded_host = request.META.get("HTTP_X_FORWARDED_HOST", "")
+                forwarded_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "https")
+                if forwarded_host:
+                    api_root = f"{forwarded_proto}://{forwarded_host}"
+                else:
+                    host = request.get_host()
+                    scheme = "https" if request.is_secure() else "http"
+                    api_root = f"{scheme}://{host}"
+            return f"{api_root}{asset_url}"
 
         return Response({field: url(field) for field in self.ASSET_DIRS})
 
@@ -417,22 +462,46 @@ def _serialize_products(store, request):
     products = (
         Product.objects
         .filter(store=store, status="active")
+        # `category` is a FK read for every row below, so without this the
+        # category strip costs one query per product.
+        .select_related("category")
         .prefetch_related("images", "variants", "files")
         .order_by("-is_featured", "-created_at")[:50]
     )
     result = []
     for p in products:
-        primary = p.images.filter(is_primary=True).first() or p.images.first()
+        # Ordered once and reused: `is_primary` first, then the model's own
+        # ordering. Sorting the prefetched list rather than re-filtering the
+        # queryset keeps this to the single prefetch above.
+        gallery = sorted(p.images.all(), key=lambda i: (not i.is_primary, i.sort_order))
+        primary = gallery[0] if gallery else None
         result.append({
             "id": str(p.id),
             "name": p.name,
             "slug": p.slug,
             "short_description": p.short_description,
+            # The full description, so a shopper who taps a card gets the detail
+            # the merchant wrote. There is no product page on a Koraa storefront
+            # — the card opens a dialog — so if this is not in the payload the
+            # description is unreachable to the customer.
+            "description": p.description,
             "base_price": str(p.base_price),
             "compare_at_price": str(p.compare_at_price) if p.compare_at_price else None,
             "is_featured": p.is_featured,
             "is_on_sale": p.is_on_sale,
             "in_stock": p.in_stock,
+            # Drives the storefront's category strip. Hidden categories are
+            # reported as no category rather than omitting the product, so a
+            # merchant who hides a category loses the tab, not the sale.
+            "category": (
+                {
+                    "id": str(p.category.id),
+                    "name": p.category.name,
+                    "slug": p.category.slug,
+                }
+                if p.category and p.category.is_visible
+                else None
+            ),
             # A digital file and a service are not bought the way a shirt is:
             # one is an instant download, the other is an enquiry. The storefront
             # cannot render the right control without being told which.
@@ -443,6 +512,11 @@ def _serialize_products(store, request):
             # button rather than an enquiry link that leads nowhere useful.
             "accepts_enquiries": p.accepts_enquiries if p.is_service else False,
             "image": request.build_absolute_uri(primary.image.url) if primary and primary.image else None,
+            # Every photograph, primary first, so the dialog a card opens can
+            # show more than the thumbnail. Cards keep reading `image`.
+            "images": [
+                request.build_absolute_uri(i.image.url) for i in gallery if i.image
+            ],
         })
     return result
 
@@ -527,8 +601,14 @@ def _storefront_payload(store, request) -> dict:
     ).order_by("order")
 
     def asset(field):
+        from django.conf import settings as django_settings
         value = getattr(store, field)
-        return request.build_absolute_uri(value.url) if value else None
+        if not value:
+            return None
+        asset_url = value.url
+        if asset_url.startswith(("http://", "https://")):
+            return asset_url  # Already absolute (S3/R2)
+        return f"{django_settings.KORAA_API_URL.rstrip('/')}{asset_url}"
 
     return {
         "store": {

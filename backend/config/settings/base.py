@@ -450,7 +450,7 @@ CELERY_BEAT_SCHEDULE = {
     #: direct-pay has no redirect, so a merchant who closes the tab before
     #: approving the prompt on their handset leaves nothing watching the payment.
     #: The webhook is single-delivery, so without this a merchant can be charged
-    #: for a year and hold a PENDING subscription.
+    #: for a term and hold a PENDING subscription.
     #:
     #: Offset from the orders sweep rather than sharing its minute: both walk
     #: pending rows one Fapshi call at a time, and running them together doubles
@@ -478,8 +478,8 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Koraa <noreply@koraa.cm>
 # ──────────────────────────────────────────────────────────────────────────────
 # Koraa Platform settings
 # ──────────────────────────────────────────────────────────────────────────────
-KORAA_STOREFRONT_DOMAIN = env("KORAA_STOREFRONT_DOMAIN", default="localhost:3000")
-KORAA_DASHBOARD_URL = env("KORAA_DASHBOARD_URL", default="http://localhost:3000")
+KORAA_STOREFRONT_DOMAIN = env("KORAA_STOREFRONT_DOMAIN", default="localhost:3000" if DEBUG else "koraa.cm")
+KORAA_DASHBOARD_URL = env("KORAA_DASHBOARD_URL", default="http://localhost:3000" if DEBUG else "https://koraa.cm")
 # Where this API answers from. Needed because MEDIA_URL is relative in
 # development ("/media/…"), and an emailed invoice carrying the storefront's
 # own logo has to point at something a mail client can fetch. In production

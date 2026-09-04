@@ -6,6 +6,7 @@ import { storeApi, productApi } from "@/lib/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import StoreBackLink from "@/components/StoreBackLink";
+import CategoriesDialog from "./CategoriesDialog";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function ProductsPage() {
   const [activeStoreId, setActiveStoreId] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+  const [showCategories, setShowCategories] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -96,6 +98,13 @@ export default function ProductsPage() {
               </div>
             )}
             
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowCategories(true)}
+              disabled={!activeStoreId}
+            >
+              <LuPackage size={16} /> Categories
+            </button>
             <button 
               className="btn btn-primary"
               onClick={() => activeStoreId && router.push(`/dashboard/products/new?store=${activeStoreId}`)}
@@ -211,6 +220,9 @@ export default function ProductsPage() {
           </div>
         )}
       </div>
+      {showCategories && activeStoreId && (
+        <CategoriesDialog storeId={activeStoreId} onClose={() => setShowCategories(false)} />
+      )}
     </>
   );
 }

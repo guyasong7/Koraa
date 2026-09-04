@@ -4,13 +4,13 @@ import PageTitle from "@/components/PageTitle";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { storeApi, productApi } from "@/lib/api";
+import { storeApi, productApi, categoryApi, Category } from "@/lib/api";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import {
   LuArrowLeft, LuLoader, LuPackage, LuSave, LuEye,
   LuTag, LuBox, LuInfo, LuUpload, LuX, LuImage, LuCheck,
-  LuSparkles, LuTrash2
+  LuSparkles, LuTrash2, LuFolder
 } from "react-icons/lu";
 import { FiBarChart2 as LuBarChart2 } from "react-icons/fi";
 import { DigitalFilesPanel, ServiceEnquiryPanel } from "@/components/DigitalDelivery";
@@ -103,6 +103,13 @@ export default function EditProductPage() {
     queryFn: () => productApi.get(storeId, productId).then(r => r.data),
     enabled: !!storeId && !!productId,
   });
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories", storeId],
+    queryFn: () => storeId ? categoryApi.list(storeId).then(r => r.data) : Promise.resolve([]),
+    enabled: !!storeId,
+  });
+  const categories: Category[] = (categoriesData as any)?.results ?? categoriesData ?? [];
 
   useEffect(() => {
     if (productData) {
@@ -285,9 +292,21 @@ export default function EditProductPage() {
 
   const handleSave = (status: "draft" | "active") => {
     if (!form.name.trim()) { toast.error("Product name is required."); return; }
+    if (!form.description.trim()) { toast.error("Product description is required."); return; }
     if (!form.base_price || isNaN(Number(form.base_price))) { toast.error("Enter a valid price."); return; }
     if (!storeId) { toast.error("No store selected."); return; }
     updateMutation.mutate(status);
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
+    try {
+      await productApi.delete(storeId, productId);
+      toast.success("Product deleted successfully");
+      router.push(`/dashboard/products?store=${storeId}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to delete product");
+    }
   };
 
   const isPending = updateMutation.isPending || isLoadingProduct;
@@ -311,6 +330,9 @@ export default function EditProductPage() {
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Edit Product</span>
         </div>
         <div className="top-action-buttons" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <button className="btn btn-secondary btn-sm" onClick={handleDeleteProduct} disabled={isPending} style={{ color: "var(--danger)" }}>
+            <LuTrash2 size={14} /> Delete
+          </button>
           <button className="btn btn-secondary btn-sm" onClick={() => handleSave("draft")} disabled={isPending}>
             {isPending ? <LuLoader size={14} className="spin" /> : <LuSave size={14} />} Save draft
           </button>
@@ -331,7 +353,7 @@ export default function EditProductPage() {
             <Field label="Short description" hint="Shown on product cards (max 500 chars)">
               <input className="input" value={form.short_description} onChange={e => set("short_description", e.target.value)} maxLength={500} />
             </Field>
-            <Field label="Full description">
+            <Field label="Full description" required>
               <textarea className="input" value={form.description} onChange={e => set("description", e.target.value)} style={{ minHeight: 160, resize: "vertical" }} />
             </Field>
           </Section>
@@ -515,6 +537,33 @@ export default function EditProductPage() {
                   </div>
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* Organization */}
+          <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", marginBottom: 16 }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}><LuFolder size={14} /> Organization</span>
+            </div>
+            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>Category</label>
+                <div style={{ position: "relative" }}>
+                  <select
+                    className="input"
+                    value={form.category}
+                    onChange={e => set("category", e.target.value)}
+                    style={{ width: "100%", paddingRight: 36, appearance: "none" }}
+                  >
+                    <option value="">No category</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <LuFolder size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
+                </div>
+                <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Helps customers find products in your storefront.</p>
+              </div>
             </div>
           </div>
 

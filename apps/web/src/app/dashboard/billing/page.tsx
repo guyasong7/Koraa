@@ -45,7 +45,7 @@ function formatDate(iso: string | null): string {
  * The free branch of `InitiatePaymentView` cancels every active subscription
  * and sets `tier_expires_at` to null (backend/apps/payments/views.py). The paid
  * term is destroyed outright — not archived, not pro-rated, not refunded — and
- * nothing short of buying another full year brings it back.
+ * nothing short of buying another term brings it back.
  *
  * Until this dialog existed, a merchant halfway through a Pro year saw the Free
  * card as an ordinary enabled button reading "Get Started Free". One click and
@@ -86,7 +86,7 @@ function DowngradeDialog({
           </p>
           <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0, lineHeight: 1.55 }}>
             This cannot be undone and the unused time is not refunded — getting
-            {" "}{planName} back means buying another full year. Your storefronts
+            {" "}{planName} back means paying for a whole new term. Your storefronts
             and data stay online either way; only your allowances drop to the
             Free limits.
           </p>
@@ -157,9 +157,10 @@ export default function BillingPage() {
       setConfirmingDowngrade(true);
       return;
     }
-    // Yearly only: `PURCHASABLE_CYCLES` rejects anything else, which is why the
-    // monthly toggle that used to sit here 400'd on every click. The cycle is
-    // fixed in the dialog, which is the only thing that calls `initiate`.
+    // The cycle is chosen in the dialog, which is the only thing that calls
+    // `initiate`. It used to be fixed at yearly here because a monthly toggle
+    // on this page 400'd on every click; both cycles sell now, and the choice
+    // sits next to the amount it changes rather than two screens away from it.
     setBuying(plan);
   };
 
@@ -192,7 +193,7 @@ export default function BillingPage() {
           Choose Your Plan
         </h1>
         <p style={{ color: "var(--text-muted)", fontSize: 17, marginBottom: 8 }}>
-          Every plan is billed yearly, in XAF, by MTN MoMo or Orange Money.
+          Pay by the year or by the month, in XAF, by MTN MoMo or Orange Money.
         </p>
       </div>
 
@@ -309,6 +310,12 @@ export default function BillingPage() {
                       <span style={{ fontSize: 15, color: isPro ? "rgba(255,255,255,0.6)" : "var(--text-muted)", marginLeft: 4 }}>
                         XAF/yr
                       </span>
+                      {/* The other cycle, so the annual headline does not read
+                          as the only way to pay. Which one is bought is settled
+                          in `PurchaseDialog`, next to the amount it changes. */}
+                      <p style={{ fontSize: 13, margin: "6px 0 0", color: isPro ? "rgba(255,255,255,0.55)" : "var(--text-muted)" }}>
+                        or {formatXaf(plan.price_monthly)} XAF a month
+                      </p>
                     </>
                   )}
                 </div>
@@ -344,7 +351,7 @@ export default function BillingPage() {
                   <p style={{ fontSize: 12, color: isPro ? "rgba(255,255,255,0.5)" : "var(--text-muted)", textAlign: "center", margin: "10px 0 0" }}>
                     {state.is_expired
                       ? `Expired ${formatDate(state.term_ends_at)}`
-                      : `Runs until ${formatDate(state.term_ends_at)} — renewing adds a year to that`}
+                      : `Runs until ${formatDate(state.term_ends_at)} — renewing adds to that rather than replacing it`}
                   </p>
                 )}
               </div>
@@ -358,8 +365,10 @@ export default function BillingPage() {
           plan={buying}
           defaultPhone={profilePhone}
           // Renewing extends the term rather than replacing it, and the dialog
-          // says so — a merchant with six months left needs to know the year is
-          // added on, not that they are starting over.
+          // says so — a merchant with six months left needs to know the new
+          // term is added on, not that they are starting over. How much is
+          // added depends on the cycle they pick, which is why neither this
+          // screen nor the card above names a fixed length.
           renewal={currentPlan === buying.key && !state.is_expired}
           onClose={() => setBuying(null)}
           // The dialog's own outcome is not the authority on what they hold now:
