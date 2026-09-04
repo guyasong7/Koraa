@@ -21,12 +21,14 @@ import {
   EmptyCatalog,
   SectionProps,
   applyFacet,
+  bool,
   deriveFacets,
   formatPrice,
   initials,
   str,
   useCardAction,
   useFacet,
+  useQuickViewTrigger,
 } from "../shared";
 import { LuDownload, LuMail, LuSparkles, LuZap } from "react-icons/lu";
 
@@ -84,9 +86,10 @@ function ShowcaseCard({ p, store, index }: { p: StorefrontProduct; store: Sectio
   const action = useCardAction();
   const act = action(p, { cart: "Get access", digital: "Get access", soldOut: "Sold out" });
   const flag = p.is_on_sale ? "Sale" : p.is_featured ? "Popular" : null;
+  const trigger = useQuickViewTrigger(p);
 
   return (
-    <article className="sf-sc-card">
+    <article className="sf-sc-card sf-card-tap" {...trigger}>
       <div className="sf-sc-tile" style={{ background: TILE_BG[index % TILE_BG.length] }}>
         <span className="sf-sc-mark sf-d">{initials(p.name)}</span>
         {flag && <span className="sf-sc-flag">{flag}</span>}
@@ -169,16 +172,22 @@ function ShowcaseCategories({ s }: SectionProps) {
   const { products } = useStorefront();
   const { active, setActive } = useFacet();
   if (!s.enabled) return null;
-  const facets = deriveFacets(products || []);
+  const all = deriveFacets(products || []);
+  const facets = bool(s.settings.show_all, true) ? all : all.filter(f => f.id !== "all");
+  const counts = bool(s.settings.show_counts, true);
   if (facets.length < 2) return null;
+  const title = str(s.settings.title);
 
   return (
     <div className="sf-sc-sec" style={{ paddingBottom: 0 }}>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      {title && <h2 className="sf-sc-sec-t sf-d">{title}</h2>}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }} role="tablist">
         {facets.map(f => (
           <button
             key={f.id}
             onClick={() => setActive(f.id)}
+            role="tab"
+            aria-selected={active === f.id}
             style={{
               padding: "9px 18px",
               borderRadius: 9999,
@@ -192,7 +201,7 @@ function ShowcaseCategories({ s }: SectionProps) {
               fontFamily: "inherit",
             }}
           >
-            {f.label} <span style={{ opacity: .55 }}>({f.count})</span>
+            {f.label}{counts && <span style={{ opacity: .55 }}> ({f.count})</span>}
           </button>
         ))}
       </div>

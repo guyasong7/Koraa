@@ -24,6 +24,7 @@ import {
   str,
   useCardAction,
   useFacet,
+  useQuickViewTrigger,
 } from "../shared";
 
 const styles = `
@@ -86,9 +87,10 @@ function LookTile({ p, store }: { p: StorefrontProduct; store: SectionProps["sto
   const action = useCardAction();
   const act = action(p, { cart: "Add to bag", soldOut: "Sold out", digital: "Buy & download" });
   const tag = p.is_on_sale ? "Sale" : p.is_featured ? "Featured" : null;
+  const trigger = useQuickViewTrigger(p);
 
   return (
-    <article className="sf-ed-tile">
+    <article className="sf-ed-tile" {...trigger}>
       <div className="sf-ed-tile-i">
         <ProductMedia
           product={p}
@@ -145,7 +147,8 @@ function EditorialCategories({ s }: SectionProps) {
   const { products } = useStorefront();
   const { active, setActive } = useFacet();
   if (!s.enabled) return null;
-  const facets = deriveFacets(products || []);
+  const all = deriveFacets(products || []);
+  const facets = bool(s.settings.show_all, true) ? all : all.filter(f => f.id !== "all");
   if (facets.length < 2) return null;
 
   return (

@@ -24,6 +24,7 @@ import { useStorefront } from "../../StorefrontProvider";
 import type { StorefrontProduct } from "../../../types/storefront";
 import type { LayoutModule } from "../registry";
 import {
+  CartButton,
   EmptyCatalog,
   FooterProps,
   NavbarProps,
@@ -39,6 +40,7 @@ import {
   useCardAction,
   useFacet,
   useHasSection,
+  useQuickViewTrigger,
 } from "../shared";
 import { LuMail, LuPlus, LuShoppingBag, LuUtensils } from "react-icons/lu";
 
@@ -346,8 +348,6 @@ function pairList(v: unknown): Array<{ label: string; value: string }> {
  * not need one, and it was taking the width the phone number now uses.
  */
 function MenuNavbar({ store, cfg }: NavbarProps) {
-  const getCartCount = useCartStore((state: any) => state.getCartCount);
-  const count = getCartCount();
   const links = linkList(cfg.navigation?.links, [
     { label: "Menu", url: "#" },
     { label: "Specials", url: "#" },
@@ -381,10 +381,7 @@ function MenuNavbar({ store, cfg }: NavbarProps) {
 
           <div className="sf-mn-nav-actions">
             {store.phone && <a href={`tel:${store.phone}`} className="sf-mn-order">Order now</a>}
-            <Link href="/checkout" className="sf-mn-cart" aria-label={`Cart, ${count} item${count === 1 ? "" : "s"}`}>
-              <LuShoppingBag size={20} />
-              {count > 0 && <span className="sf-mn-cart-n">{count}</span>}
-            </Link>
+            <CartButton className="sf-mn-cart" badgeClassName="sf-mn-cart-n" />
           </div>
         </div>
       </header>

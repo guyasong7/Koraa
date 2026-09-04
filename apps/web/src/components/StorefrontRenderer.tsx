@@ -1,13 +1,25 @@
 "use client";
 import React from "react";
 import { useStorefront } from "./StorefrontProvider";
-import { LuGlobe, LuMenu, LuSearch, LuShoppingBag, LuUsers } from "react-icons/lu";
-import { useCartStore } from "../stores/cart";
+import { LuGlobe, LuMenu, LuSearch, LuX } from "react-icons/lu";
 import { usePageView } from "../lib/analytics";
-import Link from "next/link";
-import { EmptyCatalog, FacetProvider, ProductCard, linkList, str } from "./storefront/shared";
+import {
+  CartButton,
+  EmptyCatalog,
+  FacetProvider,
+  ProductCard,
+  QuickViewProvider,
+  applyFacet,
+  bool,
+  deriveFacets,
+  linkList,
+  str,
+  useFacet,
+} from "./storefront/shared";
 import type { FooterProps, NavbarProps } from "./storefront/shared";
 import { resolveLayout, resolveLayoutKey } from "./storefront/registry";
+import CartDrawer from "./storefront/CartDrawer";
+import ProductDialog from "./storefront/ProductDialog";
 import ContactForm from "./storefront/ContactForm";
 import { CookieBanner } from "./storefront/CookieBanner";
 import { useSiteSettings } from "./storefront/siteSettings";
@@ -74,6 +86,10 @@ const STYLES = `
 /* CARD */
 .sf-card { background: #fff; border-radius: var(--sf-card-r, 14px); overflow: hidden; border: 1px solid rgba(0,0,0,0.07); transition: box-shadow .2s, transform .2s; cursor: pointer; }
 .sf-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.1); transform: translateY(-3px); }
+/* The whole card opens the product dialog, so it needs a focus ring — it is a
+   div with role=button and the keyboard is the only way some shoppers reach it. */
+.sf-card-tap { cursor: pointer; }
+.sf-card-tap:focus-visible { outline: 2px solid var(--sf-primary); outline-offset: 3px; }
 .sf-ci { position: relative; aspect-ratio: var(--sf-card-ar, 1/1); background: rgba(0,0,0,0.04); overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .sf-ci img { width: 100%; height: 100%; object-fit: var(--sf-img-fit, cover); transition: transform .3s; }
 .sf-card:hover .sf-ci img { transform: scale(1.04); }
@@ -98,6 +114,22 @@ const STYLES = `
 /* SECTIONS */
 .sf-sec { max-width: 1440px; margin: 0 auto; padding: 64px 40px; }
 .sf-sec-t { font-size: 28px; font-weight: 800; margin-bottom: 32px; }
+
+/* CATEGORY STRIP — drives the shared facet, so the catalogue below follows it */
+.sf-catstrip { padding-bottom: 0; }
+.sf-catstrip-t { font-size: 22px; font-weight: 800; margin-bottom: 18px; }
+.sf-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.sf-chip { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 9999px; border: 1.5px solid color-mix(in srgb, var(--sf-text) 12%, transparent); background: transparent; color: var(--sf-text); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; transition: background .15s, border-color .15s, color .15s; }
+.sf-chip:hover { border-color: var(--sf-primary); }
+.sf-chip-on { background: var(--sf-primary); border-color: var(--sf-primary); color: #fff; }
+.sf-chip-n { font-size: 12px; font-weight: 700; opacity: .55; }
+.sf-chip-on .sf-chip-n { opacity: .8; }
+
+/* Empty result for a chosen category — never the same message as an empty shop */
+.sf-none { text-align: center; padding: 44px 20px; }
+.sf-none p { font-size: 15px; opacity: .65; margin-bottom: 16px; }
+.sf-none-btn { padding: 10px 22px; border-radius: var(--sf-r,10px); border: 1.5px solid color-mix(in srgb, var(--sf-text) 18%, transparent); background: transparent; color: var(--sf-text); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.sf-none-btn:hover { border-color: var(--sf-primary); color: var(--sf-primary); }
 
 /* PROMO */
 .sf-promo { margin: 0 40px; border-radius: 20px; overflow: hidden; position: relative; min-height: 240px; display: flex; align-items: center; }
@@ -180,6 +212,87 @@ const STYLES = `
 
 .sf-mobile-menu-btn { display: none; background: none; border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: var(--sf-text); }
 .sf-mobile-menu-btn:hover { background: rgba(0,0,0,0.05); }
+/* The links the merchant typed in, reachable on a phone. `.sf-links` is
+   display:none under 900px, so the burger was the only route to them and it
+   had no handler at all. */
+.sf-nav-drop { display: flex; flex-direction: column; padding: 6px 16px 14px; border-top: 1px solid rgba(0,0,0,0.06); background: var(--sf-bg); }
+.sf-nav-drop .sf-link { padding: 12px 2px; font-size: 15px; opacity: .85; }
+
+/* ── CART DRAWER ────────────────────────────────────────────────────────────
+   Mounted once by the root renderer, opened by adding anything to the basket.
+   Fixed to the viewport, so no layout has to leave room for it. */
+.sf-cart-wrap { position: fixed; inset: 0; z-index: 1200; }
+.sf-cart-ov { position: absolute; inset: 0; background: rgba(0,0,0,.45); animation: sf-fade .18s ease-out; }
+.sf-cart { position: absolute; top: 0; right: 0; height: 100%; width: 400px; max-width: 100vw; background: var(--sf-bg); color: var(--sf-text); display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0,0,0,.18); animation: sf-slide .22s cubic-bezier(.22,.61,.36,1); }
+@keyframes sf-fade { from { opacity: 0; } }
+@keyframes sf-slide { from { transform: translateX(100%); } }
+.sf-cart-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 22px 16px; border-bottom: 1px solid color-mix(in srgb, var(--sf-text) 10%, transparent); }
+.sf-cart-h-t { font-size: 19px; font-weight: 800; }
+.sf-cart-h-s { font-size: 13px; opacity: .6; margin-top: 3px; }
+.sf-cart-x { background: none; border: none; cursor: pointer; color: var(--sf-text); padding: 6px; border-radius: 8px; display: flex; }
+.sf-cart-x:hover { background: rgba(0,0,0,.06); }
+.sf-cart-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; opacity: .75; padding: 24px; }
+.sf-cart-empty p { font-size: 15px; }
+.sf-cart-list { flex: 1; overflow-y: auto; padding: 6px 22px; }
+.sf-cart-item { display: flex; gap: 12px; padding: 16px 0; border-bottom: 1px solid color-mix(in srgb, var(--sf-text) 8%, transparent); }
+.sf-cart-thumb { width: 62px; height: 62px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,.05); display: flex; align-items: center; justify-content: center; }
+.sf-cart-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.sf-cart-info { flex: 1; min-width: 0; }
+.sf-cart-name { font-size: 14px; font-weight: 700; line-height: 1.35; }
+.sf-cart-each { font-size: 12px; opacity: .6; margin-top: 2px; }
+.sf-cart-qty { display: flex; align-items: center; gap: 4px; margin-top: 9px; }
+.sf-cart-qty button { width: 26px; height: 26px; border-radius: 7px; border: 1.5px solid color-mix(in srgb, var(--sf-text) 16%, transparent); background: transparent; color: var(--sf-text); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.sf-cart-qty button:hover:not(:disabled) { border-color: var(--sf-primary); color: var(--sf-primary); }
+.sf-cart-qty button:disabled { opacity: .35; cursor: default; }
+.sf-cart-qty span { min-width: 24px; text-align: center; font-size: 14px; font-weight: 700; }
+.sf-cart-rm { margin-left: 6px; border-color: transparent !important; opacity: .5; }
+.sf-cart-rm:hover { opacity: 1; color: #ef4444 !important; border-color: #ef4444 !important; }
+.sf-cart-line { font-size: 14px; font-weight: 800; white-space: nowrap; }
+.sf-cart-f { padding: 18px 22px 22px; border-top: 1px solid color-mix(in srgb, var(--sf-text) 10%, transparent); display: flex; flex-direction: column; gap: 10px; }
+.sf-cart-sum { display: flex; align-items: baseline; justify-content: space-between; font-size: 15px; }
+.sf-cart-sum strong { font-size: 20px; font-weight: 800; color: var(--sf-primary); }
+.sf-cart-note { font-size: 12px; opacity: .6; line-height: 1.5; }
+.sf-cart-go { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: var(--sf-primary); color: #fff; border-radius: var(--sf-r,10px); font-size: 15px; font-weight: 800; text-decoration: none; margin-top: 2px; }
+.sf-cart-go:hover { filter: brightness(1.08); }
+.sf-cart-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 16px; background: transparent; color: var(--sf-text); border: 1.5px solid color-mix(in srgb, var(--sf-text) 16%, transparent); border-radius: var(--sf-r,10px); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.sf-cart-ghost:hover { border-color: var(--sf-primary); color: var(--sf-primary); }
+.sf-cart-confirm { display: flex; flex-direction: column; gap: 9px; padding: 12px 14px; border-radius: var(--sf-r,10px); background: rgba(239,68,68,.08); }
+.sf-cart-confirm > span { font-size: 13.5px; font-weight: 700; }
+.sf-cart-confirm > div { display: flex; gap: 8px; }
+.sf-cart-yes { padding: 10px 16px; background: #ef4444; color: #fff; border: none; border-radius: var(--sf-r,10px); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.sf-cart-yes:hover { filter: brightness(1.08); }
+
+/* ── PRODUCT DIALOG ─────────────────────────────────────────────────────────
+   The description, which a one-page storefront has nowhere else to put. */
+.sf-pd-wrap { position: fixed; inset: 0; z-index: 1150; display: grid; place-items: center; padding: 24px; }
+.sf-pd-ov { position: absolute; inset: 0; background: rgba(0,0,0,.55); animation: sf-fade .18s ease-out; }
+.sf-pd { position: relative; z-index: 1; width: min(920px, 100%); max-height: min(88vh, 720px); overflow-y: auto; background: var(--sf-bg); color: var(--sf-text); border-radius: 18px; display: grid; grid-template-columns: 1fr 1fr; box-shadow: 0 24px 70px rgba(0,0,0,.3); animation: sf-pop .2s cubic-bezier(.22,.61,.36,1); }
+@keyframes sf-pop { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+.sf-pd-x { position: absolute; top: 12px; right: 12px; z-index: 2; width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(255,255,255,.92); color: #111; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,.16); }
+.sf-pd-media { padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sf-pd-main { aspect-ratio: 1/1; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,.05); display: flex; align-items: center; justify-content: center; }
+.sf-pd-main img { width: 100%; height: 100%; object-fit: var(--sf-img-fit, cover); }
+.sf-pd-thumbs { display: flex; gap: 8px; overflow-x: auto; }
+.sf-pd-thumb { width: 56px; height: 56px; flex-shrink: 0; padding: 0; border-radius: 9px; overflow: hidden; border: 2px solid transparent; background: rgba(0,0,0,.05); cursor: pointer; }
+.sf-pd-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sf-pd-thumb-on { border-color: var(--sf-primary); }
+.sf-pd-body { padding: 30px 30px 26px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.sf-pd-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.sf-pd-cat { padding: 4px 11px; border-radius: 9999px; background: color-mix(in srgb, var(--sf-text) 8%, transparent); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.sf-pd-flag { padding: 4px 11px; border-radius: 9999px; background: var(--sf-primary); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.sf-pd-name { font-size: 27px; font-weight: 800; line-height: 1.2; }
+.sf-pd-prices { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.sf-pd-price { font-size: 23px; font-weight: 800; color: var(--sf-primary); }
+.sf-pd-was { font-size: 15px; opacity: .5; text-decoration: line-through; }
+/* pre-wrap: merchants type paragraphs, and collapsing them into one block was
+   losing the shape of every description longer than a sentence. */
+.sf-pd-desc { font-size: 14.5px; line-height: 1.7; opacity: .8; white-space: pre-wrap; }
+.sf-pd-desc-none { opacity: .5; font-style: italic; }
+.sf-pd-add { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: var(--sf-primary); color: #fff; border: none; border-radius: var(--sf-r,10px); font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
+.sf-pd-add:hover:not(:disabled) { filter: brightness(1.08); }
+.sf-pd-add:disabled { opacity: .5; cursor: default; }
+.sf-pd-back { background: none; border: none; color: var(--sf-text); opacity: .55; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+.sf-pd-back:hover { opacity: 1; }
 
 @media (max-width: 900px) {
   .sf-catalog { flex-direction: column; padding: 20px; gap: 20px; }
@@ -217,6 +330,16 @@ const STYLES = `
   .sf-cf-form { grid-template-columns: 1fr; }
   .sf-cf-half { grid-column: 1 / -1; }
   .sf-cf-send { width: 100%; justify-content: center; }
+  .sf-catstrip-t { font-size: 19px; margin-bottom: 14px; }
+  .sf-chip { padding: 8px 15px; font-size: 13px; }
+  /* Full-bleed: a 400px panel on a 360px phone leaves a useless sliver of
+     overlay beside it and nothing to tap. */
+  .sf-cart { width: 100%; }
+  .sf-pd-wrap { padding: 0; place-items: stretch; }
+  .sf-pd { grid-template-columns: 1fr; width: 100%; max-height: 100%; border-radius: 0; }
+  .sf-pd-main { aspect-ratio: 4/3; }
+  .sf-pd-body { padding: 20px 20px 26px; }
+  .sf-pd-name { font-size: 22px; }
 }
 `;
 
@@ -232,8 +355,7 @@ function AnnouncementBar({ s, cfg }: any) {
 }
 
 function Navbar({ store, cfg }: NavbarProps) {
-  const getCartCount = useCartStore(state => state.getCartCount);
-  const count = getCartCount();
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const links = linkList(cfg.navigation?.links, [
     { label: "Home", url: "#" }, { label: "Shop", url: "#" }, { label: "About", url: "#" },
   ]);
@@ -253,18 +375,30 @@ function Navbar({ store, cfg }: NavbarProps) {
         <div className="sf-actions">
           <div className="sf-btn" style={{ gap: 4 }}>
             <LuGlobe size={18} />
-            <select className="sf-lang"><option value="en">EN</option><option value="fr">FR</option></select>
+            <select className="sf-lang" aria-label="Language"><option value="en">EN</option><option value="fr">FR</option></select>
           </div>
-          <button className="sf-btn"><LuUsers size={20} /></button>
-          <Link href="/checkout" className="sf-btn" style={{ position: "relative", textDecoration: "none" }}>
-            <LuShoppingBag size={20} />
-            <span className="sf-badge">{count}</span>
-          </Link>
-          <button className="sf-mobile-menu-btn">
-            <LuMenu size={24} />
+          <CartButton />
+          {/* `.sf-links` is display:none under 900px, so without this the menu
+              the merchant typed in is unreachable on a phone. */}
+          <button
+            className="sf-mobile-menu-btn"
+            onClick={() => setMenuOpen(open => !open)}
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            {menuOpen ? <LuX size={24} /> : <LuMenu size={24} />}
           </button>
         </div>
       </div>
+      {menuOpen && (
+        <nav className="sf-nav-drop">
+          {links.map((l, i) => (
+            <a key={i} href={l.url} className="sf-link" onClick={() => setMenuOpen(false)}>
+              {l.label}
+            </a>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }
@@ -287,23 +421,45 @@ function Hero({ s, store }: any) {
   );
 }
 
+/**
+ * The category strip.
+ *
+ * Was three hardcoded, unclickable buttons that ignored every setting the
+ * editor offered. Now it drives the shared facet, so picking one filters the
+ * catalogue below, and it reads the merchant's own title, whether the "All"
+ * tab shows, and whether counts are printed. The tabs themselves come from the
+ * categories the products actually carry — a category with nothing in it is not
+ * a tab worth tapping.
+ */
 function Categories({ s }: any) {
   const { products } = useStorefront();
+  const { active, setActive } = useFacet();
   if (!s.enabled) return null;
-  // Derive unique category labels from real products (future: use real categories)
-  const cats = [{ id: "all", label: "All Products", count: (products || []).length }];
-  if ((products || []).some(p => p.is_featured)) {
-    cats.push({ id: "featured", label: "Featured", count: (products || []).filter(p => p.is_featured).length });
-  }
-  if ((products || []).some(p => p.is_on_sale)) {
-    cats.push({ id: "sale", label: "Sale", count: (products || []).filter(p => p.is_on_sale).length });
-  }
+
+  const showAll = bool(s.settings.show_all, true);
+  const showCounts = bool(s.settings.show_counts, true);
+  const all = deriveFacets(products || []);
+  const cats = showAll ? all : all.filter(c => c.id !== "all");
+  // One tab is not a choice. A brand-new shop with no categories would
+  // otherwise show a lone "All Products (0)" pill for no reason.
+  if (cats.length < 2) return null;
+
   return (
-    <div className="sf-sec" style={{ paddingBottom: 0 }}>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+    <div className="sf-sec sf-catstrip">
+      {str(s.settings.title) && (
+        <h2 className="sf-catstrip-t sf-d">{str(s.settings.title)}</h2>
+      )}
+      <div className="sf-chips" role="tablist" aria-label="Product categories">
         {cats.map(c => (
-          <button key={c.id} style={{ padding: "10px 20px", borderRadius: 9999, border: "1.5px solid rgba(0,0,0,0.1)", background: "transparent", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
-            {c.label} <span style={{ opacity: .5 }}>({c.count})</span>
+          <button
+            key={c.id}
+            role="tab"
+            aria-selected={active === c.id}
+            className={active === c.id ? "sf-chip sf-chip-on" : "sf-chip"}
+            onClick={() => setActive(c.id)}
+          >
+            {c.label}
+            {showCounts && <span className="sf-chip-n">{c.count}</span>}
           </button>
         ))}
       </div>
@@ -311,22 +467,56 @@ function Categories({ s }: any) {
   );
 }
 
+/** Sort orders the catalogue offers. `featured` is the order the API sends. */
+const SORTS: Record<string, (a: any, b: any) => number> = {
+  featured: () => 0,
+  "price-asc": (a, b) => parseFloat(a.base_price) - parseFloat(b.base_price),
+  "price-desc": (a, b) => parseFloat(b.base_price) - parseFloat(a.base_price),
+  name: (a, b) => a.name.localeCompare(b.name),
+};
+
 function Catalog({ s, store }: any) {
   const { products } = useStorefront();
+  const { active, setActive } = useFacet();
+  const [sort, setSort] = React.useState("featured");
   if (!s.enabled) return null;
-  const toShow = products || [];
+
+  // Both controls used to be decoration: the strip above had no handler and
+  // this select had no state, so the grid was the same 50 products in the same
+  // order whatever anyone clicked.
+  const filtered = applyFacet(products || [], active);
+  const toShow = sort === "featured" ? filtered : [...filtered].sort(SORTS[sort]);
+  const facets = deriveFacets(products || []);
+  const activeLabel = facets.find(f => f.id === active)?.label;
+
   return (
     <div className="sf-catalog">
       <div className="sf-products">
         <div className="sf-gh">
           <h2>{s.settings.title || "Our Collection"}</h2>
-          <select><option>Featured</option><option>Price: Low–High</option><option>Newest</option></select>
+          <select value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort products">
+            <option value="featured">Featured first</option>
+            <option value="price-asc">Price: Low–High</option>
+            <option value="price-desc">Price: High–Low</option>
+            <option value="name">Name: A–Z</option>
+          </select>
         </div>
         {toShow.length === 0 ? (
-          <EmptyCatalog />
+          // Says which filter is empty, and offers the way out. A bare "No
+          // products yet." on a shop that plainly has products reads as a fault.
+          active === "all" || !activeLabel ? (
+            <EmptyCatalog />
+          ) : (
+            <div className="sf-none">
+              <p>Nothing in {activeLabel} right now.</p>
+              <button className="sf-none-btn" onClick={() => setActive("all")}>
+                Show everything
+              </button>
+            </div>
+          )
         ) : (
           <div className="sf-grid">
-            {toShow.map(p => <ProductCard key={p.id} p={p} store={store} />)}
+            {toShow.map((p: any) => <ProductCard key={p.id} p={p} store={store} />)}
           </div>
         )}
       </div>
@@ -581,8 +771,10 @@ export function StorefrontRenderer() {
 
       <Nav store={store} cfg={config} />
 
-      {/* Holds the selected filter above the section list, so a layout's
-          category strip and its catalogue agree. Classic never reads it. */}
+      {/* Holds the selected filter and the open product above the section list,
+          so a layout's category strip and its catalogue agree, and any card can
+          open the detail dialog mounted at the bottom of this tree. */}
+      <QuickViewProvider>
       <FacetProvider>
         {sections
           .filter(s => s.type !== "footer" && s.type !== "navbar")
@@ -600,6 +792,12 @@ export function StorefrontRenderer() {
           to leave room for it. Renders nothing unless the merchant turned it
           on in Cookies and Data Privacy. */}
       <CookieBanner />
+      {/* Mounted once here rather than per layout: both are fixed overlays that
+          render nothing until opened, and every layout's cards drive them
+          through the two contexts above. */}
+      <CartDrawer />
+      <ProductDialog />
+      </QuickViewProvider>
     </div>
   );
 }
