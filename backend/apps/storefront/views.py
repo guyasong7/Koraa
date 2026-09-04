@@ -344,6 +344,9 @@ class SectionImageUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
+        from django.conf import settings as django_settings
+        from django.core.files.storage import default_storage as _ds
+
         store = get_merchant_store(request)
         try:
             section = StorefrontSection.objects.get(pk=pk, store=store)
@@ -358,7 +361,26 @@ class SectionImageUploadView(APIView):
         ext = uploaded.name.split(".")[-1].lower()
         filename = f"storefront/sections/{uuid_module.uuid4()}.{ext}"
         path = default_storage.save(filename, ContentFile(uploaded.read()))
-        url = request.build_absolute_uri(f"/media/{path}")
+
+        # Build a publicly reachable URL.
+        #
+        # request.build_absolute_uri() uses the Host header from the incoming
+        # request. When gunicorn sits behind nginx the header is the *internal*
+        # socket address (127.0.0.1:8000), so the URL stored in
+        # section.settings["image"] would be unreachable from browsers.
+        #
+        # If MEDIA_URL is already absolute (S3 / R2), use it directly.
+        # Otherwise prefix with KORAA_API_URL — the public-facing API origin
+        # already used by the email system for logo URLs.
+        media_url = django_settings.MEDIA_URL
+        if media_url.startswith(("http://", "https://")):
+            # Absolute — S3/R2 path already contains the bucket domain.
+            # default_storage.url() gives the canonical form; path alone is
+            # correct for the filesystem backend.
+            url = f"{media_url.rstrip('/')}/{path}"
+        else:
+            api_root = django_settings.KORAA_API_URL.rstrip("/")
+            url = f"{api_root}{media_url}{path}"
 
         # Persist to section.settings
         section.settings = {**section.settings, "image": url}
@@ -402,8 +424,14 @@ class StoreAssetUploadView(APIView):
             store.save(update_fields=updated)
 
         def url(field):
+            from django.conf import settings as django_settings
             asset = getattr(store, field)
-            return request.build_absolute_uri(asset.url) if asset else None
+            if not asset:
+                return None
+            asset_url = asset.url  # relative (/media/...) or absolute (S3)
+            if asset_url.startswith(("http://", "https://")):
+                return asset_url
+            return f"{django_settings.KORAA_API_URL.rstrip('/')}{asset_url}"
 
         return Response({field: url(field) for field in self.ASSET_DIRS})
 
