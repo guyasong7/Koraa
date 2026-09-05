@@ -1073,6 +1073,7 @@ class PublicStorefrontShowcaseView(generics.ListAPIView):
     """
     serializer_class = PublicStorefrontShowcaseSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = None
 
     def get_queryset(self):
         qs = Store.objects.filter(status=Store.Status.PUBLISHED, is_showcased=True).order_by("-created_at")
