@@ -16,7 +16,7 @@ import ProductDialog from "./ProductDialog";
 import { CookieBanner } from "./CookieBanner";
 import { STOREFRONT_DEFAULTS } from "./theme";
 import { useSearchParams } from "next/navigation";
-import { Navbar as ClassicNavbar, Footer as ClassicFooter } from "../StorefrontRenderer";
+import { Navbar as ClassicNavbar, Footer as ClassicFooter, STYLES } from "../StorefrontRenderer";
 
 /** Sort orders the catalogue offers. `featured` is the order the API sends. */
 const SORTS: Record<string, (a: any, b: any) => number> = {
@@ -147,6 +147,7 @@ export function ShopRenderer() {
     <FacetProvider>
       <QuickViewProvider>
         <div className={`sf sf-l-${layoutKey}`} style={vars}>
+          <style>{STYLES}</style>
           {layoutModule.styles && <style>{layoutModule.styles}</style>}
           
           <LayoutNavbar store={store} cfg={config ?? {} as any} />

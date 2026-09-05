@@ -25,7 +25,7 @@ import { CookieBanner } from "./storefront/CookieBanner";
 import { useSiteSettings } from "./storefront/siteSettings";
 import { STOREFRONT_DEFAULTS } from "./storefront/theme";
 
-const STYLES = `
+export const STYLES = `
 .sf * { box-sizing: border-box; margin: 0; }
 .sf { font-family: var(--sf-font, Inter), sans-serif; color: var(--sf-text); background: var(--sf-bg); min-height: 100vh; }
 .sf-d { font-family: var(--sf-heading-font, Outfit), sans-serif; letter-spacing: -0.02em; }
