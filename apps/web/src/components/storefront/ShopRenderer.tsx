@@ -105,6 +105,11 @@ function ShopCatalog() {
       </div>
       
       <style>{`
+        .sf-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 24px;
+        }
         @media (max-width: 768px) {
           .sf-shop-page { flex-direction: column; padding: 20px !important; }
           .sf-sidebar { width: 100% !important; margin-bottom: 24px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 24px; }
