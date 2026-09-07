@@ -25,9 +25,17 @@ should ever read. Every request therefore sends reasoning.exclude, which is
 OpenRouter's switch for keeping the chain-of-thought out of the reply. It stops
 the leak; it does not stop the model thinking, so the tokens are still spent
 and the budgets here still have to cover them.
+
+reasoning.exclude is not quite enough on its own, because the spill is
+stochastic rather than tied to a particular question: the same four prompts
+leaked once in production and not at all on the next run. So a reply that opens
+like a thought rather than an answer is treated as a failure too, the same as an
+empty one, and the chain moves on. No model choice can rule this out — the
+detector is the part that can.
 """
 import json
 import logging
+import re
 
 import requests
 from decouple import config
@@ -35,6 +43,24 @@ from decouple import config
 logger = logging.getLogger(__name__)
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+#: A reply that starts by discussing the request instead of answering it.
+#: Deliberately narrow — it wants the model's planning voice ("okay, the user
+#: wants...", "let me unpack this", "Thinking Process:"), not the ordinary
+#: openers a helpful answer might use, because a false positive here silently
+#: costs an extra model call. Only ever applied to prose replies; JSON answers
+#: start with a brace and never match.
+_LEAKED_REASONING = re.compile(
+    r"""^\s*(
+        (okay|alright|hmm|right|so)\b[,.]?\s+(the\s+user|they|we\s+need|i\s+need|let\s+me|first)
+      | the\s+user\s+(is|says|wants|asks|has|sells|needs)
+      | let\s+me\s+(unpack|think|break|analyz|consider)
+      | (here('?s|\s+is)|this\s+is)\s+(my|a|the)\s+(thinking|thought|reasoning)\s+process
+      | (thinking|thought)\s+process\b
+      | <think>
+    )""",
+    re.IGNORECASE | re.VERBOSE,
+)
 
 # Free and vision-capable. dots-3 reads an image accurately and honours
 # response_format, so it leads. openrouter/free auto-routes across whatever
@@ -46,12 +72,14 @@ VISION_MODELS = [
     "google/gemma-4-31b-it:free",
 ]
 
-# Free and text-only. nemotron-3-super answers in a few seconds and keeps its
-# reasoning to itself; nemotron-3.5-lightning was the other candidate and is
-# not here on purpose, because it prints "Here's a thinking process:" into the
-# reply, which a merchant should never see.
+# Free and text-only. nemotron-3-super answers in a few seconds; ultra is the
+# retry when super opens with its thinking instead of an answer, and was clean
+# across every prompt it was tried on. nemotron-3.5-lightning is deliberately
+# absent: it prints "Here's a thinking process:" almost every time, which is the
+# failure the detector above exists to catch.
 CHAT_MODELS = [
     config("OPENROUTER_CHAT_MODEL", default="nvidia/nemotron-3-super-120b-a12b:free"),
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
     "openrouter/free",
 ]
 
@@ -131,6 +159,14 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
             # Reasoning spent the budget; see the module docstring.
             failures.append(f"{model}: empty content (reasoning used the budget)")
             logger.warning("OpenRouter %s returned no content", model)
+            continue
+
+        if not json_mode and _LEAKED_REASONING.match(text):
+            failures.append(f"{model}: reply opened with leaked reasoning")
+            logger.warning(
+                "OpenRouter %s leaked its reasoning into the reply; trying the next model. "
+                "Opened with: %r", model, text[:80]
+            )
             continue
 
         logger.info("OpenRouter answered with %s", data.get("model", model))
