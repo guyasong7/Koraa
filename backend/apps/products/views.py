@@ -439,15 +439,15 @@ class ProductAIAutoFillView(generics.GenericAPIView):
 
         result_text = ""
         try:
-            # 2000, not the 900 this used to send: the leading model spends
-            # ~670 tokens on hidden reasoning before it writes anything, and
-            # the prompt above asks for a multi-paragraph description on top of
-            # that. Too low a budget comes back as an empty answer, not a short
-            # one.
+            # 3000, not the 900 this used to send. The leading model spends its
+            # budget on hidden reasoning before writing anything — 1214 tokens
+            # on one run and 1643 on another — and the prompt above then asks
+            # for a multi-paragraph description. Too small a budget comes back
+            # as an empty answer, not a short one.
             result_text = chat_completion(
                 VISION_MODELS,
                 messages,
-                max_tokens=2000,
+                max_tokens=3000,
                 temperature=0.4,
                 json_mode=True,
                 timeout=90,

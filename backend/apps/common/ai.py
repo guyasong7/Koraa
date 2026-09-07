@@ -13,10 +13,18 @@ reads text, and the free models that are good at each are not the same model.
 The old single OPENROUTER_MODEL is no longer read, because one name cannot be
 both a vision model and a chat model.
 
-Reasoning models need one accommodation. They spend their budget on a hidden
+Reasoning models need two accommodations. They spend their budget on a hidden
 `reasoning` field and put the answer in `content`, so a max_tokens that looks
 generous can still return content=None — the whole budget went to thinking.
 That empty answer counts as a failure here and moves on to the next model.
+
+They also spill that thinking into `content` itself. nemotron-3-super answered
+one merchant question cleanly and opened the next with "Okay, the user sells
+shoes in Cameroon... Let me unpack this", which is not something a merchant
+should ever read. Every request therefore sends reasoning.exclude, which is
+OpenRouter's switch for keeping the chain-of-thought out of the reply. It stops
+the leak; it does not stop the model thinking, so the tokens are still spent
+and the budgets here still have to cover them.
 """
 import json
 import logging
@@ -74,6 +82,8 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
+        # Keep the chain-of-thought out of `content`; see the module docstring.
+        "reasoning": {"exclude": True},
     }
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
