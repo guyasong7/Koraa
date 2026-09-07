@@ -162,9 +162,9 @@ class ProductCreateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         sku = validated_data.pop("sku", None)
         stock_quantity = validated_data.pop("stock_quantity", None)
-        
+
         product = super().update(instance, validated_data)
-        
+
         if product.product_type == Product.ProductType.SIMPLE:
             variant = product.variants.filter(is_default=True).first() or product.variants.first()
             if variant:
@@ -173,5 +173,12 @@ class ProductCreateSerializer(serializers.ModelSerializer):
                 if stock_quantity is not None:
                     variant.stock_quantity = stock_quantity
                 variant.save()
-                
+            else:
+                ProductVariant.objects.create(
+                    product=product,
+                    is_default=True,
+                    sku=sku or "",
+                    stock_quantity=stock_quantity or 0,
+                )
+
         return product

@@ -112,6 +112,11 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
             .prefetch_related("images", "options__values", "variants__option_values")
         )
 
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["store"] = get_accessible_store(self.request.user, self.kwargs["store_pk"])
+        return ctx
+
 
 @extend_schema(tags=["products"])
 class ProductImageUploadView(generics.GenericAPIView):

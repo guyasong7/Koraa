@@ -124,7 +124,7 @@ export default function EditProductPage() {
         is_featured: productData.is_featured || false,
         weight: productData.weight || "",
         sku: productData.sku || "",
-        stock_quantity: productData.stock_quantity || "0",
+        stock_quantity: String(productData.stock_quantity ?? 0),
         seo_title: productData.seo_title || "",
         seo_description: productData.seo_description || "",
         category: productData.category || "",
