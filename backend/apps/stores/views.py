@@ -294,9 +294,12 @@ MERCHANT CONTEXT:
         messages.append({"role": "user", "content": user_msg})
         
         try:
-            # AIUnavailable is a RuntimeError, so the handler below already
-            # turns an exhausted model chain into the 503 it should be.
-            from apps.common.ai import CHAT_MODELS, chat_completion
+            from apps.common.ai import (
+                CHAT_MODELS,
+                AIQuotaExhausted,
+                chat_completion,
+                quota_wait_hint,
+            )
 
             ai_text = chat_completion(
                 CHAT_MODELS,
@@ -306,7 +309,24 @@ MERCHANT CONTEXT:
                 timeout=45,
             )
             return Response({"reply": ai_text})
+        except AIQuotaExhausted as e:
+            # Caught ahead of the blanket handler below: the daily cap is
+            # account-wide, so "currently unavailable" reads as a glitch when
+            # it is really a wait. Say how long.
+            import logging
+            logging.getLogger(__name__).error(f"AI chat: daily free-model quota spent — {e}")
+            return Response(
+                {
+                    "detail": (
+                        "The daily limit for the AI assistant has been reached. "
+                        f"Please try again {quota_wait_hint(e.resets_at)}."
+                    )
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         except Exception as e:
+            # AIUnavailable is a RuntimeError, so an exhausted model chain
+            # lands here and becomes the 503 it should be.
             import logging
             logging.getLogger(__name__).error(f"AI Chat failed: {str(e)}")
             return Response({"detail": "AI assistant is currently unavailable."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)

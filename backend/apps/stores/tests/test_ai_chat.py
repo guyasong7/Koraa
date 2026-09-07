@@ -92,6 +92,46 @@ class TestChatWithoutAStore:
 
 
 @pytest.mark.django_db
+class TestChatWhenTheDailyQuotaIsSpent:
+    """
+    A free OpenRouter key allows 50 free-model requests per day across the
+    whole account. Past that every model returns the same 429, so the chain
+    cannot help — and the merchant must be told to wait rather than to retry
+    something that will fail identically for hours.
+    """
+
+    QUOTA_429 = {
+        "error": {
+            "message": ("Rate limit exceeded: free-models-per-day. Add 10 credits "
+                        "to unlock 1000 free model requests per day"),
+            "code": 429,
+            "metadata": {"headers": {"X-RateLimit-Reset": "1788825600000"}},
+        }
+    }
+
+    @pytest.fixture
+    def quota_spent(self, monkeypatch):
+        class FakeResponse:
+            status_code = 429
+
+            @staticmethod
+            def json():
+                return TestChatWhenTheDailyQuotaIsSpent.QUOTA_429
+
+        monkeypatch.setattr("requests.post", lambda url, **kwargs: FakeResponse())
+
+    def test_the_merchant_is_told_to_wait_not_to_retry(self, merchant_client, quota_spent):
+        client, _ = merchant_client
+        response = client.post(CHAT_URL, {"message": "How do I start?"}, format="json")
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        detail = response.data["detail"]
+        assert "daily limit" in detail.lower()
+        # "Please try again." on its own is the wording this replaced.
+        assert detail.rstrip().endswith(".") and "try again " in detail
+
+
+@pytest.mark.django_db
 class TestChatWithAStore:
     def test_store_details_reach_the_prompt(self, merchant_client, captured_prompt):
         client, user = merchant_client

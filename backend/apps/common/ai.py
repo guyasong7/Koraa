@@ -32,10 +32,17 @@ leaked once in production and not at all on the next run. So a reply that opens
 like a thought rather than an answer is treated as a failure too, the same as an
 empty one, and the chain moves on. No model choice can rule this out — the
 detector is the part that can.
+
+One failure the chain cannot help with: a free key gets 50 free-model requests
+per *day* across the whole account, and past that every model returns the same
+429 no matter which one is asked. That is AIQuotaExhausted, kept separate
+because it is the case where telling someone to try again is wrong — nothing
+changes until the quota resets. Buying 10 credits raises the cap to 1000/day.
 """
 import json
 import logging
 import re
+from datetime import datetime, timezone
 
 import requests
 from decouple import config
@@ -86,6 +93,64 @@ CHAT_MODELS = [
 
 class AIUnavailable(RuntimeError):
     """No model in the chain produced an answer."""
+
+
+class AIQuotaExhausted(AIUnavailable):
+    """
+    The account's daily free-model allowance is spent.
+
+    Its own type because it is the one failure the chain cannot route around:
+    the quota is account-wide, so every model refuses identically, and "try
+    again" is the wrong thing to tell a merchant when the answer will not
+    change until OpenRouter's clock rolls over. A subclass, so callers that
+    only care about "no answer" keep working unchanged.
+
+    `resets_at` is a UTC datetime when OpenRouter said so, else None.
+    """
+
+    def __init__(self, message, resets_at=None):
+        super().__init__(message)
+        self.resets_at = resets_at
+
+
+def _daily_quota_reset(error):
+    """
+    Return the reset time if `error` is the daily free-model cap, else None.
+
+    Deliberately keyed to "free-models-per-day" and not to 429 generally: a
+    plain per-model 429 ("rate-limited upstream") is transient and the next
+    model in the chain really can answer it, which is the whole point of the
+    chain. Only the daily cap is account-wide.
+    """
+    if "free-models-per-day" not in str(error):
+        return None
+    try:
+        headers = (error.get("metadata") or {}).get("headers") or {}
+        return datetime.fromtimestamp(int(headers["X-RateLimit-Reset"]) / 1000, tz=timezone.utc)
+    except (AttributeError, KeyError, TypeError, ValueError, OSError):
+        return None  # Cap is real even when the reset header is not readable.
+
+
+def quota_wait_hint(resets_at):
+    """
+    Turn a quota reset time into something worth saying to a merchant.
+
+    Rounded on purpose — the exact minute is not useful, and being told "in
+    about 2 hours" is the difference between waiting and filing a bug. Falls
+    back to vague wording rather than to none when OpenRouter did not say.
+    """
+    if resets_at is None:
+        return "tomorrow"
+    hours = (resets_at - datetime.now(tz=timezone.utc)).total_seconds() / 3600
+    if hours <= 0:
+        return "in a few minutes"
+    if hours < 1:
+        return "in under an hour"
+    if hours < 2:
+        return "in about an hour"
+    if hours >= 24:
+        return "tomorrow"
+    return f"in about {round(hours)} hours"
 
 
 def _dedup(models):
@@ -145,6 +210,19 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
 
         if "error" in data:
             detail = str(data["error"])[:200]
+
+            # Account-wide, so there is no next model to try; stop rather than
+            # spend two more round-trips collecting the same refusal.
+            resets_at = _daily_quota_reset(data["error"])
+            if resets_at is not None or "free-models-per-day" in detail:
+                logger.error(
+                    "OpenRouter daily free-model quota is spent; resets %s",
+                    resets_at.isoformat() if resets_at else "at an unreported time",
+                )
+                raise AIQuotaExhausted(
+                    f"daily free-model quota spent ({detail})", resets_at=resets_at
+                )
+
             failures.append(f"{model}: {detail}")
             logger.warning("OpenRouter %s returned an error: %s", model, detail)
             continue

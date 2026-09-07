@@ -387,8 +387,10 @@ class ProductAIAutoFillView(generics.GenericAPIView):
 
         from apps.common.ai import (
             VISION_MODELS,
+            AIQuotaExhausted,
             AIUnavailable,
             chat_completion,
+            quota_wait_hint,
             strip_json_fence,
         )
 
@@ -457,6 +459,20 @@ class ProductAIAutoFillView(generics.GenericAPIView):
             result_json = _normalise_ai_product(json.loads(strip_json_fence(result_text)))
             return Response(result_json, status=http_status.HTTP_200_OK)
 
+        except AIQuotaExhausted as exc:
+            # Ordered before AIUnavailable, which it subclasses. "Try again"
+            # would be a lie here — the cap is daily and account-wide.
+            logger.error(f"AI auto-fill: daily free-model quota spent — {exc}")
+            return Response(
+                {
+                    "detail": (
+                        "The daily limit for AI product analysis has been reached. "
+                        "Fill the form in manually for now, or try again "
+                        f"{quota_wait_hint(exc.resets_at)}."
+                    )
+                },
+                status=http_status.HTTP_503_SERVICE_UNAVAILABLE
+            )
         except AIUnavailable as exc:
             logger.error(f"AI auto-fill: every model failed — {exc}")
             return Response(

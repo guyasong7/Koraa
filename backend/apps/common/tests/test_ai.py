@@ -9,9 +9,16 @@ chain is that none of those reach the caller as long as one model is healthy,
 so that is what these assert.
 """
 import pytest
+from datetime import datetime, timedelta, timezone
 
 from apps.common import ai
-from apps.common.ai import AIUnavailable, chat_completion, strip_json_fence
+from apps.common.ai import (
+    AIQuotaExhausted,
+    AIUnavailable,
+    chat_completion,
+    quota_wait_hint,
+    strip_json_fence,
+)
 
 MESSAGES = [{"role": "user", "content": "How do I add a product?"}]
 
@@ -203,6 +210,94 @@ class TestLeakedReasoningIsRejected:
         chat_completion(["a"], MESSAGES, max_tokens=100, json_mode=True)
 
         assert openrouter["payloads"][0]["response_format"] == {"type": "json_object"}
+
+
+class TestDailyQuota:
+    """
+    The one failure the chain cannot route around. A free key gets 50
+    free-model requests per day across the whole account, so once it is spent
+    every model returns this same 429 — asking the next one is pointless, and
+    telling a merchant to "try again" is wrong until the quota resets.
+    """
+
+    # Verbatim from production on 2026-09-07, reset header included.
+    QUOTA_429 = {
+        "error": {
+            "message": ("Rate limit exceeded: free-models-per-day. Add 10 credits "
+                        "to unlock 1000 free model requests per day"),
+            "code": 429,
+            "metadata": {"headers": {
+                "X-RateLimit-Limit": "50",
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": "1788825600000",
+            }},
+        }
+    }
+
+    def test_it_stops_the_chain_instead_of_asking_every_model(self, openrouter):
+        openrouter["queue"] = [FakeResponse(self.QUOTA_429, 429)]
+
+        with pytest.raises(AIQuotaExhausted):
+            chat_completion(["a", "b", "c"], MESSAGES, max_tokens=100)
+
+        assert openrouter["models"] == ["a"], "b and c would refuse identically"
+
+    def test_it_reports_when_the_quota_resets(self, openrouter):
+        openrouter["queue"] = [FakeResponse(self.QUOTA_429, 429)]
+
+        with pytest.raises(AIQuotaExhausted) as exc:
+            chat_completion(["a"], MESSAGES, max_tokens=100)
+
+        assert exc.value.resets_at == datetime(2026, 9, 8, tzinfo=timezone.utc)
+
+    def test_a_missing_reset_header_is_still_a_quota_failure(self, openrouter):
+        """The cap is real whether or not the header can be read."""
+        openrouter["queue"] = [FakeResponse(
+            {"error": {"message": "Rate limit exceeded: free-models-per-day.", "code": 429}}, 429
+        )]
+
+        with pytest.raises(AIQuotaExhausted) as exc:
+            chat_completion(["a"], MESSAGES, max_tokens=100)
+
+        assert exc.value.resets_at is None
+
+    def test_callers_that_only_catch_AIUnavailable_still_work(self, openrouter):
+        openrouter["queue"] = [FakeResponse(self.QUOTA_429, 429)]
+
+        with pytest.raises(AIUnavailable):
+            chat_completion(["a"], MESSAGES, max_tokens=100)
+
+    def test_a_transient_per_model_429_is_not_the_daily_cap(self, openrouter):
+        """
+        This is the distinction that matters: "rate-limited upstream" means the
+        next model can answer, so the chain must keep walking rather than
+        telling the merchant to come back tomorrow.
+        """
+        openrouter["queue"] = [
+            FakeResponse({"error": {"code": 429, "message": "rate-limited upstream"}}, 429),
+            FakeResponse(reply("Go to Products.")),
+        ]
+
+        assert chat_completion(["a", "b"], MESSAGES, max_tokens=100) == "Go to Products."
+        assert openrouter["models"] == ["a", "b"]
+
+
+class TestQuotaWaitHint:
+    @pytest.mark.parametrize("hours,expected", [
+        (-1, "in a few minutes"),
+        (0.4, "in under an hour"),
+        (1.5, "in about an hour"),
+        (1.7, "in about an hour"),
+        (3.2, "in about 3 hours"),
+        (11.6, "in about 12 hours"),
+        (30, "tomorrow"),
+    ])
+    def test_the_wait_is_described_in_round_terms(self, hours, expected):
+        resets = datetime.now(tz=timezone.utc) + timedelta(hours=hours)
+        assert quota_wait_hint(resets) == expected
+
+    def test_an_unknown_reset_time_still_says_something_useful(self):
+        assert quota_wait_hint(None) == "tomorrow"
 
 
 class TestStripJsonFence:
