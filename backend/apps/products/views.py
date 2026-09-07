@@ -331,10 +331,49 @@ class ProductFileDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.delete()
 
 
+def _normalise_ai_product(data):
+    """
+    Make a free model's JSON safe to drop into the product form.
+
+    The dashboard assigns these values straight to form fields, and weight and
+    base_price land in DecimalFields — so "0.6 kg", "35,000" or "$89.00" become
+    a failed save rather than a filled form. The prompt asks for bare numbers
+    and is ignored often enough to be worth defending against: the free vision
+    models follow format instructions loosely, and returned exactly "0.6 kg"
+    and a free-form SKU while this was written.
+    """
+    import random
+    import re
+
+    if not isinstance(data, dict):
+        return data
+
+    for field in ("base_price", "weight"):
+        raw = data.get(field)
+        if raw in (None, ""):
+            continue
+        # First number in the string, decimal point kept, everything else gone.
+        match = re.search(r"\d+(?:[.,]\d+)?", str(raw).replace(",", ""))
+        data[field] = match.group(0).replace(",", ".") if match else ""
+
+    # The prompt promises KORAA-XXX-1234, so return that shape even when the
+    # model invents its own. The letters come from whatever it suggested, so a
+    # coerced SKU still says something about the product.
+    sku = str(data.get("sku") or "")
+    if not re.fullmatch(r"KORAA-[A-Z]{3}-\d{4}", sku):
+        letters = re.sub(r"[^A-Za-z]", "", sku) or re.sub(r"[^A-Za-z]", "", str(data.get("name") or ""))
+        prefix = (letters[:3].upper() or "GEN").ljust(3, "X")
+        data["sku"] = f"KORAA-{prefix}-{random.randint(1000, 9999)}"
+
+    return data
+
+
 class ProductAIAutoFillView(generics.GenericAPIView):
     """
     POST /stores/{store_pk}/products/ai-suggest/
-    Takes an image upload and asks DeepSeek to auto-fill the product form.
+
+    Takes an image upload and asks a free vision model on OpenRouter to
+    auto-fill the product form. The model chain lives in apps.common.ai.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -345,8 +384,13 @@ class ProductAIAutoFillView(generics.GenericAPIView):
         import json
         import logging
         import traceback
-        import requests
-        from decouple import config
+
+        from apps.common.ai import (
+            VISION_MODELS,
+            AIUnavailable,
+            chat_completion,
+            strip_json_fence,
+        )
 
         logger = logging.getLogger(__name__)
 
@@ -366,16 +410,6 @@ class ProductAIAutoFillView(generics.GenericAPIView):
         raw_bytes = image_file.read()
         b64_img = base64.b64encode(raw_bytes).decode("utf-8")
 
-        or_api_key = config("OPENROUTER_API_KEY", default="")
-        or_model = config("OPENROUTER_MODEL", default="google/gemini-1.5-flash:free")
-        or_base_url = "https://openrouter.ai/api/v1/chat/completions"
-
-        if not or_api_key:
-            return Response(
-                {"detail": "OPENROUTER_API_KEY is not configured."},
-                status=http_status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
         messages = [
             {
                 "role": "user",
@@ -388,8 +422,8 @@ class ProductAIAutoFillView(generics.GenericAPIView):
                             "- name: catchy product name (string)\n"
                             "- short_description: 1 sentence summary (string)\n"
                             "- description: detailed multi-paragraph description (string)\n"
-                            "- base_price: realistic price based on buyam.co pricing in CFA Francs (XAF) as a number string e.g. '15000' (string)\n"
-                            "- weight: weight in kg e.g. '0.5' (string)\n"
+                            "- base_price: realistic price based on buyam.co pricing in CFA Francs (XAF) as a bare number string, digits only, no currency symbol and no separators e.g. '15000' (string)\n"
+                            "- weight: weight in kg as a bare number string, digits only, NO unit suffix — '0.5' not '0.5 kg' (string)\n"
                             "- seo_title: max 70 chars (string)\n"
                             "- seo_description: max 160 chars (string)\n"
                             "- sku: a unique SKU following the pattern KORAA-[3_LETTER_CATEGORY_PREFIX]-[4_RANDOM_DIGITS] e.g. 'KORAA-ELC-4921' (string)"
@@ -405,41 +439,30 @@ class ProductAIAutoFillView(generics.GenericAPIView):
 
         result_text = ""
         try:
-            logger.info(f"AI auto-fill: calling {or_model} via OpenRouter")
-            
-            resp = requests.post(
-                or_base_url,
-                headers={
-                    "Authorization": f"Bearer {or_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": or_model,
-                    "messages": messages,
-                    "max_tokens": 900,
-                    "temperature": 0.4,
-                },
-                timeout=60
+            # 2000, not the 900 this used to send: the leading model spends
+            # ~670 tokens on hidden reasoning before it writes anything, and
+            # the prompt above asks for a multi-paragraph description on top of
+            # that. Too low a budget comes back as an empty answer, not a short
+            # one.
+            result_text = chat_completion(
+                VISION_MODELS,
+                messages,
+                max_tokens=2000,
+                temperature=0.4,
+                json_mode=True,
+                timeout=90,
             )
-            
-            resp_data = resp.json()
-            if "error" in resp_data:
-                raise Exception(f"OpenRouter API Error: {resp_data['error']}")
-                
-            result_text = resp_data["choices"][0]["message"]["content"].strip()
             logger.info(f"AI raw response: {result_text[:200]}")
 
-            # Strip markdown fences if model disobeyed
-            for prefix in ("```json", "```"):
-                if result_text.startswith(prefix):
-                    result_text = result_text[len(prefix):]
-            if result_text.endswith("```"):
-                result_text = result_text[:-3]
-            result_text = result_text.strip()
-
-            result_json = json.loads(result_text)
+            result_json = _normalise_ai_product(json.loads(strip_json_fence(result_text)))
             return Response(result_json, status=http_status.HTTP_200_OK)
 
+        except AIUnavailable as exc:
+            logger.error(f"AI auto-fill: every model failed — {exc}")
+            return Response(
+                {"detail": "AI image analysis is currently unavailable. Please try again."},
+                status=http_status.HTTP_503_SERVICE_UNAVAILABLE
+            )
         except json.JSONDecodeError as jde:
             logger.error(f"AI returned non-JSON. Raw: {result_text!r} | Error: {jde}")
             return Response(

@@ -228,9 +228,6 @@ class StoreAIChatView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        import json
-        import requests
-        from decouple import config
         from rest_framework import status
         
         user_msg = request.data.get("message", "").strip()
@@ -297,29 +294,17 @@ MERCHANT CONTEXT:
         messages.append({"role": "user", "content": user_msg})
         
         try:
-            or_api_key = config("OPENROUTER_API_KEY", default="")
-            or_model = config("OPENROUTER_MODEL", default="openai/gpt-4o-mini")
-            
-            resp = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {or_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": or_model,
-                    "messages": messages,
-                    "max_tokens": 500,
-                    "temperature": 0.7,
-                },
-                timeout=30
+            # AIUnavailable is a RuntimeError, so the handler below already
+            # turns an exhausted model chain into the 503 it should be.
+            from apps.common.ai import CHAT_MODELS, chat_completion
+
+            ai_text = chat_completion(
+                CHAT_MODELS,
+                messages,
+                max_tokens=500,
+                temperature=0.7,
+                timeout=45,
             )
-            
-            resp_data = resp.json()
-            if "error" in resp_data:
-                raise Exception(f"OpenRouter API Error: {resp_data['error']}")
-                
-            ai_text = resp_data["choices"][0]["message"]["content"].strip()
             return Response({"reply": ai_text})
         except Exception as e:
             import logging
