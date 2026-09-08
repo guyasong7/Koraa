@@ -87,6 +87,8 @@ export const merchantApi = {
   getStats: () => api.get("/merchants/stats/"),
   uploadIdentity: (data: FormData) => api.patch("/merchants/identity/", data),
   getIdentity: () => api.get("/merchants/identity/"),
+  startVerification: () =>
+    api.post<{ session_id: string; verification_url: string; status: string }>("/merchants/identity/verify/"),
   /** Send a 6-digit OTP via Camoo SMS to the given E.164 number. */
   sendPhoneOTP: (phone: string) =>
     api.post<{ message: string }>("/merchants/phone/send-otp/", { phone }),

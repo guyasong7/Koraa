@@ -35,13 +35,6 @@ import {
   sendVerificationEmail,
   refreshEmailVerification,
 } from "@/lib/firebase";
-import {
-  IdFrontGlyph,
-  IdBackGlyph,
-  SelfieIdGlyph,
-  UploadGlyph,
-  UploadedGlyph,
-} from "@/components/UploadGlyphs";
 import { paymentApi } from "@/lib/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -715,13 +708,13 @@ function IdentityTab() {
 
       <hr style={{ border: "none", borderTop: "1px solid var(--border)" }} />
 
-      {/* ── Documents ─────────────────────────────────────────── */}
+      {/* ── Identity Document Verification ────────────────────── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700 }}>Identity Document Verification</h3>
+            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700 }}>Identity Verification</h3>
             <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)" }}>
-              Complete all 3 steps below. Our team will manually review your documents to verify your identity.
+              Verify your identity securely through our verification partner. The process takes about 2 minutes.
             </p>
           </div>
           {identityData?.id_document_verified && (
@@ -729,132 +722,146 @@ function IdentityTab() {
           )}
         </div>
 
-        {/* Step cards.
-            Each step leads with a drawing of the thing to photograph rather
-            than with its number — the numbers are the one part of this a
-            merchant can already infer from the order, and "which side of the
-            card is this asking for" is the part they cannot. */}
-        {([
-          {
-            step: 1,
-            title: "Front of ID / Passport",
-            desc: "Upload a clear photo of the front of your National ID Card or Passport.",
-            field: "id_document",
-            done: !!identityData?.id_document,
-            Glyph: IdFrontGlyph,
-          },
-          {
-            step: 2,
-            title: "Back of ID Card",
-            desc: "Upload the back side of your ID card.",
-            field: "id_document_back",
-            done: !!identityData?.id_document_back,
-            Glyph: IdBackGlyph,
-          },
-          {
-            step: 3,
-            title: "Selfie Holding Your ID",
-            desc: "Take a clear photo of yourself holding the front of your ID next to your face. This confirms you are the document holder.",
-            field: "selfie_with_id",
-            done: !!identityData?.selfie_with_id,
-            Glyph: SelfieIdGlyph,
-          },
-        ] as Array<{
-          step: number;
-          title: string;
-          desc: string;
-          field: string;
-          done: boolean;
-          optional?: boolean;
-          Glyph: (p: { size?: number }) => React.ReactElement;
-        }>).map(({ step, title, desc, field, done, optional, Glyph }) => (
-          <div key={step} style={{
-            display: "flex", alignItems: "flex-start", gap: 16, padding: 20,
-            border: `1px solid ${done ? "rgba(34,197,94,0.3)" : "var(--border)"}`,
-            /* Was a hard-coded "white", which is the paper colour on one
-               theme only — on dark it put a white card behind light text. */
-            background: done ? "rgba(34,197,94,0.03)" : "var(--surface-900)",
-          }}>
-            {/* The plate sets `color`, and the glyph's strokes are all
-                `currentColor` — so the brand is named once, here, and the
-                done state recolours the drawing by changing one value. */}
-            <div style={{
-              width: 52, height: 52, flexShrink: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: done ? "rgba(34,197,94,0.12)" : "var(--brand-tint)",
-              border: `1px solid ${done ? "rgba(34,197,94,0.35)" : "var(--brand-tint-border)"}`,
-              color: done ? "#22c55e" : "var(--brand-text)",
-            }}>
-              {done ? <UploadedGlyph size={26} /> : <Glyph size={28} />}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{title}</h4>
-                {optional && <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>Optional</span>}
-                {done && <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 700 }}>Uploaded</span>}
-              </div>
-              <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)" }}>{desc}</p>
-              {/* A dashed brand-tinted target rather than a grey button: the
-                  action is "put a file here", and a dashed edge is the one
-                  affordance people already read that way. */}
-              <label style={{
-                display: "inline-flex", alignItems: "center", gap: 9,
-                padding: "10px 16px",
-                border: "1.5px dashed var(--brand-tint-border)",
-                background: "var(--brand-tint)",
-                color: "var(--brand-text)",
-                fontSize: 14, fontWeight: 600,
-                cursor: loading ? "progress" : "pointer",
-                opacity: loading ? 0.7 : 1,
-                transition: "opacity .15s",
-              }}>
-                <UploadGlyph size={19} />
-                {loading ? "Uploading…" : done ? "Replace photo" : "Upload photo"}
-                <input type="file" accept="image/*,.pdf" hidden
-                  onChange={(e) => handleDocumentUpload(e, field)} disabled={loading} />
-              </label>
-            </div>
-          </div>
-        ))}
-
-        {/* Verification Status Card */}
-        {!loadingIdentity && (identityData?.id_document || identityData?.id_document_back || identityData?.selfie_with_id) && (
+        {loadingIdentity ? (
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>Loading...</div>
+        ) : identityData?.id_document_verified ? (
           <div style={{
-            padding: 20,
-            border: "1px solid var(--border)",
-            background: "var(--surface-900)",
-            display: "flex", flexDirection: "column", gap: 12,
-            borderRadius: 8,
+            padding: 20, border: "1px solid rgba(34,197,94,0.3)",
+            background: "rgba(34,197,94,0.03)", display: "flex", alignItems: "center", gap: 14,
           }}>
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>Verification Status</p>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{
-                fontSize: 15, fontWeight: 600,
-                color: identityData?.id_document_verified ? "#22c55e" :
-                  identityData?.verification_status === "Refused" ? "#ef4444" : "var(--brand-500)",
-              }}>
-                {identityData?.id_document_verified && "Approved"}
-                {!identityData?.id_document_verified && identityData?.verification_status === "Refused" && "Refused"}
-                {!identityData?.id_document_verified && identityData?.verification_status !== "Refused" && "In Review"}
-              </span>
-            </div>
-
-            {!identityData?.id_document_verified && identityData?.verification_status !== "Refused" && (
-              <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
-                Your document is under review check back in 5 mins
+            <div style={{
+              width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+              background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#22c55e", fontSize: 22,
+            }}>&#x2713;</div>
+            <div>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>Identity Verified</p>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>
+                Your identity has been verified. No further action is needed.
               </p>
-            )}
-
-            {identityData?.warnings?.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#ef4444" }}>Feedback</p>
-                {identityData.warnings.map((w: any, i: number) => (
-                  <p key={i} style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>- {w.message || JSON.stringify(w)}</p>
-                ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Status card when verification is in progress or has a result */}
+            {identityData?.verification_status && identityData.verification_status !== "Not Started" && (
+              <div style={{
+                padding: 20, border: "1px solid var(--border)",
+                background: "var(--surface-900)", display: "flex", flexDirection: "column", gap: 12,
+              }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>Verification Status</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{
+                    fontSize: 15, fontWeight: 600,
+                    color: identityData.verification_status === "Approved" ? "#22c55e"
+                      : identityData.verification_status === "Declined" || identityData.verification_status === "Refused" ? "#ef4444"
+                      : "var(--brand-500)",
+                  }}>
+                    {identityData.verification_status}
+                  </span>
+                </div>
+                {["In Progress", "In Review", "Pending"].includes(identityData.verification_status) && (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+                    Verification is being processed. This usually takes a few minutes.
+                  </p>
+                )}
+                {identityData.verification_status === "Expired" && (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+                    Your verification session expired. Please start a new one.
+                  </p>
+                )}
+                {identityData.verification_status === "Abandoned" && (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+                    You left the verification before completing it. Please try again.
+                  </p>
+                )}
+                {(identityData.verification_status === "Declined" || identityData.verification_status === "Refused") && (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+                    Verification was declined. Please try again with a valid document.
+                  </p>
+                )}
+                {identityData?.warnings?.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#ef4444" }}>Feedback</p>
+                    {identityData.warnings.map((w: any, i: number) => (
+                      <p key={i} style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>- {w.message || JSON.stringify(w)}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
+
+            {/* Start / Retry verification button */}
+            {!(["In Progress", "In Review", "Pending"].includes(identityData?.verification_status || "")) && (
+              <div style={{
+                padding: 24, border: "1.5px dashed var(--brand-tint-border)",
+                background: "var(--brand-tint)", textAlign: "center",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+              }}>
+                <LuShield size={32} color="var(--brand-text)" />
+                <p style={{ margin: 0, fontSize: 14, color: "var(--brand-text)", maxWidth: 400 }}>
+                  {identityData?.verification_status === "Not Started" || !identityData?.verification_status
+                    ? "Click below to verify your identity. You'll need your national ID card or passport."
+                    : "Start a new verification session."}
+                </p>
+                <button
+                  className="btn btn-primary"
+                  disabled={loading}
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      const res = await merchantApi.startVerification();
+                      const url = res.data.verification_url;
+                      window.open(url, "_blank", "noopener");
+                      toast.success("Verification started! Complete it in the new tab.");
+                      const updated = await merchantApi.getIdentity();
+                      setIdentityData(updated.data);
+                    } catch (err: any) {
+                      const msg = err?.response?.data?.error || "Failed to start verification.";
+                      if (err?.response?.status === 409) {
+                        toast.error("A verification session is already in progress.");
+                      } else {
+                        toast.error(msg);
+                      }
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  {loading ? "Starting..." : identityData?.verification_status === "Not Started" || !identityData?.verification_status
+                    ? "Start Verification" : "Retry Verification"}
+                </button>
+              </div>
+            )}
+
+            {/* Refresh status button when in progress */}
+            {["In Progress", "In Review", "Pending"].includes(identityData?.verification_status || "") && (
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  disabled={loading}
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      const res = await merchantApi.getIdentity();
+                      setIdentityData(res.data);
+                      if (res.data?.id_document_verified) {
+                        toast.success("Identity verified successfully!");
+                      } else {
+                        toast.success("Status refreshed.");
+                      }
+                    } catch {
+                      toast.error("Failed to refresh status.");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  {loading ? "Refreshing..." : "Refresh Status"}
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         <hr style={{ border: "none", borderTop: "1px solid var(--border)" }} />

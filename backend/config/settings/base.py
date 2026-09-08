@@ -600,3 +600,5 @@ FAPSHI_WEBHOOK_SECRET = env("FAPSHI_WEBHOOK_SECRET", default="")
 # Didit Verification
 # ──────────────────────────────────────────────────────────────────────────────
 DIDIT_API_KEY = env("DIDIT_API_KEY", default="")
+DIDIT_WORKFLOW_ID = env("DIDIT_WORKFLOW_ID", default="")
+DIDIT_WEBHOOK_SECRET = env("DIDIT_WEBHOOK_SECRET", default="")

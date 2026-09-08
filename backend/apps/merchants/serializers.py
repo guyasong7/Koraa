@@ -11,14 +11,14 @@ class MerchantIdentitySerializer(serializers.ModelSerializer):
             "location_verified", "phone_verified",
             "id_document", "id_document_back", "selfie_with_id", "id_document_verified",
             "business_document", "business_document_verified",
-            "didit_request_id", "verification_status", "first_name",
+            "didit_request_id", "didit_session_id", "verification_status", "first_name",
             "last_name", "document_type", "document_number", "warnings",
             "face_match_status", "face_match_score",
         ]
         read_only_fields = [
             "location_verified", "phone_verified",
             "id_document_verified", "business_document_verified",
-            "didit_request_id", "verification_status", "first_name",
+            "didit_request_id", "didit_session_id", "verification_status", "first_name",
             "last_name", "document_type", "document_number", "warnings",
             "face_match_status", "face_match_score",
         ]

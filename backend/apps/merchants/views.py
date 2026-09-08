@@ -26,7 +26,11 @@ from .serializers import (
     MerchantStaffSerializer, MerchantPayoutAccountSerializer
 )
 
+import json
+import logging
+
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class IsMerchantOwner(permissions.BasePermission):
@@ -352,6 +356,92 @@ class MerchantPayoutAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
         from .models import MerchantPayoutAccount
         return MerchantPayoutAccount.objects.filter(merchant=merchant)
 
+
+
+@extend_schema(
+    tags=["merchants"],
+    responses={200: {"type": "object", "properties": {
+        "session_id": {"type": "string"},
+        "verification_url": {"type": "string"},
+        "status": {"type": "string"},
+    }}},
+)
+class MerchantStartVerificationView(APIView):
+    """POST /merchants/identity/verify/ — start a Didit verification session."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from . import didit
+
+        try:
+            merchant = get_active_merchant(request.user)
+        except Exception:
+            return Response({"error": "Merchant profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        identity, _ = MerchantIdentity.objects.get_or_create(merchant=merchant)
+
+        if identity.verification_status in (
+            MerchantIdentity.VerificationStatus.APPROVED,
+            MerchantIdentity.VerificationStatus.VERIFIED,
+        ):
+            return Response({"error": "Already verified."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if identity.verification_status == MerchantIdentity.VerificationStatus.IN_PROGRESS and identity.didit_session_id:
+            try:
+                decision = didit.get_decision(str(identity.didit_session_id))
+                if decision and decision.get("status") not in ("Expired", "Abandoned"):
+                    return Response({
+                        "error": "A verification session is already in progress.",
+                        "session_id": str(identity.didit_session_id),
+                    }, status=status.HTTP_409_CONFLICT)
+            except Exception:
+                pass
+
+        try:
+            result = didit.create_session(
+                vendor_data=str(merchant.id),
+                callback_url=request.build_absolute_uri("/api/merchants/identity/webhook/"),
+            )
+        except Exception as exc:
+            logger.exception("Didit create_session failed")
+            return Response({"error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        identity.didit_session_id = result["session_id"]
+        identity.verification_status = MerchantIdentity.VerificationStatus.IN_PROGRESS
+        identity.save(update_fields=["didit_session_id", "verification_status", "updated_at"])
+
+        return Response({
+            "session_id": result["session_id"],
+            "verification_url": result["url"],
+            "status": "In Progress",
+        })
+
+
+@extend_schema(tags=["merchants"], exclude=True)
+class DiditWebhookView(APIView):
+    """POST /merchants/identity/webhook/ — Didit status.updated callback."""
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        from . import didit
+
+        signature = request.META.get("HTTP_X_SIGNATURE_V2", "")
+        timestamp = request.META.get("HTTP_X_TIMESTAMP", "")
+
+        if not didit.verify_webhook_signature(request.body, signature, timestamp):
+            return Response({"error": "Invalid signature."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, TypeError):
+            return Response({"error": "Invalid JSON."}, status=status.HTTP_400_BAD_REQUEST)
+
+        identity, changed = didit.process_webhook(data)
+        if identity is None:
+            return Response({"status": "ignored"}, status=status.HTTP_200_OK)
+
+        return Response({"status": "ok", "verification_status": identity.verification_status})
 
 
 @extend_schema(

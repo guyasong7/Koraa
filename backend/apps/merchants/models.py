@@ -197,9 +197,17 @@ class Merchant(models.Model):
 
 class MerchantIdentity(models.Model):
     class VerificationStatus(models.TextChoices):
+        NOT_STARTED = "Not Started", "Not Started"
+        IN_PROGRESS = "In Progress", "In Progress"
         PENDING = "Pending", "Pending"
+        APPROVED = "Approved", "Approved"
+        DECLINED = "Declined", "Declined"
+        IN_REVIEW = "In Review", "In Review"
+        ABANDONED = "Abandoned", "Abandoned"
+        EXPIRED = "Expired", "Expired"
+        # Legacy values kept so old rows don't break
         VERIFIED = "Verified", "Verified"
-        REFUSED = "Refused", "Refused picture wasnt clear and they should upload again"
+        REFUSED = "Refused", "Refused"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     merchant = models.OneToOneField(Merchant, on_delete=models.CASCADE, related_name="identity")
@@ -216,7 +224,8 @@ class MerchantIdentity(models.Model):
     
     # Didit API Fields — ID Verification
     didit_request_id = models.CharField(max_length=255, blank=True, null=True)
-    verification_status = models.CharField(max_length=100, choices=VerificationStatus.choices, default=VerificationStatus.PENDING)
+    didit_session_id = models.UUIDField(blank=True, null=True, help_text="Didit v3 session UUID")
+    verification_status = models.CharField(max_length=100, choices=VerificationStatus.choices, default=VerificationStatus.NOT_STARTED)
     first_name = models.CharField(max_length=255, blank=True, null=True)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     document_type = models.CharField(max_length=100, blank=True, null=True)
@@ -243,13 +252,14 @@ class MerchantIdentity(models.Model):
             except MerchantIdentity.DoesNotExist:
                 pass
 
-        # If admin manually changes status, sync booleans and warnings
-        if self.verification_status == self.VerificationStatus.VERIFIED:
+        # Sync booleans from verification_status
+        if self.verification_status in (self.VerificationStatus.APPROVED, self.VerificationStatus.VERIFIED):
             self.id_document_verified = True
             self.warnings = []
-        elif self.verification_status == self.VerificationStatus.REFUSED:
+        elif self.verification_status in (self.VerificationStatus.DECLINED, self.VerificationStatus.REFUSED):
             self.id_document_verified = False
-            self.warnings = [{"message": self.VerificationStatus.REFUSED.label}]
+            if not self.warnings:
+                self.warnings = [{"message": "Identity verification was declined. Please try again."}]
 
         super().save(*args, **kwargs)
 
@@ -260,7 +270,7 @@ class MerchantIdentity(models.Model):
                 recipient=self.merchant.user,
                 type=Notification.Type.GENERAL,
                 title="Identity Verification Approved",
-                body="Your identity documents have been manually reviewed and verified successfully. Your merchant account is now fully approved.",
+                body="Your identity has been verified successfully. Your merchant account is now fully approved.",
             )
             if not self.merchant.is_verified:
                 self.merchant.is_verified = True
