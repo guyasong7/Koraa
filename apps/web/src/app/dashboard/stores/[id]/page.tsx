@@ -19,10 +19,19 @@ export default function StoreDetailPage() {
   const queryClient = useQueryClient();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [confirmName, setConfirmName] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) router.replace("/login");
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const h = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
 
   const deleteMutation = useMutation({
     mutationFn: (storeId: string) => storeApi.delete(storeId),
@@ -84,61 +93,69 @@ export default function StoreDetailPage() {
 
         {/* Store hero */}
         <div
-          className="card"
+          className="card store-hero"
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: 24,
-            padding: "32px 36px",
+            alignItems: isMobile ? "flex-start" : "center",
+            flexDirection: isMobile ? "column" : "row",
+            gap: isMobile ? 16 : 24,
+            padding: isMobile ? "20px 16px" : "32px 36px",
             marginBottom: 24,
             background: "var(--surface-900)",
             border: "1px solid var(--border)",
             borderLeft: "4px solid var(--brand-600)",
           }}
         >
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 0,
-              background: "var(--surface-700)",
-              border: "1px solid var(--border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <LuGlobe size={32} color="var(--brand-500)" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2 className="font-display" style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>
-              {store.name}
-            </h2>
+          {!isMobile && (
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 0,
+                background: "var(--surface-700)",
+                border: "1px solid var(--border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <LuGlobe size={32} color="var(--brand-500)" />
+            </div>
+          )}
+          <div style={{ flex: 1, width: isMobile ? "100%" : undefined }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <h2 className="font-display" style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, marginBottom: 6 }}>
+                {store.name}
+              </h2>
+              {isMobile && (
+                <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "Outfit, sans-serif", flexShrink: 0 }}>{store.currency}</span>
+              )}
+            </div>
             <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 12 }}>
               {store.tagline || "No tagline set"}
             </p>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: isMobile ? 8 : 12, flexWrap: "wrap" }}>
               <a
                 href={storefrontUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-secondary btn-sm"
-                style={{ gap: 6 }}
+                style={{ gap: 6, fontSize: isMobile ? 12 : undefined, padding: isMobile ? "6px 10px" : undefined }}
               >
-                <LuExternalLink size={13} /> {storefrontUrl.replace(/^https?:\/\//, "")}
+                <LuExternalLink size={13} /> {isMobile ? store.slug + ".koraa.cm" : storefrontUrl.replace(/^https?:\/\//, "")}
               </a>
               <Link
                 href={`/dashboard/stores/${id}/blueprint`}
                 className="btn btn-primary btn-sm"
-                style={{ gap: 6 }}
+                style={{ gap: 6, fontSize: isMobile ? 12 : undefined, padding: isMobile ? "6px 10px" : undefined }}
               >
-                <LuSparkles size={13} /> Design with Blueprint
+                <LuSparkles size={13} /> {isMobile ? "Blueprint" : "Design with Blueprint"}
               </Link>
               <Link
                 href={`/dashboard/stores/${id}/settings?tab=customisation`}
                 className="btn btn-secondary btn-sm"
-                style={{ gap: 6 }}
+                style={{ gap: 6, fontSize: isMobile ? 12 : undefined, padding: isMobile ? "6px 10px" : undefined }}
               >
                 <LuPalette size={13} /> Edit details
               </Link>
@@ -160,14 +177,16 @@ export default function StoreDetailPage() {
               </span>
             </div>
           </div>
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Currency</p>
-            <p style={{ fontSize: 18, fontWeight: 700, fontFamily: "Outfit, sans-serif" }}>{store.currency}</p>
-          </div>
+          {!isMobile && (
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Currency</p>
+              <p style={{ fontSize: 18, fontWeight: 700, fontFamily: "Outfit, sans-serif" }}>{store.currency}</p>
+            </div>
+          )}
         </div>
 
         {/* Quick links grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fit, minmax(220px, 1fr))", gap: isMobile ? 10 : 16 }}>
           {QUICK_LINKS.map(({ label, href, icon: Icon, desc }) => (
             <Link
               key={href}
@@ -176,7 +195,7 @@ export default function StoreDetailPage() {
             >
               <div
                 className="card"
-                style={{ cursor: "pointer", transition: "border-color 0.2s, transform 0.2s" }}
+                style={{ cursor: "pointer", transition: "border-color 0.2s, transform 0.2s", padding: isMobile ? 14 : undefined }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLElement).style.borderColor = "rgba(34,197,94,0.25)";
                   (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)";
@@ -188,21 +207,21 @@ export default function StoreDetailPage() {
               >
                 <div
                   style={{
-                    width: 44,
-                    height: 44,
+                    width: isMobile ? 36 : 44,
+                    height: isMobile ? 36 : 44,
                     borderRadius: 0,
                     background: "rgba(34,197,94,0.1)",
                     border: "1px solid rgba(34,197,94,0.2)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    marginBottom: 16,
+                    marginBottom: isMobile ? 10 : 16,
                   }}
                 >
-                  <Icon size={20} color="var(--brand-500)" />
+                  <Icon size={isMobile ? 17 : 20} color="var(--brand-500)" />
                 </div>
-                <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{label}</h3>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>{desc}</p>
+                <h3 style={{ fontSize: isMobile ? 13 : 15, fontWeight: 600, marginBottom: 4 }}>{label}</h3>
+                {!isMobile && <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>{desc}</p>}
               </div>
             </Link>
           ))}
@@ -210,7 +229,7 @@ export default function StoreDetailPage() {
 
         {/* Danger Zone */}
         {store.is_owner !== false && (
-          <div style={{ marginTop: 48, padding: 24, border: "1px solid rgba(239,68,68,0.3)", borderRadius: "12px", background: "rgba(239,68,68,0.05)" }}>
+          <div style={{ marginTop: isMobile ? 32 : 48, padding: isMobile ? 16 : 24, border: "1px solid rgba(239,68,68,0.3)", borderRadius: "12px", background: "rgba(239,68,68,0.05)" }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: "#ef4444", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
               <LuTrash2 size={20} /> Danger Zone
             </h3>

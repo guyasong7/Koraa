@@ -352,7 +352,7 @@ export default function StorefrontEditor() {
                   return (
                     <div key={s.id}
                       onClick={() => setActiveSectionId(s.id)}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderRadius: 0, border: "1.5px solid var(--border)", background: "var(--surface-900)", cursor: "pointer" }}>
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderRadius: 0, border: "1.5px solid var(--border)", background: "var(--surface-900)", cursor: "pointer", minHeight: 52 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ fontSize: 18, display: "flex", alignItems: "center" }}>
                           {sc?.icon ? <sc.icon size={18} /> : <LuPackage size={18} />}
@@ -611,27 +611,44 @@ export default function StorefrontEditor() {
 
         /* ── Responsive ── */
         @media (max-width: 768px) {
+          .sf-editor-root {
+            height: auto;
+            min-height: 100dvh;
+          }
           .sf-topbar {
             padding: 8px 12px;
+            flex-wrap: nowrap;
+          }
+          .sf-topbar-left {
+            flex: 1;
+            min-width: 0;
           }
           .sf-btn-label {
             display: none;
           }
           .sf-btn-icon {
             padding: 8px;
+            flex-shrink: 0;
           }
           .sf-store-badge {
             max-width: 90px;
           }
           .sf-body {
             flex-direction: column;
+            overflow: visible;
           }
           .sf-sidebar {
             width: 100%;
             border-right: none;
             border-bottom: 1px solid var(--border);
-            /* On mobile, cap the sidebar at 50vh so users can still scroll down to see the preview hint */
-            max-height: 55dvh;
+            max-height: none;
+            overflow: visible;
+          }
+          .sf-tabs {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            background: var(--surface);
           }
           .sf-preview {
             display: none;
