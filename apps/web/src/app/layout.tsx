@@ -64,9 +64,12 @@ const FONT_VARS = [inter, outfit, poppins, lato, raleway, nunito]
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://koraa.cm"),
-  title: "Koraa | Sell Online in Africa",
+  title: {
+    default: "Koraa — Open your online shop in Cameroon",
+    template: "%s | Koraa",
+  },
   description:
-    "The premium e-commerce platform built for Cameroonian businesses to sell anywhere.",
+    "Koraa is the e-commerce platform built for Cameroonian businesses. Create your online store, accept MTN Mobile Money & Orange Money, and manage everything from one dashboard. Free to start.",
   keywords: [
     "ecommerce",
     "cameroon",
@@ -75,14 +78,18 @@ export const metadata: Metadata = {
     "koraa",
     "storefront",
     "koraa Cameroon",
-    "buyam",
+    "mobile money",
+    "MTN MoMo",
+    "Orange Money",
     "digital store",
     "buea",
+    "douala",
+    "yaounde",
   ],
   openGraph: {
-    title: "Koraa | Sell Online in Africa",
+    title: "Koraa — Open your online shop in Cameroon",
     description:
-      "The premium e-commerce platform built for Cameroonian businesses to sell anywhere.",
+      "Create your online store, accept MTN Mobile Money & Orange Money, and manage everything from one dashboard. Free to start.",
     url: "https://koraa.cm",
     siteName: "Koraa",
     locale: "en_US",
@@ -90,9 +97,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Koraa | Sell Online in Africa",
+    title: "Koraa — Open your online shop in Cameroon",
     description:
-      "Koraa is a Cameroonian e-commerce platform that helps businesses create, customize, and manage professional online stores. Sell products online, accept local payments, and reach more customers.",
+      "Create your online store, accept MTN Mobile Money & Orange Money, and manage everything from one dashboard. Free to start.",
     creator: "@reconraven0x",
   },
   robots: {

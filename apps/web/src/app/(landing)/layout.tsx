@@ -9,16 +9,61 @@ import { FaFacebook, FaInstagram, FaWhatsapp, FaXTwitter } from "react-icons/fa6
 import "./landing.css";
 
 export const metadata: Metadata = {
-  title: "Koraa - Open your online shop in Cameroon",
+  title: {
+    absolute: "Koraa — Open your online shop in Cameroon",
+  },
   description:
     "Koraa gives you a storefront, a checkout that takes MTN Mobile Money and Orange Money, and one dashboard to run it all. Free to start.",
   openGraph: {
-    title: "Koraa - Open your online shop in Cameroon",
+    title: "Koraa — Open your online shop in Cameroon",
     description:
       "A storefront, mobile money checkout and one dashboard to run it all. Free to start.",
     type: "website",
     locale: "en_US",
     siteName: "Koraa",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Koraa",
+  url: "https://koraa.cm",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "Koraa is a Cameroonian e-commerce platform that gives small businesses a storefront, mobile money checkout (MTN MoMo & Orange Money), and one dashboard to run it all.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "XAF",
+    description: "Free plan — one store, 50 products, mobile money checkout",
+  },
+  creator: {
+    "@type": "Organization",
+    name: "Koraa",
+    url: "https://koraa.cm",
+    logo: "https://koraa.cm/koraa-logo.png",
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: "support@koraa.cm",
+      contactType: "customer support",
+    },
+  },
+  sameAs: [],
+};
+
+const siteLinksSearchBox = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Koraa",
+  url: "https://koraa.cm",
+  description:
+    "The e-commerce platform built for Cameroonian businesses. Create your online store, accept mobile money, and sell anywhere.",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://koraa.cm/showcase?q={search_term_string}",
+    "query-input": "required name=search_term_string",
   },
 };
 
@@ -72,6 +117,14 @@ export default function LandingLayout({
 }) {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteLinksSearchBox) }}
+      />
       {/* The hero's opening states live in CSS, not in JS, so the copy cannot
           be painted at full size and then yanked back to animate. That means
           it has to be un-hidden for anyone whose GSAP will never run — this is
