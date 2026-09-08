@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 API_URL = config("AI_API_URL", default="https://emtf.aipm9527.xyz/v1/chat/completions")
 API_KEY = config("AI_API_KEY", default="")
-API_MODEL = config("AI_API_MODEL", default="claude-sonnet-4-6")
+API_MODEL = config("AI_API_MODEL", default="claude-opus-4-6")
 
 #: A reply that starts by discussing the request instead of answering it.
 _LEAKED_REASONING = re.compile(
