@@ -590,6 +590,22 @@ def _resolve_store_by_domain(domain: str) -> Store:
         raise NotFound("No store found for this domain.")
 
 
+def _default_momo(store) -> str | None:
+    """The merchant's default payout phone, or None."""
+    acct = store.merchant.payout_accounts.filter(is_default=True).first()
+    if acct is None:
+        acct = store.merchant.payout_accounts.first()
+    return acct.phone if acct else None
+
+
+def _merchant_email(store) -> str | None:
+    """The merchant owner's email, falling back to the store contact email."""
+    if store.email:
+        return store.email
+    owner = store.merchant.user
+    return owner.email if owner else None
+
+
 def _storefront_payload(store, request) -> dict:
     """Everything the storefront app needs to render one shop."""
     try:
@@ -625,6 +641,8 @@ def _storefront_payload(store, request) -> dict:
             "email": store.email,
             "phone": store.phone,
             "whatsapp": store.whatsapp,
+            "momo_phone": _default_momo(store),
+            "merchant_email": _merchant_email(store),
             "instagram": store.instagram,
             "facebook": store.facebook,
             "seo_title": store.seo_title,

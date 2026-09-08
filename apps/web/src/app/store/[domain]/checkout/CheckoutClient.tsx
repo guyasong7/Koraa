@@ -28,6 +28,8 @@ type StoreTheme = {
   secondary_color: string;
   font: string;
   button_style: string;
+  momo_phone: string | null;
+  merchant_email: string | null;
 };
 
 /**
@@ -148,6 +150,8 @@ export default function CheckoutClient({ domain }: { domain: string }) {
           secondary_color: data.config.secondary_color || STOREFRONT_DEFAULTS.secondary,
           font: data.config.font || STOREFRONT_DEFAULTS.font,
           button_style: data.config.button_style || "rounded",
+          momo_phone: data.store.momo_phone || null,
+          merchant_email: data.store.merchant_email || null,
         });
       }
     }).catch(() => {
@@ -613,6 +617,14 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                   You are about to pay <strong>{money(order.total_amount)}</strong>. You will be
                   redirected to a secure payment page to complete the transaction with Mobile Money.
                 </p>
+
+                {(theme?.momo_phone || theme?.merchant_email) && (
+                  <div style={{ padding: 16, background: bg, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", marginBottom: 20, fontSize: 13, lineHeight: 1.8 }}>
+                    <strong>Payment details</strong><br />
+                    {theme.momo_phone && (<>Mobile Money: <strong>{theme.momo_phone}</strong><br /></>)}
+                    {theme.merchant_email && (<>Merchant email: <strong>{theme.merchant_email}</strong><br /></>)}
+                  </div>
+                )}
 
                 <div style={{ padding: 16, background: bg, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", marginBottom: 20, fontSize: 13, lineHeight: 1.6 }}>
                   <strong>Deliver to:</strong><br />
