@@ -60,7 +60,7 @@ at the top, Koraa in the footer as the platform that carried it.
 
 <p class="muted">
     Trouble downloading? Reply to this email{% if store.email %} or write to
-    <a href="mailto:{{ store.email }}" style="color: #7c3aed;">{{ store.email }}</a>{% endif %}.
+    <a href="mailto:{{ store.email }}" style="color: #a8530f;">{{ store.email }}</a>{% endif %}.
 </p>
 {% endblock %}
 
@@ -70,7 +70,7 @@ at the top, Koraa in the footer as the platform that carried it.
     · &copy; {% now "Y" %}
 </p>
 <a href="{{ koraa_url }}" style="text-decoration: none; color: #94a3b8; font-size: 12px;">
-    <img src="{{ koraa_url }}/koraa-logo.png" alt="Koraa" style="height: 18px; width: auto; vertical-align: middle; opacity: 0.75;">
-    <span style="vertical-align: middle; margin-left: 6px;">Built with Koraa</span>
+    <span style="font-weight: 800; color: #a8530f; letter-spacing: -0.03em;">Koraa</span>
+    <span style="vertical-align: middle; margin-left: 4px;">Built with Koraa</span>
 </a>
 {% endblock %}

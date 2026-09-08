@@ -1,0 +1,23 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}New Order — {{ store_name }}{% endblock %}
+
+{% block content %}
+<h1>You have a new order</h1>
+
+<p>Hi {{ merchant_name }},</p>
+
+<p>
+    <strong>{{ customer_name }}</strong> just placed an order on
+    <strong>{{ store_name }}</strong> for
+    <strong>{{ amount }} XAF</strong>.
+</p>
+
+<p style="text-align: center; margin: 28px 0;">
+    <a class="cta" href="{{ dashboard_url }}/dashboard/orders">View orders</a>
+</p>
+
+<p class="muted">
+    You can see the full order details and manage fulfilment from your dashboard.
+</p>
+{% endblock %}

@@ -725,6 +725,7 @@ class PublicStorefrontByDomainView(APIView):
         domain = request.query_params.get("domain", "").strip().lower()
         if not domain:
             return Response({"error": "domain is required"}, status=400)
+        domain = domain.split(":")[0]
 
         store = _resolve_store_by_domain(domain)
 

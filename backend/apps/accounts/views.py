@@ -315,26 +315,37 @@ class PasswordResetRequestView(APIView):
         # ── Fallback: Django token reset ──────────────────────────────────────
         # Used for pure OTP-only accounts that never created a Firebase session.
         if not user.has_usable_password():
+            reset_url = f"{dashboard_url}/auth/forgot-password"
+            fallback_html = render_to_string("emails/password_reset_fallback.html", {
+                "reset_url": reset_url,
+                "dashboard_url": dashboard_url,
+            })
             send_mail(
                 subject="Reset your Koraa password",
                 message=(
                     "Your Koraa account signs in with Google or with an email "
                     "password managed by Firebase.\n\n"
-                    f"Reset it here: {dashboard_url}/auth/forgot-password\n"
+                    f"Reset it here: {reset_url}\n"
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
                 fail_silently=True,
+                html_message=fallback_html,
             )
         else:
             raw_token, _ = PasswordResetToken.generate(user)
             reset_url = f"{dashboard_url}/auth/reset-password?token={raw_token}"
+            token_html = render_to_string("emails/password_reset_token.html", {
+                "reset_url": reset_url,
+                "dashboard_url": dashboard_url,
+            })
             send_mail(
                 subject="Reset your Koraa password",
                 message=f"Click to reset your password:\n\n{reset_url}\n\nExpires in 1 hour.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
                 fail_silently=True,
+                html_message=token_html,
             )
         return Response({"message": "If an account exists, a reset link has been sent."})
 

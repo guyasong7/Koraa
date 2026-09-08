@@ -55,6 +55,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
 from django.db import transaction as db_transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -381,6 +382,14 @@ def _notify_merchant(order: Order) -> None:
     except Exception:
         logger.exception("Order %s: could not create the merchant notification", order.id)
 
+    dashboard_url = settings.KORAA_DASHBOARD_URL.rstrip("/")
+    order_html = render_to_string("emails/new_order_merchant.html", {
+        "merchant_name": merchant.user.first_name or merchant.user.email,
+        "customer_name": order.customer_name,
+        "store_name": order.store.name,
+        "amount": order.total_amount,
+        "dashboard_url": dashboard_url,
+    })
     send_mail(
         subject=f"New Order Received: {order.store.name}",
         message=(
@@ -390,6 +399,7 @@ def _notify_merchant(order: Order) -> None:
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[merchant.user.email],
         fail_silently=True,
+        html_message=order_html,
     )
 
 

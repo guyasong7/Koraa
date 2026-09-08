@@ -329,7 +329,7 @@ class ProductVariant(models.Model):
     # Inventory
     sku = models.CharField(_("SKU"), max_length=100, blank=True, db_index=True)
     barcode = models.CharField(_("barcode"), max_length=100, blank=True)
-    stock_quantity = models.IntegerField(_("stock quantity"), default=0)
+    stock_quantity = models.IntegerField(_("stock quantity"), default=1)
     track_inventory = models.BooleanField(_("track inventory"), default=True)
     allow_backorder = models.BooleanField(_("allow backorder"), default=False)
 
