@@ -404,7 +404,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       .co-logo { font-size: 20px; font-weight: 800; color: ${textColor}; text-decoration: none; }
       .co-secure { display: flex; align-items: center; gap: 6px; font-size: 13px; color: ${textColor}; opacity: 0.5; }
       .co-body { max-width: 1200px; margin: 0 auto; padding: 40px 32px; display: grid; grid-template-columns: 1fr 400px; gap: 40px; align-items: start; }
-      @media (max-width: 860px) { .co-body { grid-template-columns: 1fr; } .co-summary { order: -1; } }
+      @media (max-width: 860px) { .co-body { grid-template-columns: 1fr; gap: 24px; } .co-summary { order: -1; position: static; } }
       .co-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 32px; opacity: 0.6; }
       .co-breadcrumb span.active { opacity: 1; font-weight: 600; color: ${primary}; }
       .co-section { background: ${secondaryBg}; border: 1px solid rgba(0,0,0,0.07); border-radius: 12px; padding: 28px; margin-bottom: 20px; }
@@ -464,6 +464,12 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         .co-nav-i { padding: 0 16px; }
         .co-section { padding: 20px; }
         .co-outcome { padding: 40px 16px; }
+        .co-summary { padding: 20px; }
+        .co-summary-title { font-size: 15px; margin-bottom: 16px; padding-bottom: 12px; }
+        .co-item-img { width: 48px; height: 48px; }
+        .co-total { font-size: 16px; }
+        .co-btn { padding: 14px; font-size: 15px; }
+        .co-radio-card { padding: 12px; gap: 10px; }
       }
     `}</style>
   );

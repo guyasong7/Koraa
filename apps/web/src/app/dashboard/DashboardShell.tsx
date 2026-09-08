@@ -363,15 +363,16 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               {!user?.merchant_is_verified && (
-                <Link href="/dashboard/settings?tab=identity" style={{
+                <Link href="/dashboard/settings?tab=identity" className="verify-banner" style={{
                   display: "flex", alignItems: "center", gap: 5,
                   background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
                   borderRadius: "var(--radius-md)", padding: "7px 13px", fontSize: 13, fontWeight: 600,
-                  color: "#d97706", textDecoration: "none",
+                  color: "#d97706", textDecoration: "none", whiteSpace: "nowrap",
                 }}>
-                  <LuTriangleAlert size={15} /> Verify identity
+                  <LuTriangleAlert size={15} />
+                  <span className="verify-banner__text">Verify identity</span>
                 </Link>
               )}
               <NotificationBell />

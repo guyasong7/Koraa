@@ -1573,6 +1573,16 @@ button.stat-card:hover {
 
   .dashboard-header {
     padding: 0 16px;
+    gap: 8px;
+  }
+
+  .verify-banner__text {
+    display: none;
+  }
+
+  .verify-banner {
+    padding: 6px !important;
+    border-radius: 50% !important;
   }
 
   .dashboard-content {
