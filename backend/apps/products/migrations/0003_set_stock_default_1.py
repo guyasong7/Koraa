@@ -8,8 +8,8 @@ from django.db import migrations, models
 
 
 def backfill_stock(apps, schema_editor):
-    Variant = apps.get_model("products", "Variant")
-    Variant.objects.filter(stock_quantity=0).update(stock_quantity=1)
+    ProductVariant = apps.get_model("products", "ProductVariant")
+    ProductVariant.objects.filter(stock_quantity=0).update(stock_quantity=1)
 
 
 class Migration(migrations.Migration):
@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(backfill_stock, migrations.RunPython.noop),
         migrations.AlterField(
-            model_name="variant",
+            model_name="productvariant",
             name="stock_quantity",
             field=models.IntegerField(default=1, verbose_name="stock quantity"),
         ),
