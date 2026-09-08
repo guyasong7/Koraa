@@ -781,11 +781,37 @@ function IdentityTab() {
                   </p>
                 )}
                 {identityData?.warnings?.length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#ef4444" }}>Feedback</p>
-                    {identityData.warnings.map((w: any, i: number) => (
-                      <p key={i} style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>- {w.message || JSON.stringify(w)}</p>
-                    ))}
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Feedback</p>
+                    {identityData.warnings.map((w: any, i: number) => {
+                      const title = w.short_description || w.risk || "Notice";
+                      const detail = w.long_description || w.message || w.short_description || "";
+                      const isInfo = w.log_type === "information";
+                      const borderColor = isInfo ? "rgba(59,130,246,0.25)" : "rgba(234,179,8,0.3)";
+                      const bgColor = isInfo ? "rgba(59,130,246,0.04)" : "rgba(234,179,8,0.04)";
+                      const tagBg = isInfo ? "rgba(59,130,246,0.1)" : "rgba(234,179,8,0.1)";
+                      const tagColor = isInfo ? "#3b82f6" : "#ca8a04";
+                      const tagLabel = isInfo ? "Info" : "Warning";
+                      return (
+                        <div key={i} style={{
+                          padding: "12px 14px", borderRadius: 8,
+                          border: `1px solid ${borderColor}`, background: bgColor,
+                          display: "flex", flexDirection: "column", gap: 4,
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{
+                              fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                              padding: "2px 8px", borderRadius: 4,
+                              background: tagBg, color: tagColor, letterSpacing: "0.03em",
+                            }}>{tagLabel}</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{title}</span>
+                          </div>
+                          {detail && detail !== title && (
+                            <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.45 }}>{detail}</p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
