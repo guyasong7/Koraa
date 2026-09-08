@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import AppProviders from "@/components/AppProviders";
 import AuthPreconnect from "./_preconnect";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 /**
  * Exists to hang the resource hints, and the data and notification providers,

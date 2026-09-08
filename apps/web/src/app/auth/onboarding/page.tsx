@@ -29,6 +29,39 @@ const COUNTRIES = [
   { value: "CM", label: "🇨🇲 Cameroon" },
 ];
 
+const CAMEROON_CITIES = [
+  "Douala",
+  "Yaoundé",
+  "Bamenda",
+  "Bafoussam",
+  "Buea",
+  "Limbe",
+  "Kumba",
+  "Maroua",
+  "Garoua",
+  "Ngaoundéré",
+  "Bertoua",
+  "Ebolowa",
+  "Kribi",
+  "Nkongsamba",
+  "Tiko",
+  "Edéa",
+  "Loum",
+  "Kumbo",
+  "Dschang",
+  "Mbouda",
+  "Foumban",
+  "Sangmélima",
+  "Mbalmayo",
+  "Wum",
+  "Mamfe",
+  "Guider",
+  "Meiganga",
+  "Mora",
+  "Kousséri",
+  "Mokolo",
+];
+
 const STEPS = ["Your business", "Where to find you"];
 
 interface Form {
@@ -205,15 +238,18 @@ export default function OnboardingPage() {
 
                 <div className="input-group">
                   <label className="input-label" htmlFor="city">City</label>
-                  <input
+                  <select
                     id="city"
-                    type="text"
                     className="input"
-                    placeholder="e.g. Douala"
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
                     autoFocus
-                  />
+                  >
+                    <option value="">Select a city</option>
+                    {CAMEROON_CITIES.map((city) => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     description:
       "A storefront, mobile money checkout and one dashboard to run it all. Free to start.",
     type: "website",
-    locale: "en_GB",
+    locale: "en_US",
     siteName: "Koraa",
   },
 };

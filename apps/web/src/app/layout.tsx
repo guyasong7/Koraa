@@ -87,14 +87,6 @@ export const metadata: Metadata = {
     siteName: "Koraa",
     locale: "en_US",
     type: "website",
-    images: [
-      {
-        url: "https://i.postimg.cc/wTqpNNVq/koraa-logo-white.png",
-        width: 1200,
-        height: 630,
-        alt: "Koraa — Sell Online in Africa",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -102,7 +94,6 @@ export const metadata: Metadata = {
     description:
       "Koraa is a Cameroonian e-commerce platform that helps businesses create, customize, and manage professional online stores. Sell products online, accept local payments, and reach more customers.",
     creator: "@reconraven0x",
-    images: ["https://i.postimg.cc/TYd6bb93/koraa-logo-round.png"],
   },
   robots: {
     index: true,
