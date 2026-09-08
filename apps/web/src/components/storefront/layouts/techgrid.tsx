@@ -46,7 +46,8 @@ const styles = `
 
 /* Dark-safe corrections to shared chrome, scoped to this layout only. */
 .sf-l-techgrid .sf-nav { border-bottom-color: var(--tg-line); }
-.sf-l-techgrid .sf-search input { background: var(--tg-surface); border-color: var(--tg-line); color: var(--sf-text); }
+.sf-l-techgrid .sf-search-desktop input { background: var(--tg-surface); border-color: var(--tg-line); color: var(--sf-text); }
+.sf-l-techgrid .sf-search-mobile input { background: var(--tg-surface); border-color: var(--tg-line); color: var(--sf-text); }
 .sf-l-techgrid .sf-btn:hover { background: var(--tg-surface); }
 .sf-l-techgrid .sf-nl input { background: var(--tg-surface); border-color: var(--tg-line); color: var(--sf-text); }
 .sf-l-techgrid .sf-footer { border-top-color: var(--tg-line); }

@@ -50,9 +50,13 @@ export const STYLES = `
 .sf-btn:hover { background: rgba(0,0,0,0.05); }
 .sf-lang { background: none; border: none; font-weight: 600; font-size: 13px; color: var(--sf-text); cursor: pointer; outline: none; }
 .sf-badge { position: absolute; top: 2px; right: 2px; background: var(--sf-primary); color: #fff; font-size: 10px; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-.sf-search { flex: 1; max-width: 320px; position: relative; }
-.sf-search input { width: 100%; padding: 9px 16px 9px 36px; border-radius: var(--sf-r,10px); border: 1.5px solid rgba(0,0,0,0.1); font-size: 14px; background: rgba(0,0,0,0.03); outline: none; font-family: inherit; }
-.sf-search input:focus { border-color: var(--sf-primary); }
+.sf-search-desktop { flex: 1; max-width: 320px; position: relative; }
+.sf-search-desktop input { width: 100%; padding: 9px 16px 9px 36px; border-radius: var(--sf-r,10px); border: 1.5px solid rgba(0,0,0,0.1); font-size: 14px; background: rgba(0,0,0,0.03); outline: none; font-family: inherit; }
+.sf-search-desktop input:focus { border-color: var(--sf-primary); }
+.sf-search-toggle { display: none; }
+.sf-search-mobile { display: none; position: relative; padding: 8px 16px 12px; border-top: 1px solid rgba(0,0,0,0.06); background: var(--sf-bg); }
+.sf-search-mobile input { width: 100%; padding: 10px 16px 10px 36px; border-radius: var(--sf-r,10px); border: 1.5px solid rgba(0,0,0,0.1); font-size: 15px; background: rgba(0,0,0,0.03); outline: none; font-family: inherit; }
+.sf-search-mobile input:focus { border-color: var(--sf-primary); }
 .sf-si { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #999; }
 
 /* ANNOUNCEMENT */
@@ -303,7 +307,9 @@ export const STYLES = `
   .sf-hero-h { font-size: 36px; }
   .sf-about { grid-template-columns: 1fr; padding: 40px 20px; gap: 32px; }
   .sf-nav-i { padding: 0 16px; gap: 12px; }
-  .sf-search { display: none; }
+  .sf-search-desktop { display: none; }
+  .sf-search-toggle { display: flex; align-items: center; justify-content: center; }
+  .sf-search-mobile { display: block; }
   .sf-promo { margin: 0 16px; min-height: 200px; }
   .sf-promo-c { padding: 32px 24px; }
   .sf-promo-c h3 { font-size: 24px; }
@@ -356,6 +362,7 @@ function AnnouncementBar({ s, cfg }: any) {
 
 export function Navbar({ store, cfg }: NavbarProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const baseLinks = linkList(cfg.navigation?.links, [
     { label: "Home", url: "/" }, { label: "Shop", url: "/shop" }, { label: "About", url: "#" },
   ]);
@@ -371,16 +378,23 @@ export function Navbar({ store, cfg }: NavbarProps) {
           {links.map((l, i) => <a key={i} href={l.url} className="sf-link">{l.label}</a>)}
         </nav>
 
-        <form action="/shop" method="GET" className="sf-search">
+        <form action="/shop" method="GET" className="sf-search sf-search-desktop">
           <LuSearch size={15} className="sf-si" />
           <input name="q" placeholder="Search products…" />
         </form>
 
         <div className="sf-actions">
+          <button
+            className="sf-btn sf-search-toggle"
+            onClick={() => setSearchOpen(open => !open)}
+            aria-label={searchOpen ? "Close search" : "Search products"}
+          >
+            {searchOpen ? <LuX size={20} /> : <LuSearch size={20} />}
+          </button>
           <div className="sf-btn" style={{ gap: 4 }}>
             <LuGlobe size={18} />
-            <select 
-              className="sf-lang" 
+            <select
+              className="sf-lang"
               onChange={(e) => {
                 if (typeof window !== "undefined") {
                   const url = new URL(window.location.href);
@@ -406,6 +420,12 @@ export function Navbar({ store, cfg }: NavbarProps) {
           </button>
         </div>
       </div>
+      {searchOpen && (
+        <form action="/shop" method="GET" className="sf-search-mobile">
+          <LuSearch size={15} className="sf-si" />
+          <input name="q" placeholder="Search products…" autoFocus />
+        </form>
+      )}
       {menuOpen && (
         <nav className="sf-nav-drop">
           {links.map((l, i) => (
