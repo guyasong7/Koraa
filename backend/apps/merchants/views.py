@@ -400,7 +400,7 @@ class MerchantStartVerificationView(APIView):
         try:
             result = didit.create_session(
                 vendor_data=str(merchant.id),
-                callback_url=request.build_absolute_uri("/api/merchants/identity/webhook/"),
+                callback_url=request.build_absolute_uri("/api/v1/merchants/identity/webhook/"),
             )
         except Exception as exc:
             logger.exception("Didit create_session failed")
