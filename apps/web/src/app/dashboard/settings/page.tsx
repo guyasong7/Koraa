@@ -836,9 +836,17 @@ function IdentityTab() {
                   onClick={async () => {
                     try {
                       setLoading(true);
+                      // Open the blank tab synchronously so iOS Safari treats it
+                      // as a user-initiated popup. The async API call below would
+                      // otherwise cause the browser to block window.open.
+                      const popup = window.open("about:blank", "_blank");
                       const res = await merchantApi.startVerification();
                       const url = res.data.verification_url;
-                      window.open(url, "_blank", "noopener");
+                      if (popup && !popup.closed) {
+                        popup.location.href = url;
+                      } else {
+                        window.location.href = url;
+                      }
                       toast.success("Verification started! Complete it in the new tab.");
                       const updated = await merchantApi.getIdentity();
                       setIdentityData(updated.data);
