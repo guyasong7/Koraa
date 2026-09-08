@@ -1,54 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import {
-  LuCircleCheck, LuClock, LuLoader, LuSmartphone, LuTriangleAlert,
+  LuCircleCheck, LuClock, LuLoader, LuLock, LuTriangleAlert,
 } from "react-icons/lu";
 
-import { paymentApi, type BillingCycle, type PaymentMedium, type PlanChargeStatus } from "@/lib/api";
-import {
-  MEDIUM_MTN, MEDIUM_ORANGE, inferMedium, isPlausibleMsisdn, mediumLabel,
-  normaliseMsisdn,
-} from "@/lib/momo";
+import { paymentApi, type BillingCycle } from "@/lib/api";
 import { formatXaf } from "@/lib/planCopy";
-import { POLL_TIMEOUT_MS, usePaymentPolling } from "@/hooks/usePaymentPolling";
-
-/**
- * Buying a plan, in place.
- *
- * Plans used to be paid on a Fapshi hosted page: the merchant left the dashboard,
- * paid, and came back to `/dashboard/billing/success`, whose only job was to make
- * the one status call that finished the purchase. That page is gone, and with it
- * the redirect — the merchant approves a prompt on their handset and never leaves
- * this dialog, exactly as a shopper now pays on a storefront.
- *
- * Which moves a burden onto this component. **The browser is no longer the
- * backstop.** Nothing brings the merchant back to trigger a status check, so the
- * polling here is not a nicety on top of a redirect; it is the only thing watching,
- * and the backend's reconcile sweep is what covers the merchant who closes the tab.
- * That is also why `onActivated` refetches rather than trusting the local outcome.
- *
- * The three states this has to keep straight, in the order they matter:
- *
- * 1. **Unconfirmed is not failed.** A 202, or a poll that runs out of time, means
- *    Fapshi never told us either way — the money may well have moved. Saying
- *    "failed" there invites a second payment for a term already bought, and
- *    because activation extends from the current expiry, the second one would
- *    quietly buy a *second* term rather than bouncing.
- * 2. **Refused is failed, and retryable.** A 400 charged nothing. Usually a
- *    mistyped number, so the form stays put with the message under the input.
- * 3. **Already in flight is neither.** A 409 means a prompt is already on their
- *    handset; the answer is to watch that one, never to start another.
- */
 
 type Stage =
   | { kind: "form" }
   | { kind: "charging" }
-  | { kind: "awaiting" }
+  | { kind: "redirecting" }
   | { kind: "paid" }
   | { kind: "failed"; reason: string }
-  /** A 202, or a poll that timed out. Unresolved — see the docstring. */
   | { kind: "unknown"; note: string };
 
 export interface PurchaseDialogPlan {
@@ -59,94 +25,28 @@ export interface PurchaseDialogPlan {
 }
 
 export default function PurchaseDialog({
-  plan, defaultPhone, renewal, onClose, onActivated,
+  plan, renewal, onClose, onActivated,
 }: {
   plan: PurchaseDialogPlan;
-  /** The number on their profile, if it looks like one. Only a starting point. */
-  defaultPhone?: string;
-  /** True when this extends a term they already hold, which changes the copy. */
   renewal: boolean;
   onClose: () => void;
-  /** Refetch the subscription. The dialog's own outcome is not the source. */
   onActivated: () => void;
 }) {
   const [stage, setStage] = useState<Stage>({ kind: "form" });
-  /**
-   * The term being bought. Starts with the cycle chosen on the billing page
-   * (`defaultCycle`), falling back to yearly if absent.
-   */
   const [cycle, setCycle] = useState<BillingCycle>(
     ((plan as any).defaultCycle as BillingCycle) || "yearly"
   );
-  /**
-   * What will be charged. Read off the plan for the chosen cycle rather than
-   * derived — `price_monthly` is a tenth of `price_yearly` today, but that
-   * ladder lives in `merchants/plans.py` and dividing by ten here would be a
-   * second copy of it waiting to disagree.
-   */
   const amount = cycle === "monthly" ? plan.price_monthly : plan.price_yearly;
-  const [phone, setPhone] = useState(
-    defaultPhone && isPlausibleMsisdn(defaultPhone) ? normaliseMsisdn(defaultPhone) : "",
-  );
-  const [phoneError, setPhoneError] = useState("");
-  const [medium, setMedium] = useState<PaymentMedium | null>(
-    defaultPhone && isPlausibleMsisdn(defaultPhone) ? inferMedium(defaultPhone) : null,
-  );
-  /**
-   * Whether the merchant picked the network themselves. Only then is `medium`
-   * sent: left off, Fapshi detects it from the number, which its own docs prefer
-   * over a caller's guess and which our prefix table cannot beat.
-   */
-  const mediumChosen = useRef(false);
 
-  /** The Fapshi reference. Worth quoting at support, so it outlives the polling. */
-  const [reference, setReference] = useState<string | null>(null);
-  const transId = useRef<string | null>(null);
-
-  const polling = usePaymentPolling<PlanChargeStatus>({
-    queryKey: ["plan-charge", transId.current],
-    enabled: stage.kind === "awaiting",
-    fetcher: () =>
-      paymentApi.getChargeStatus(transId.current as string).then((r) => r.data),
-    onPaid: () => {
-      setStage({ kind: "paid" });
-      onActivated();
-    },
-    onFailed: () =>
-      setStage({
-        kind: "failed",
-        reason: "Your provider did not complete the payment. Nothing has been charged.",
-      }),
-    // Not a failure. A charge still pending after three minutes may yet land, and
-    // the reconcile sweep will finish it whether or not this tab is open.
-    onTimeout: () =>
-      setStage({
-        kind: "unknown",
-        note: "Your provider has not confirmed the payment yet.",
-      }),
-  });
-
-  /** True while money may be moving, which is when closing must be refused. */
-  const busy = stage.kind === "charging" || stage.kind === "awaiting";
+  const busy = stage.kind === "charging" || stage.kind === "redirecting";
 
   const charge = async () => {
-    if (!isPlausibleMsisdn(phone)) {
-      setPhoneError("Enter a mobile money number — nine digits starting with 6.");
-      return;
-    }
-    setPhoneError("");
     setStage({ kind: "charging" });
 
     try {
-      const res = await paymentApi.initiate(plan.key, cycle, {
-        phone: normaliseMsisdn(phone),
-        ...(mediumChosen.current && medium ? { medium } : {}),
-      });
+      const res = await paymentApi.initiate(plan.key, cycle);
 
-      if (res.status === 202 || res.data.charge_accepted === false) {
-        // Fapshi never answered. There is no `trans_id`, so there is nothing to
-        // poll and nothing this dialog can resolve — only a human at the Fapshi
-        // dashboard can. Must not be retried automatically.
+      if (res.status === 202 || !res.data.payment_url) {
         setStage({
           kind: "unknown",
           note: "We could not reach your provider to confirm the request.",
@@ -154,39 +54,22 @@ export default function PurchaseDialog({
         return;
       }
 
-      transId.current = res.data.trans_id ?? null;
-      setReference(transId.current);
-      setStage({ kind: "awaiting" });
+      setStage({ kind: "redirecting" });
+      window.location.href = res.data.payment_url;
     } catch (err: any) {
       const status = err?.response?.status;
       const body = err?.response?.data;
 
-      // 409 — a plan payment of theirs is already unsettled, and the backend
-      // settled it before answering. Two shapes, and neither means "charge again".
       if (status === 409) {
         if (body?.settled && body?.payment_status === "paid") {
-          // It had already gone through; asking to buy activated it. Their plan
-          // is live, so this is a success, not a conflict.
           setStage({ kind: "paid" });
           onActivated();
-          return;
-        }
-        if (body?.trans_id) {
-          // A prompt is already on their handset. Watch that charge rather than
-          // starting a second one — the whole point of the backend's guard.
-          transId.current = body.trans_id;
-          setReference(body.trans_id);
-          setStage({ kind: "awaiting" });
-          toast(body?.error || "A plan payment is already waiting for your approval.");
           return;
         }
         setStage({ kind: "failed", reason: body?.error || "A plan payment is already in progress." });
         return;
       }
 
-      // 503 — Fapshi is unreachable, so whether an earlier attempt of theirs is
-      // live is unknown and the backend refused rather than risk a double charge.
-      // Nothing was charged *now*, so the form is the right place to land.
       if (status === 503) {
         toast.error(
           body?.error || "We cannot reach the payment provider. Please try again in a moment.",
@@ -195,13 +78,11 @@ export default function PurchaseDialog({
         return;
       }
 
-      // 400 — refused, nothing charged, and usually a number they can fix.
-      const fieldError = Array.isArray(body?.phone) ? body.phone[0] : null;
-      setPhoneError(
-        fieldError || body?.error || body?.detail ||
-        "That payment was refused. Check the number and try again.",
-      );
-      setStage({ kind: "form" });
+      const message =
+        body?.error || body?.detail ||
+        "That payment was refused. Please try again.";
+      toast.error(message);
+      setStage({ kind: "failed", reason: message });
     }
   };
 
@@ -209,18 +90,16 @@ export default function PurchaseDialog({
     <div
       className="modal-overlay"
       onClick={(e) => {
-        // Not dismissable while a charge is live: closing would hide whether the
-        // merchant's money moved, and there is no second place to find out.
         if (e.target === e.currentTarget && !busy) onClose();
       }}
     >
       <div className="modal-panel" style={{ maxWidth: 460, borderRadius: 16 }}>
-        {stage.kind === "form" || stage.kind === "charging" ? (
+        {(stage.kind === "form" || stage.kind === "charging") && (
           <>
             <div className="modal-body" style={{ padding: 22 }}>
               <div style={{ textAlign: "center", marginBottom: 20 }}>
                 <Ring tint="var(--brand-600)">
-                  <LuSmartphone size={24} />
+                  <LuLock size={24} />
                 </Ring>
                 <h2 style={headingStyle}>
                   {renewal ? `Renew ${plan.name}` : `Pay for ${plan.name}`}
@@ -234,12 +113,6 @@ export default function PurchaseDialog({
                 </p>
               </div>
 
-              {/* The term, above the number, because it sets the amount quoted
-                  in the line above and the amount on the Pay button. Two radios
-                  rather than a switch: the choice is between two named terms,
-                  and a screen reader should hear which one is current instead of
-                  "toggle, off". Frozen once charging — by then the amount has
-                  been sent and changing it here would misdescribe the charge. */}
               <label style={labelStyle} htmlFor="plan-cycle-yearly">
                 How long for
               </label>
@@ -288,60 +161,9 @@ export default function PurchaseDialog({
                 })}
               </div>
 
-              <label style={labelStyle} htmlFor="plan-momo">
-                Mobile money number
-              </label>
-              <input
-                id="plan-momo"
-                className="input"
-                inputMode="numeric"
-                autoComplete="tel"
-                placeholder="6XXXXXXXX"
-                value={phone}
-                disabled={stage.kind === "charging"}
-                onChange={(e) => {
-                  const next = e.target.value.replace(/[^\d+ ]/g, "");
-                  setPhone(next);
-                  setPhoneError("");
-                  // Follows the number until they override it themselves.
-                  if (!mediumChosen.current) setMedium(inferMedium(next));
-                }}
-                onKeyDown={(e) => { if (e.key === "Enter" && stage.kind === "form") charge(); }}
-              />
-              {phoneError && (
-                <p style={{ color: "var(--danger-text)", fontSize: 13, margin: "6px 0 0" }}>
-                  {phoneError}
-                </p>
-              )}
-
-              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                {([MEDIUM_MTN, MEDIUM_ORANGE] as PaymentMedium[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    disabled={stage.kind === "charging"}
-                    onClick={() => { mediumChosen.current = true; setMedium(m); }}
-                    style={{
-                      flex: 1, padding: "11px 12px", fontSize: 13, fontWeight: 600,
-                      textAlign: "left", cursor: "pointer", borderRadius: 8,
-                      background: medium === m ? "color-mix(in srgb, var(--brand-600) 8%, transparent)" : "transparent",
-                      border: `1.5px solid ${medium === m ? "var(--brand-600)" : "var(--border)"}`,
-                      color: "var(--text-primary)",
-                      display: "flex", alignItems: "center", gap: 8,
-                    }}
-                  >
-                    <LuSmartphone
-                      size={17}
-                      color={medium === m ? "var(--brand-600)" : undefined}
-                      style={medium === m ? undefined : { opacity: 0.45 }}
-                    />
-                    {mediumLabel(m)}
-                  </button>
-                ))}
-              </div>
-              <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "12px 0 0", lineHeight: 1.5 }}>
-                A prompt appears on your phone. Approve it there and this window
-                finishes by itself — please keep it open.
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 0", lineHeight: 1.5 }}>
+                You will be redirected to a secure payment page to complete the
+                transaction with Mobile Money.
               </p>
             </div>
 
@@ -366,32 +188,16 @@ export default function PurchaseDialog({
               </button>
             </div>
           </>
-        ) : null}
+        )}
 
-        {stage.kind === "awaiting" && (
+        {stage.kind === "redirecting" && (
           <Outcome
             tint="var(--brand-600)"
-            icon={<LuSmartphone size={24} />}
-            title="Check your phone"
-            reference={reference}
+            icon={<LuLoader size={24} className="spin" />}
+            title="Redirecting to payment"
           >
             <p style={bodyTextStyle}>
-              We&apos;ve asked {medium ? mediumLabel(medium) : "your provider"} to charge{" "}
-              <strong style={{ color: "var(--text-primary)" }}>
-                {formatXaf(amount)} XAF
-              </strong>{" "}
-              to {normaliseMsisdn(phone)}. Approve the prompt on your handset — this
-              window finishes by itself.
-            </p>
-            <p style={{ ...bodyTextStyle, fontSize: 13, opacity: 0.7, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <LuLoader size={14} className="spin" />
-              Waiting for confirmation
-              {(() => {
-                const left = Math.ceil(
-                  Math.max(0, POLL_TIMEOUT_MS - polling.elapsedMs) / 60_000,
-                );
-                return left > 0 ? ` — up to ${left} more minute${left === 1 ? "" : "s"}` : "";
-              })()}
+              You are being taken to a secure payment page. Please do not close this tab.
             </p>
           </Outcome>
         )}
@@ -401,7 +207,6 @@ export default function PurchaseDialog({
             tint="var(--success, #16a34a)"
             icon={<LuCircleCheck size={24} />}
             title={renewal ? `${plan.name} renewed` : `You're on ${plan.name}`}
-            reference={reference}
             footer={
               <button onClick={onClose} className="btn btn-primary" style={{ ...footerButtonStyle, flex: 1 }}>
                 Done
@@ -426,7 +231,7 @@ export default function PurchaseDialog({
                   Close
                 </button>
                 <button
-                  onClick={() => { transId.current = null; setReference(null); setStage({ kind: "form" }); }}
+                  onClick={() => setStage({ kind: "form" })}
                   className="btn btn-primary"
                   style={footerButtonStyle}
                 >
@@ -443,14 +248,10 @@ export default function PurchaseDialog({
         )}
 
         {stage.kind === "unknown" && (
-          // The most careful copy on this screen. Real money may have moved, so it
-          // must not say "failed", must not offer to pay again, and must give them
-          // something to quote.
           <Outcome
             tint="#d97706"
             icon={<LuClock size={24} />}
             title="Still waiting on your provider"
-            reference={reference}
             footer={
               <button onClick={onClose} className="btn btn-secondary" style={{ ...footerButtonStyle, flex: 1 }}>
                 Close
@@ -466,12 +267,6 @@ export default function PurchaseDialog({
               this page will show it.
             </p>
             <p style={{ ...bodyTextStyle, fontWeight: 600 }}>Please don&apos;t pay again.</p>
-            {!reference && (
-              <p style={{ ...bodyTextStyle, fontSize: 13, opacity: 0.75 }}>
-                If nothing changes within the hour, contact support with the number
-                you paid from — {normaliseMsisdn(phone)}.
-              </p>
-            )}
           </Outcome>
         )}
       </div>
@@ -516,7 +311,6 @@ function Ring({ tint, children }: { tint: string; children: React.ReactNode }) {
   );
 }
 
-/** A terminal (or waiting) screen: ring, heading, prose, reference, footer. */
 function Outcome({
   tint, icon, title, reference, footer, children,
 }: {

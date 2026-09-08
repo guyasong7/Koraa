@@ -97,7 +97,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Koraa — Open your online shop in Cameroon",
+    title: "Koraa - Open your online shop in Cameroon",
     description:
       "Create your online store, accept MTN Mobile Money & Orange Money, and manage everything from one dashboard. Free to start.",
     creator: "@reconraven0x",

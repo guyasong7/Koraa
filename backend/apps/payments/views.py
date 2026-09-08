@@ -9,7 +9,6 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework import status
 from .models import Subscription, PaymentTransaction, Plan
-from .serializers import SubscriptionChargeRequestSerializer
 from . import fapshi, lifecycle, settlement
 from apps.merchants import plans as plan_catalogue
 
@@ -63,31 +62,19 @@ CHARGE_REQUESTED = "REQUESTED"
 
 class InitiatePaymentView(APIView):
     """
-    POST /payments/initiate/  {"plan": ..., "billing_cycle": "yearly",
-                               "phone": ..., "medium": ...}
+    POST /payments/initiate/  {"plan": ..., "billing_cycle": "yearly"}
 
-    Buys a plan by charging a mobile money number in place. The merchant approves
-    the prompt on their handset and the dashboard stays where it is and polls
-    ``/payments/callback/``.
+    Buys a plan by redirecting the merchant to Fapshi's hosted checkout page.
+    The merchant enters their mobile money number on Fapshi's UI, approves the
+    charge, and Fapshi redirects them back to ``/dashboard/billing/success``.
 
-    There is no hosted page and no redirect any more. That matters here for a
-    reason beyond symmetry with the storefront: the old flow sent the merchant to
-    Fapshi and relied on the return trip to ``/dashboard/billing/success`` to
-    trigger the only status check Koraa ever made. A merchant who paid and then
-    closed the tab was charged and never got their plan, because Fapshi delivers
-    its webhook once and never retries. Direct-pay removes the redirect entirely,
-    so the poll below plus ``payments.reconcile_pending`` are what close that gap.
+    Two outcomes on the paid path:
 
-    Three outcomes on the paid path, and the distinction between the last two is
-    the point:
-
-    * **Accepted** — 201. A ``trans_id`` is stored and the browser polls.
-    * **Refused** — 400. Fapshi declined the request, so nothing was charged and
-      nothing will be. The usual cause is a number the merchant can correct.
-    * **No answer** — 202 with ``charge_accepted: false``. Fapshi never
-      confirmed, so **the charge may or may not exist**. Never shown as a
-      failure, and never retried automatically — resending is the one way to
-      take a merchant's money twice.
+    * **Created** — 201. A ``payment_url`` and ``trans_id`` are returned. The
+      frontend redirects the merchant to ``payment_url``.
+    * **Refused** — 400. Fapshi declined the request.
+    * **No answer** — 202. Fapshi never confirmed, so the link may or may not
+      exist. Must not be shown as a failure.
 
     ``plan: "free"`` is not a purchase and takes none of this path; see
     ``_activate_free``.
@@ -97,11 +84,6 @@ class InitiatePaymentView(APIView):
 
     def post(self, request):
         plan_key = request.data.get("plan", "").lower()
-        # Absent means yearly: a client that posts no cycle at all predates
-        # monthly being sold, and yearly is what it meant. An explicit value
-        # outside PURCHASABLE_CYCLES is refused below rather than falling back
-        # to this default — the failure to avoid is taking one cycle's price
-        # for the other cycle's term.
         billing = request.data.get("billing_cycle", "yearly")
 
         if plan_key == "free":
@@ -115,23 +97,12 @@ class InitiatePaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = SubscriptionChargeRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        phone = serializer.validated_data["phone"]
-        medium = serializer.validated_data.get("medium") or None
-
         in_flight = self._charge_already_in_flight(request.user)
         if in_flight is not None:
             return in_flight
 
-        # Priced on the cycle, not from PLAN_PRICES: that map holds the annual
-        # figures, and charging one of them for a 30-day term is the exact
-        # mistake the cycle check above exists to prevent.
         amount = plan_catalogue.price(plan_key, billing)
 
-        # The subscription row exists before the charge so that a charge whose
-        # outcome we never learn still leaves a trace. It is PENDING and gives
-        # the merchant nothing until ``settlement.activate_subscription`` runs.
         sub = Subscription.objects.create(
             user=request.user,
             plan=plan_key,
@@ -140,26 +111,17 @@ class InitiatePaymentView(APIView):
             amount_paid=amount,
         )
 
+        redirect_url = "https://koraa.cm/dashboard/billing/success"
+
         try:
-            trans_id = fapshi.direct_pay(
+            link, trans_id = fapshi.initiate_pay(
                 amount=amount,
-                phone=phone,
-                # The subscription id, so a webhook resolves back to this row.
-                external_id=str(sub.pk),
-                # Koraa's User has no `get_full_name()` — `full_name` is the field,
-                # and it is `blank=True`, so this is "" for a merchant who never
-                # gave one. `direct_pay` omits the field entirely when it is empty.
-                name=request.user.full_name,
                 email=request.user.email,
+                redirect_url=redirect_url,
+                external_id=str(sub.pk),
                 message=f"Koraa {plan_key.title()} Plan — {CYCLE_TERMS[billing]}",
-                medium=medium,
             )
         except fapshi.FapshiRejected as exc:
-            # Nothing was charged. The pending subscription is deleted rather
-            # than left lying about: unlike the unknown branch below there is
-            # provably no money to reconcile against it, and a merchant
-            # correcting their number would otherwise accumulate one dead row
-            # per typo.
             logger.warning(
                 "Fapshi refused the charge for subscription %s: %s", sub.pk, exc
             )
@@ -169,12 +131,6 @@ class InitiatePaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except fapshi.FapshiUnavailable:
-            # The dangerous branch. Fapshi may have taken the charge before the
-            # connection died, so this is neither a success nor a failure. There
-            # is no transId, so nothing can follow it up automatically — which is
-            # why the subscription is *kept*: a PENDING row with no transaction
-            # is the only record that a charge may exist, and it is what a human
-            # has to work from against the Fapshi dashboard.
             logger.exception(
                 "Fapshi gave no answer charging subscription %s for %s — "
                 "the charge may exist",
@@ -205,7 +161,7 @@ class InitiatePaymentView(APIView):
 
         return Response(
             {
-                "charge_accepted": True,
+                "payment_url": link,
                 "trans_id": trans_id,
                 "subscription_id": sub.pk,
                 "plan": plan_key,

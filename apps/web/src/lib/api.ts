@@ -493,8 +493,8 @@ export const publicStorefrontApi = {
    *   charge **may or may not exist**. Do not present it as a failure and do not
    *   resend it; resending is the one way to take the money twice.
    */
-  chargeOrder: (orderId: string, data: ChargeRequest) =>
-    publicApi.post<ChargedOrder>(`/public/storefront/orders/${orderId}/pay/`, data),
+  chargeOrder: (orderId: string) =>
+    publicApi.post<ChargedOrder>(`/public/storefront/orders/${orderId}/pay/`),
   /**
    * Where a payment has got to. Safe to poll; the backend paces its own calls to
    * Fapshi, which allows only six a minute per transaction.
@@ -1221,31 +1221,17 @@ export async function getPlanCatalogue(): Promise<PlanCatalogue | null> {
 }
 
 /**
- * What `/payments/initiate/` returns. Shares `ChargeRequest`, `PaymentMedium`
- * and `PaymentState` with the storefront: it is the same Fapshi direct-pay
- * against the same three outcomes, and a second vocabulary for it would be one
- * more place for the 202 to be mistaken for a failure.
+ * What `/payments/initiate/` returns on the paid path.
  */
 export interface ChargedPlan {
-  /**
-   * False on a 202: Fapshi never confirmed it took the request, so the charge may
-   * or may not exist. Must not be rendered as a failure.
-   *
-   * Absent on the free downgrade, which charges nothing — so test it as
-   * `=== false` rather than for falsiness.
-   */
-  charge_accepted?: boolean;
-  /**
-   * Absent on a 202 — nothing was confirmed, so there is nothing to poll. Its
-   * absence is exactly why that case needs a human at the Fapshi dashboard.
-   */
+  payment_url?: string;
   trans_id?: string;
   subscription_id?: string;
   plan?: string;
   amount?: number;
   settled: boolean;
   payment_status?: PaymentState;
-  /** Only on the free downgrade, which settles in the same request. */
+  charge_accepted?: boolean;
   message?: string;
 }
 
@@ -1263,32 +1249,19 @@ export interface PlanChargeStatus {
 
 export const paymentApi = {
   /**
-   * Charge a merchant's mobile money number for a plan.
+   * Start a plan payment via Fapshi's hosted checkout page.
    *
-   * Direct-pay, like the storefront: the prompt appears on their handset and
-   * they never leave the dashboard. There is no `payment_url` and no return
-   * trip, so **the tab that made this call is the only thing watching** —
-   * `getChargeStatus` has to be polled until it settles, and the backend's
-   * reconcile sweep is what covers the merchant who closes it.
+   * The merchant is redirected to a Fapshi-hosted payment page. On success,
+   * Fapshi redirects back to `/dashboard/billing/success?transId=XXX`.
    *
-   * Same three outcomes as `chargeOrder`, and the same third one to be careful
-   * with:
+   * - **201** — accepted. Redirect to `payment_url`.
+   * - **400/409/503** — refused or already in progress.
+   * - **202 with no `payment_url`** — Fapshi unreachable.
    *
-   * - **201** — accepted. Poll `getChargeStatus(trans_id)`.
-   * - **400/409/503** — refused, or a charge is already awaiting approval.
-   *   Nothing new was charged; a 400 is usually a mistyped number and is
-   *   retryable.
-   * - **202 with `charge_accepted: false`** — Fapshi never answered, so the
-   *   charge **may or may not exist**. There is no `trans_id` to poll and
-   *   nothing to show but "we are checking". Never present it as a failure, and
-   *   never resend — resending is the one way to charge for two years at once.
-   *
-   * Passing `plan: "free"` is a downgrade, not a purchase: it takes no `phone`,
-   * returns `{ settled: true }` with no `trans_id`, and destroys what is left of
-   * a paid term. Confirm before calling it.
+   * Passing `plan: "free"` is a downgrade, not a purchase.
    */
-  initiate: (plan: string, billing_cycle: BillingCycle, charge?: ChargeRequest) =>
-    api.post<ChargedPlan>("/payments/initiate/", { plan, billing_cycle, ...charge }),
+  initiate: (plan: string, billing_cycle: BillingCycle) =>
+    api.post<ChargedPlan>("/payments/initiate/", { plan, billing_cycle }),
   /**
    * Where a plan payment has got to. Safe to poll; the backend paces its own
    * calls to Fapshi, which allows only six a minute per transaction.
@@ -1353,16 +1326,9 @@ export interface ChargeRequest {
 export type PaymentState = "pending" | "paid" | "failed" | "refunded";
 
 export interface ChargedOrder {
-  id: string;
-  reference: string;
-  total_amount: string;
-  currency: string;
-  payment_status: PaymentState;
-  /**
-   * False on a 202: Fapshi never confirmed it took the request, so the charge may
-   * or may not exist. Must not be rendered as a failure.
-   */
-  charge_accepted: boolean;
+  payment_url: string;
+  trans_id: string;
+  order_id: string;
 }
 
 export interface OrderStatus {

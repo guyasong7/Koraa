@@ -15,8 +15,6 @@ from .models import DownloadGrant, Order, OrderItem
 from .serializers import (
     MerchantOrderDetailSerializer,
     MerchantOrderListSerializer,
-    OrderChargeRequestSerializer,
-    OrderChargeSerializer,
     OrderCreateSerializer,
     OrderSerializer,
     OrderStatusSerializer,
@@ -227,72 +225,54 @@ class StorefrontOrderCreateView(generics.CreateAPIView):
 
 class StorefrontOrderChargeView(APIView):
     """
-    POST /public/storefront/orders/{order_id}/pay/  {"phone": ..., "medium": ...}
+    POST /public/storefront/orders/{order_id}/pay/
 
-    Charges a mobile money number for an order that already exists. The shopper
-    approves the charge on their handset and this browser stays where it is and
-    polls ``/status/`` — there is no redirect and no hosted page, which is the
-    whole reason for direct-pay in a market where the buyer is already on their
-    phone.
+    Creates a Fapshi hosted checkout link for an order that already exists.
+    The shopper is redirected to Fapshi's own page to enter their number and
+    approve, then Fapshi redirects them back to the storefront.
 
     Unauthenticated, like the rest of checkout: a Koraa storefront has no shopper
     accounts. The order id is a ``uuid4`` and the only thing this endpoint can do
     with one is *send money to Koraa*, so a guessed id is not a way to take
     anything. It is rate-limited all the same, because each call can reach Fapshi.
 
-    Three outcomes, and the distinction between the last two is the point:
+    Two outcomes:
 
-    * **Accepted** — 201, a ``transId`` is stored, the shopper approves on their
-      handset and the browser polls.
-    * **Refused** — 400. Fapshi declined the request, so nothing was charged and
-      nothing will be. The order stays pending and chargeable, because the usual
-      cause is a number the shopper can correct.
-    * **No answer** — 202 with ``charge_accepted: false``. Fapshi never confirmed,
-      so **the charge may or may not exist**. This must not be shown as a failure
-      and must not be retried automatically: resending would be the one way to
-      take a shopper's money twice.
+    * **Created** — 201, a ``payment_url`` and ``trans_id`` are returned. The
+      frontend redirects the shopper to ``payment_url``.
+    * **Refused** — 400. Fapshi declined the request. The order stays pending.
+    * **No answer** — 202. Fapshi never confirmed, so the link may or may not
+      exist. Must not be shown as a failure.
     """
 
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "checkout-pay"
 
-    @extend_schema(
-        request=OrderChargeRequestSerializer,
-        responses={201: OrderChargeSerializer, 202: OrderChargeSerializer},
-    )
     def post(self, request, order_id):
         try:
             order = Order.objects.select_related("store").get(pk=order_id)
         except Order.DoesNotExist:
             raise NotFound("No such order.")
 
-        serializer = OrderChargeRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        phone = serializer.validated_data["phone"]
-        medium = serializer.validated_data.get("medium") or None
-
         conflict = self._existing_payment_conflict(order)
         if conflict is not None:
             return conflict
 
-        message = f"Order #{str(order.id)[:8]} at {order.store.name}"
+        store = order.store
+        domain = store.custom_domain or f"{store.slug}.koraa.cm"
+        redirect_url = f"https://{domain}/checkout?orderId={order.id}"
+        message = f"Order #{str(order.id)[:8]} at {store.name}"
+
         try:
-            trans_id = fapshi.direct_pay(
+            link, trans_id = fapshi.initiate_pay(
                 amount=order.total_amount,
-                phone=phone,
-                # `external_ref` requires [a-zA-Z0-9-_], and a bare uuid satisfies
-                # it. The old `order_{id}` prefix bought nothing and cost the
-                # webhook a string-slicing step to undo.
-                external_id=str(order.id),
-                name=order.customer_name,
                 email=order.customer_email,
+                redirect_url=redirect_url,
+                external_id=str(order.id),
                 message=message,
-                medium=medium,
             )
         except fapshi.FapshiRejected as exc:
-            # Nothing was charged. Left pending and chargeable so the shopper can
-            # correct their number and try again on this same order.
             logger.warning("Fapshi refused the charge for order %s: %s", order.id, exc)
             return Response(
                 {
@@ -303,10 +283,6 @@ class StorefrontOrderChargeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except fapshi.FapshiUnavailable:
-            # The dangerous branch. Fapshi may have taken the charge before the
-            # connection died, so this is neither a success nor a failure. There
-            # is no transId, so nothing can follow it up automatically — which is
-            # exactly why it is recorded loudly and marked for a human.
             logger.exception(
                 "Fapshi gave no answer charging order %s — the charge may exist", order.id
             )
@@ -315,13 +291,23 @@ class StorefrontOrderChargeView(APIView):
             )
             order.refresh_from_db(fields=["fapshi_status"])
             return Response(
-                OrderChargeSerializer(order).data, status=status.HTTP_202_ACCEPTED
+                {
+                    "error": "Payment provider did not respond. Please try again.",
+                    "order_id": str(order.id),
+                    "charge_accepted": False,
+                },
+                status=status.HTTP_202_ACCEPTED,
             )
 
         Order.objects.filter(pk=order.pk).update(fapshi_trans_id=trans_id)
         order.refresh_from_db(fields=["fapshi_trans_id"])
         return Response(
-            OrderChargeSerializer(order).data, status=status.HTTP_201_CREATED
+            {
+                "payment_url": link,
+                "trans_id": trans_id,
+                "order_id": str(order.id),
+            },
+            status=status.HTTP_201_CREATED,
         )
 
     def _existing_payment_conflict(self, order):

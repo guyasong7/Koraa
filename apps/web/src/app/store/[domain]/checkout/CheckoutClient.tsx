@@ -3,25 +3,19 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  LuLock, LuSmartphone, LuChevronRight, LuPackage, LuArrowLeft,
+  LuLock, LuChevronRight, LuPackage, LuArrowLeft,
   LuShoppingBag, LuCheck, LuLoader, LuTriangleAlert, LuClock, LuCircleAlert,
 } from "react-icons/lu";
 import { useCartStore } from "@/stores/cart";
 import {
   publicStorefrontApi,
-  type ChargedOrder,
   type CreatedOrder,
   type OrderStatus,
-  type PaymentMedium,
 } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { STOREFRONT_DEFAULTS } from "@/components/storefront/theme";
 import { formatPrice } from "@/components/storefront/shared";
-import {
-  MEDIUM_MTN, MEDIUM_ORANGE, inferMedium, isPlausibleEmail,
-  isPlausibleMsisdn, mediumLabel, normaliseMsisdn,
-} from "@/lib/momo";
-import { usePaymentPolling, POLL_TIMEOUT_MS } from "@/hooks/usePaymentPolling";
+import { isPlausibleEmail } from "@/lib/momo";
 import toast from "react-hot-toast";
 
 type StoreTheme = {
@@ -41,22 +35,19 @@ type StoreTheme = {
  *
  * The two-step shape is deliberate. `form` → `review` creates the order without
  * charging anything, so the shopper is shown the **server's** price before they
- * approve a payment: the cart in this browser sums `base_price` while the server
- * prices the default variant's `effective_price`, and those can legitimately
- * differ. When one request did both, that difference could only ever be
- * discovered after the money had gone.
+ * approve a payment.
  *
- * `unknown` is not a failure. It means the charge never resolved — real money may
- * have moved, and a webhook or the reconcile sweep will finish the order without
- * this browser. Rendering it as "payment failed" would tell a shopper whose
- * payment succeeded that it did not, and would invite them to pay twice.
+ * `redirecting` means we got a Fapshi hosted link and are sending the shopper
+ * there. `returning` means the shopper just came back from Fapshi and we are
+ * checking the order status.
  */
 type PayState =
   | { kind: "form" }
   | { kind: "creating" }
   | { kind: "review"; order: CreatedOrder }
   | { kind: "charging"; order: CreatedOrder }
-  | { kind: "awaiting"; order: CreatedOrder; charge: ChargedOrder }
+  | { kind: "redirecting"; order: CreatedOrder }
+  | { kind: "returning"; orderId: string }
   | { kind: "paid"; order: CreatedOrder; status: OrderStatus }
   | { kind: "failed"; order: CreatedOrder; reason: string }
   | { kind: "unknown"; order: CreatedOrder; reference: string };
@@ -67,7 +58,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
   const { items, getCartTotal, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<StoreTheme | null>(null);
-  /** Set when the shop cannot take an order at all: unpublished, or gated. */
   const [shopBlocked, setShopBlocked] = useState<"locked" | "missing" | null>(null);
 
   const [formData, setFormData] = useState({
@@ -79,54 +69,65 @@ export default function CheckoutClient({ domain }: { domain: string }) {
     city: "",
     postal_code: "",
   });
-  /** Keyed by field name, so a message renders under the input that caused it. */
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [state, setState] = useState<PayState>({ kind: "form" });
 
-  // The mobile money number, kept apart from `customer_phone`: the number that
-  // holds the wallet is not always the one the shop should ring about a delivery.
-  const [momo, setMomo] = useState("");
-  const [medium, setMedium] = useState<PaymentMedium | null>(null);
-  /** True once the shopper picks a network themselves, which stops the prefix
-   *  guess from overwriting their choice on the next keystroke. */
-  const mediumChosen = useRef(false);
-
-  // This page is outside `StorefrontProvider` — it fetches the shop itself —
-  // so it cannot use the tracker hook and measures with `trackEvent` instead.
-  // Once only: React re-runs effects in development, and a doubled funnel is
-  // worse than none.
   const measured = useRef(false);
+
+  // ── Handle return from Fapshi hosted checkout ─────────────────────────────
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("orderId");
+    if (orderId) {
+      setState({ kind: "returning", orderId });
+      publicStorefrontApi.getOrderStatus(orderId).then((res) => {
+        const s = res.data;
+        if (s.payment_status === "paid") {
+          clearCart();
+          setState({
+            kind: "paid",
+            order: { id: s.id, total_amount: s.total_amount, payment_status: s.payment_status, items: [], created_at: "" },
+            status: s,
+          });
+        } else if (s.settled && s.payment_status === "failed") {
+          setState({
+            kind: "failed",
+            order: { id: s.id, total_amount: s.total_amount, payment_status: s.payment_status, items: [], created_at: "" },
+            reason: "The payment was not completed. Nothing has been charged — you can try again.",
+          });
+        } else {
+          // Still pending — show the "still waiting" screen
+          setState({
+            kind: "unknown",
+            order: { id: s.id, total_amount: s.total_amount, payment_status: s.payment_status, items: [], created_at: "" },
+            reference: s.reference || "",
+          });
+        }
+      }).catch(() => {
+        setState({
+          kind: "unknown",
+          order: { id: orderId, total_amount: "0", payment_status: "pending", items: [], created_at: "" },
+          reference: "",
+        });
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setMounted(true);
     publicStorefrontApi.getStorefront(domain).then((res: any) => {
       const data = res.data;
 
-      // A locked shop returns a 200 carrying `locked` and no catalogue. Checkout
-      // has to honour it: the create endpoint only accepts published shops, so
-      // letting the form through would end in a 404 after the shopper had filled
-      // it in.
       if (data?.locked) {
         setShopBlocked("locked");
         return;
       }
 
-      // The route's `domain` may be a custom host rather than the shop's slug,
-      // and the collect endpoint resolves shops by slug — so the slug has to
-      // come from the payload, not from the URL.
-      //
-      // Only `checkout_start`. The dashboard has always rendered a "Reached
-      // checkout" stat and a chart series for it and nothing ever fired it, so
-      // it read zero for every shop. No `page_view`: that metric belongs to the
-      // storefront tracker and counts content pages, and adding the checkout to
-      // it would quietly change what an existing number means.
       const slug = data?.store?.slug;
       if (slug && !measured.current) {
         measured.current = true;
-        // Arriving with an empty cart is a shopper whose cart was cleared, not a
-        // checkout beginning; counting it would make the abandonment figure
-        // flattering nonsense.
         if (useCartStore.getState().items.length > 0) {
           trackEvent({
             slug,
@@ -150,7 +151,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         });
       }
     }).catch(() => {
-      // Any non-2xx from this endpoint means no shop is being served here.
       setShopBlocked("missing");
     });
   }, [domain]);
@@ -158,54 +158,11 @@ export default function CheckoutClient({ domain }: { domain: string }) {
   const currency = theme?.currency || "XAF";
   const money = (value: string | number) => formatPrice({ currency }, value);
 
-  // ── The payment, once a charge has been accepted ───────────────────────────
-
-  const awaitingOrderId = state.kind === "awaiting" ? state.order.id : null;
-
-  const polling = usePaymentPolling<OrderStatus>({
-    queryKey: ["order-status", awaitingOrderId],
-    enabled: awaitingOrderId !== null,
-    fetcher: async () => {
-      const res = await publicStorefrontApi.getOrderStatus(awaitingOrderId!);
-      return res.data;
-    },
-    onPaid: (status) => {
-      // The only place the cart is emptied. Doing it on submit — as this page
-      // used to — destroyed the basket before anything was confirmed, so a
-      // shopper whose payment failed had nothing left to retry with.
-      clearCart();
-      setState((prev) =>
-        prev.kind === "awaiting" ? { kind: "paid", order: prev.order, status } : prev
-      );
-    },
-    onFailed: () => {
-      setState((prev) =>
-        prev.kind === "awaiting"
-          ? {
-              kind: "failed",
-              order: prev.order,
-              reason:
-                "The payment was not completed. Nothing has been charged — you can try again.",
-            }
-          : prev
-      );
-    },
-    onTimeout: () => {
-      setState((prev) =>
-        prev.kind === "awaiting"
-          ? { kind: "unknown", order: prev.order, reference: prev.charge.reference }
-          : prev
-      );
-    },
-  });
-
   // ── Form ───────────────────────────────────────────────────────────────────
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear this field's error as it is corrected, rather than leaving stale red
-    // text under an input the shopper has already fixed.
     setErrors((prev) => (prev[name] ? { ...prev, [name]: "" } : prev));
   };
 
@@ -216,8 +173,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
     if (!formData.shipping_address.trim()) found.shipping_address = REQUIRED_TEXT;
     if (!formData.city.trim()) found.city = REQUIRED_TEXT;
     if (!formData.customer_email.trim()) found.customer_email = REQUIRED_TEXT;
-    // Was a truthiness check, so "x" passed as an email and the confirmation and
-    // any download links went nowhere.
     else if (!isPlausibleEmail(formData.customer_email)) {
       found.customer_email = "That does not look like an email address.";
     }
@@ -225,7 +180,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
     return Object.keys(found).length === 0;
   };
 
-  /** Create the order — prices it and holds the stock. Charges nothing. */
   const submitDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) {
@@ -245,17 +199,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         postal_code: formData.postal_code.trim(),
         items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
       });
-      const order = res.data;
-      // Seed the wallet number from the contact number when it could hold one, so
-      // the common case arrives with the field filled and a network pre-selected.
-      // Stored normalised, both because that is what the field should display and
-      // because it is what gets sent.
-      if (!momo && isPlausibleMsisdn(formData.customer_phone)) {
-        const seeded = normaliseMsisdn(formData.customer_phone);
-        setMomo(seeded);
-        if (!mediumChosen.current) setMedium(inferMedium(seeded));
-      }
-      setState({ kind: "review", order });
+      setState({ kind: "review", order: res.data });
     } catch (err: any) {
       const detail =
         err.response?.data?.error ||
@@ -267,40 +211,22 @@ export default function CheckoutClient({ domain }: { domain: string }) {
   };
 
   const chargeOrder = async (order: CreatedOrder) => {
-    if (!isPlausibleMsisdn(momo)) {
-      setErrors((prev) => ({
-        ...prev,
-        momo: "Enter a mobile money number — nine digits starting with 6.",
-      }));
-      return;
-    }
-    setErrors((prev) => ({ ...prev, momo: "" }));
     setState({ kind: "charging", order });
 
     try {
-      const res = await publicStorefrontApi.chargeOrder(order.id, {
-        phone: normaliseMsisdn(momo),
-        // Sent only when the shopper picked a network. Otherwise Fapshi detects
-        // it from the number, which it does better than our prefix table.
-        ...(mediumChosen.current && medium ? { medium } : {}),
-      });
+      const res = await publicStorefrontApi.chargeOrder(order.id);
 
-      if (res.status === 202 || res.data.charge_accepted === false) {
-        // Fapshi never answered. The charge may or may not exist, so this is
-        // neither a success nor a failure and must not be retried automatically.
-        setState({ kind: "unknown", order, reference: res.data.reference });
+      if (res.status === 202 || !res.data.payment_url) {
+        setState({ kind: "unknown", order, reference: "" });
         return;
       }
-      setState({ kind: "awaiting", order, charge: res.data });
+
+      setState({ kind: "redirecting", order });
+      window.location.href = res.data.payment_url;
     } catch (err: any) {
       const status = err.response?.status;
       const body = err.response?.data;
 
-      // 409 — a charge for this order already exists, and none of the answers is
-      // "charge again". The conflict body carries no reference and its
-      // `payment_status` can be any terminal value, so ask the status endpoint
-      // rather than guessing from it: that is the authority the polling loop
-      // reads anyway.
       if (status === 409) {
         try {
           const live = (await publicStorefrontApi.getOrderStatus(order.id)).data;
@@ -318,39 +244,26 @@ export default function CheckoutClient({ domain }: { domain: string }) {
             });
             return;
           }
-          // Not settled: a charge is genuinely in flight and the prompt is
-          // already on their handset. Watch it instead of starting a second one.
-          setState({
-            kind: "awaiting",
-            order,
-            charge: { ...live, charge_accepted: true },
-          });
-          toast(body?.error || "A payment for this order is already waiting for your approval.");
+          toast(body?.error || "A payment for this order is already in progress.");
+          setState({ kind: "review", order });
           return;
         } catch {
-          // Could not read the order back. Say what the server said and leave the
-          // shopper on review rather than inventing an outcome.
           toast.error(body?.error || "There is already a payment in progress for this order.");
           setState({ kind: "review", order });
           return;
         }
       }
 
-      // 503 — Fapshi is unreachable, so whether an earlier attempt is live is
-      // unknown. Back to review; trying again in a moment is safe.
       if (status === 503) {
         toast.error(body?.error || "We cannot reach the payment provider. Please try again in a moment.");
         setState({ kind: "review", order });
         return;
       }
 
-      // 400 — refused, and nothing was charged. Usually a number the shopper can
-      // correct, and the order is still chargeable, so stay on review.
-      const fieldError = Array.isArray(body?.phone) ? body.phone[0] : null;
       const message =
-        fieldError || body?.error || body?.detail || "That payment was refused. Please check the number and try again.";
-      setErrors((prev) => ({ ...prev, momo: message }));
-      setState({ kind: "review", order });
+        body?.error || body?.detail || "That payment was refused. Please try again.";
+      toast.error(message);
+      setState({ kind: "failed", order, reason: message });
     }
   };
 
@@ -364,13 +277,10 @@ export default function CheckoutClient({ domain }: { domain: string }) {
   const font = theme?.font || STOREFRONT_DEFAULTS.font;
   const radius = theme?.button_style === "square" ? "0px" : theme?.button_style === "pill" ? "9999px" : "10px";
 
-  /** What this browser thinks the basket costs. An estimate — see `serverTotal`. */
   const cartEstimate = getCartTotal();
 
   const order = "order" in state ? state.order : null;
-  /** The authoritative figure, once the server has priced the cart. */
   const serverTotal = order ? parseFloat(order.total_amount) : null;
-  /** A real disagreement between the two, worth showing before charging. */
   const priceDiffers =
     serverTotal !== null && Math.abs(serverTotal - cartEstimate) >= 1;
 
@@ -414,23 +324,11 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       .co-full { grid-column: 1 / -1; }
       @media (max-width: 500px) { .co-grid { grid-template-columns: 1fr; } }
       .co-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.04em; }
-      /* Same corner as .co-btn below, via the same --sf-r the storefront's own
-         fields use (see .sf-nl input in StorefrontRenderer). This was a
-         hardcoded 8px, so a merchant who chose square or pill buttons got them
-         everywhere except the checkout form, where the fields stayed rounded and
-         the button beside them did not.
-         No backticks in this block: it lives inside a template literal, and one
-         would close the string. */
       .co-input { width: 100%; padding: 11px 14px; border: 1.5px solid rgba(0,0,0,0.12); border-radius: var(--sf-r, 10px); font-family: inherit; font-size: 14px; background: ${bg}; color: ${textColor}; outline: none; transition: border-color 0.15s; }
       .co-input:focus { border-color: ${primary}; }
       .co-input.invalid { border-color: #dc2626; }
       .co-err { display: block; font-size: 12px; color: #dc2626; margin-top: 5px; font-weight: 500; }
       .co-hint { display: block; font-size: 12px; opacity: 0.55; margin-top: 5px; }
-      .co-radio-card { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; cursor: pointer; transition: all 0.15s; margin-bottom: 10px; background: ${bg}; }
-      .co-radio-card.selected { border-color: ${primary}; background: ${primary}15; }
-      .co-radio-card-label { flex: 1; }
-      .co-radio-card-label strong { display: block; font-size: 14px; font-weight: 600; }
-      .co-radio-card-label span { font-size: 13px; opacity: 0.6; margin-top: 2px; display: block; }
       .co-btn { width: 100%; padding: 16px; background: ${primary}; color: #fff; border: none; border-radius: ${radius}; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: filter 0.2s, transform 0.15s; margin-top: 24px; }
       .co-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
       .co-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
@@ -458,7 +356,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       .co-outcome h1 { font-size: 26px; font-weight: 800; margin-bottom: 12px; }
       .co-outcome p { opacity: 0.7; line-height: 1.65; margin-bottom: 16px; }
       .co-ref { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; padding: 7px 12px; border-radius: 6px; background: rgba(0,0,0,0.06); margin-bottom: 28px; }
-      
+
       @media (max-width: 600px) {
         .co-body { padding: 20px 16px; gap: 24px; }
         .co-nav-i { padding: 0 16px; }
@@ -469,16 +367,12 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         .co-item-img { width: 48px; height: 48px; }
         .co-total { font-size: 16px; }
         .co-btn { padding: 14px; font-size: 15px; }
-        .co-radio-card { padding: 12px; gap: 10px; }
       }
     `}</style>
   );
 
   // ── Whole-page outcomes ────────────────────────────────────────────────────
 
-  // Only while nothing is in flight. The payment outcomes below must win over an
-  // availability screen — an order that has already been charged can never be
-  // the right moment to tell someone the shop is closed.
   if (shopBlocked && state.kind === "form") {
     return (
       <div style={{ ...shellStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -501,6 +395,21 @@ export default function CheckoutClient({ domain }: { domain: string }) {
     );
   }
 
+  if (state.kind === "returning") {
+    return (
+      <div style={{ ...shellStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {styles}
+        <div className="co-outcome">
+          <div className="co-outcome-ring co-pulse" style={{ background: `${primary}20` }}>
+            <LuLoader size={30} color={primary} className="co-spin" />
+          </div>
+          <h1>Checking your payment</h1>
+          <p>One moment — we are confirming your payment with the provider.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (state.kind === "paid") {
     return (
       <div style={{ ...shellStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -512,7 +421,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
           <h1>Payment received</h1>
           <p>
             Thank you — we have your payment of <strong>{money(state.order.total_amount)}</strong>. A
-            confirmation is on its way to {formData.customer_email}.
+            confirmation is on its way to {formData.customer_email || "your email"}.
           </p>
           {state.status.reference && <div className="co-ref">{state.status.reference}</div>}
           <Link href="/" className="co-btn" style={{ textDecoration: "none", maxWidth: 260, margin: "0 auto" }}>
@@ -524,9 +433,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
   }
 
   if (state.kind === "unknown") {
-    // The most careful copy on the site. Real money may have moved, so this must
-    // not say "failed", must not invite a second payment, and must give the
-    // shopper something to quote if they need to ask.
     return (
       <div style={{ ...shellStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
         {styles}
@@ -538,7 +444,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
           <p>
             We haven&apos;t had confirmation from your mobile money provider yet.{" "}
             <strong>If you approved the payment on your phone, your money is safe</strong> — the
-            order completes on its own and your receipt goes to {formData.customer_email}.
+            order completes on its own and your receipt goes to {formData.customer_email || "your email"}.
           </p>
           <p style={{ fontWeight: 600, opacity: 0.85 }}>Please don&apos;t pay again.</p>
           {state.reference && <div className="co-ref">{state.reference}</div>}
@@ -553,28 +459,16 @@ export default function CheckoutClient({ domain }: { domain: string }) {
     );
   }
 
-  if (state.kind === "awaiting") {
-    const secondsLeft = Math.max(0, Math.ceil((POLL_TIMEOUT_MS - polling.elapsedMs) / 1000));
-    const minutesLeft = Math.ceil(secondsLeft / 60);
+  if (state.kind === "redirecting") {
     return (
       <div style={{ ...shellStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
         {styles}
         <div className="co-outcome">
           <div className="co-outcome-ring co-pulse" style={{ background: `${primary}20` }}>
-            <LuSmartphone size={30} color={primary} />
+            <LuLoader size={30} color={primary} className="co-spin" />
           </div>
-          <h1>Check your phone</h1>
-          <p>
-            We&apos;ve asked {medium ? mediumLabel(medium) : "your provider"} to charge{" "}
-            <strong>{money(state.order.total_amount)}</strong> to {normaliseMsisdn(momo)}. Approve the
-            prompt on your handset and this page will finish by itself — please keep it open.
-          </p>
-          {state.charge.reference && <div className="co-ref">{state.charge.reference}</div>}
-          <p style={{ fontSize: 13, opacity: 0.55, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <LuLoader size={14} className="co-spin" />
-            Waiting for confirmation
-            {secondsLeft > 0 && ` — up to ${minutesLeft} more minute${minutesLeft === 1 ? "" : "s"}`}
-          </p>
+          <h1>Redirecting to payment</h1>
+          <p>You are being taken to a secure payment page. Please do not close this tab.</p>
         </div>
       </div>
     );
@@ -589,8 +483,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
   const field = (
     name: keyof typeof formData,
     label: string,
-    // `wrap` styles the wrapper, not the input: a `className` here would be
-    // spread over `co-input` below and strip the field of its own styling.
     { wrap, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { wrap?: string } = {}
   ) => (
     <div className={wrap}>
@@ -604,7 +496,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         aria-invalid={errors[name] ? true : undefined}
         aria-describedby={errors[name] ? `co-${name}-err` : undefined}
         {...props}
-        // After the spread, so a caller cannot accidentally drop either.
         type={props.type || "text"}
         className={`co-input${errors[name] ? " invalid" : ""}`}
       />
@@ -640,7 +531,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
             <span className={onReview ? "active" : undefined}>Payment</span>
           </div>
 
-          {/* A real form, so Enter submits and a mobile keyboard shows "Go". */}
           <form onSubmit={submitDetails} noValidate>
             <div className="co-section">
               <div className="co-section-title">
@@ -695,19 +585,10 @@ export default function CheckoutClient({ domain }: { domain: string }) {
           </form>
 
           {onReview && order && (
-            // Its own form, so Enter in the number field pays rather than doing
-            // nothing. It cannot be part of the details form above — that one
-            // submits to create the order, and nesting forms is invalid HTML.
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                chargeOrder(order);
-              }}
-              noValidate
-            >
-              <div className="co-section">
-                <div className="co-section-title">
-                  <span className="co-step">3</span> Mobile Money
+            <div>
+              <div className="co-section" style={{ border: `2px solid ${primary}`, background: `${primary}08` }}>
+                <div className="co-section-title" style={{ marginBottom: 12 }}>
+                  <span className="co-step">3</span> Review &amp; Pay
                 </div>
 
                 {priceDiffers && (
@@ -728,84 +609,9 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                   </div>
                 )}
 
-                <div>
-                  <label className="co-label" htmlFor="co-momo">Mobile Money Number *</label>
-                  <input
-                    id="co-momo"
-                    className={`co-input${errors.momo ? " invalid" : ""}`}
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    placeholder="670 000 000"
-                    value={momo}
-                    disabled={busy}
-                    aria-invalid={errors.momo ? true : undefined}
-                    aria-describedby={errors.momo ? "co-momo-err" : "co-momo-hint"}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      setMomo(next);
-                      setErrors((prev) => (prev.momo ? { ...prev, momo: "" } : prev));
-                      // Only until the shopper picks a network themselves.
-                      if (!mediumChosen.current) setMedium(inferMedium(next));
-                    }}
-                  />
-                  {errors.momo ? (
-                    <span className="co-err" id="co-momo-err">{errors.momo}</span>
-                  ) : (
-                    <span className="co-hint" id="co-momo-hint">
-                      The number holding the wallet you want to pay from.
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ marginTop: 18 }}>
-                  {/* Functional radios. These used to be decorative — no name, no
-                      value, no onChange, and a hardcoded "selected" ring — so the
-                      shopper's choice was discarded. */}
-                  {([MEDIUM_MTN, MEDIUM_ORANGE] as PaymentMedium[]).map((m) => (
-                    <label
-                      key={m}
-                      className={`co-radio-card${medium === m ? " selected" : ""}`}
-                      htmlFor={`co-medium-${m.replace(/\s+/g, "-")}`}
-                    >
-                      <input
-                        id={`co-medium-${m.replace(/\s+/g, "-")}`}
-                        type="radio"
-                        name="medium"
-                        value={m}
-                        checked={medium === m}
-                        disabled={busy}
-                        onChange={() => {
-                          mediumChosen.current = true;
-                          setMedium(m);
-                        }}
-                        style={{ accentColor: primary, width: 18, height: 18 }}
-                      />
-                      <LuSmartphone size={22} color={medium === m ? primary : undefined} style={medium === m ? undefined : { opacity: 0.5 }} />
-                      <div className="co-radio-card-label">
-                        <strong>{mediumLabel(m)}</strong>
-                        <span>
-                          {medium === m && !mediumChosen.current
-                            ? "Detected from your number"
-                            : `Pay from your ${mediumLabel(m)} wallet`}
-                        </span>
-                      </div>
-                    </label>
-                  ))}
-                  <span className="co-hint">
-                    Leave this as detected unless it is wrong — your provider confirms the network
-                    from the number itself.
-                  </span>
-                </div>
-              </div>
-
-              <div className="co-section" style={{ border: `2px solid ${primary}`, background: `${primary}08` }}>
-                <div className="co-section-title" style={{ marginBottom: 12 }}>
-                  <span className="co-step">4</span> Review &amp; Pay
-                </div>
                 <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 20, lineHeight: 1.5 }}>
-                  You are about to be charged <strong>{money(order.total_amount)}</strong>. A prompt
-                  will appear on your phone — approve it there and this page finishes by itself.
+                  You are about to pay <strong>{money(order.total_amount)}</strong>. You will be
+                  redirected to a secure payment page to complete the transaction with Mobile Money.
                 </p>
 
                 <div style={{ padding: 16, background: bg, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", marginBottom: 20, fontSize: 13, lineHeight: 1.6 }}>
@@ -816,12 +622,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                 </div>
 
                 <div style={{ display: "flex", gap: 12 }}>
-                  {/* Going back discards this order and the next submit creates a
-                      fresh one — an unpaid order left behind holds its stock
-                      reservation, exactly as an abandoned tab does. That is why
-                      the *common* correction, a mistyped number, is handled by
-                      staying here and charging the same order again rather than
-                      by sending the shopper back through this button. */}
                   <button
                     type="button"
                     className="co-btn co-btn-ghost"
@@ -832,20 +632,21 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                     Edit details
                   </button>
                   <button
-                    type="submit"
+                    type="button"
                     className="co-btn"
                     disabled={busy}
+                    onClick={() => chargeOrder(order)}
                     style={{ flex: 2, marginTop: 0 }}
                   >
                     {state.kind === "charging" ? (
-                      <><LuLoader size={16} className="co-spin" /> Asking your provider…</>
+                      <><LuLoader size={16} className="co-spin" /> Preparing payment…</>
                     ) : (
                       <><LuLock size={16} /> Pay {money(order.total_amount)}</>
                     )}
                   </button>
                 </div>
               </div>
-            </form>
+            </div>
           )}
 
           <p className="co-trust">
@@ -897,9 +698,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                 <div className="co-row">
                   <span>Catalogue adjustment</span>
                   <span style={{ fontWeight: 600, color: "#d97706" }}>
-                    {/* Bare number: the currency is already on every row above,
-                        and stripping it back out of `money()` would break the
-                        moment that helper's format changed. */}
                     {serverTotal! > cartEstimate ? "+" : "−"}
                     {Math.abs(serverTotal! - cartEstimate).toLocaleString()}
                   </span>

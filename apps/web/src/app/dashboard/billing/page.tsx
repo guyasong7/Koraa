@@ -6,7 +6,6 @@ import {
 import {
   CONTACT_SALES_PLAN, POPULAR_PLAN, formatXaf, planBullets,
 } from "@/lib/planCopy";
-import { useAuthStore } from "@/stores/auth";
 import PurchaseDialog from "./PurchaseDialog";
 import toast from "react-hot-toast";
 import {
@@ -128,8 +127,6 @@ export default function BillingPage() {
    * send the merchant to and no return trip to bring them back.
    */
   const [buying, setBuying] = useState<PlanCatalogueEntry | null>(null);
-  /** Only to prefill the number field. The merchant can pay from any wallet. */
-  const profilePhone = useAuthStore(s => s.user?.phone);
 
   const { data: catalogue, isLoading: plansLoading } = useQuery({
     queryKey: ["plan-catalogue"],
@@ -382,17 +379,8 @@ export default function BillingPage() {
       {buying && (
         <PurchaseDialog
           plan={buying}
-          defaultPhone={profilePhone}
-          // Renewing extends the term rather than replacing it, and the dialog
-          // says so — a merchant with six months left needs to know the new
-          // term is added on, not that they are starting over. How much is
-          // added depends on the cycle they pick, which is why neither this
-          // screen nor the card above names a fixed length.
           renewal={currentPlan === buying.key && !state.is_expired}
           onClose={() => setBuying(null)}
-          // The dialog's own outcome is not the authority on what they hold now:
-          // the poll it settled on could be a moment behind the activation, and
-          // usage allowances read off this query.
           onActivated={() => { void refetchSub(); }}
         />
       )}
