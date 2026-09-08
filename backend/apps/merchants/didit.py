@@ -29,11 +29,15 @@ def _headers():
     }
 
 
-def create_session(*, vendor_data, callback_url=None, metadata=None):
+def create_session(*, vendor_data, redirect_url=None, metadata=None):
     """Create a Didit verification session.
 
     Returns the full response dict including `session_id`, `url`,
     `session_token`, and `status`.
+
+    The `callback` field in Didit's API is the URL the user is redirected
+    to after completing verification (not the webhook). Webhooks are
+    configured separately in the Didit dashboard.
     """
     if not DIDIT_WORKFLOW_ID:
         raise ValueError("DIDIT_WORKFLOW_ID is not configured.")
@@ -42,8 +46,8 @@ def create_session(*, vendor_data, callback_url=None, metadata=None):
         "workflow_id": DIDIT_WORKFLOW_ID,
         "vendor_data": str(vendor_data),
     }
-    if callback_url:
-        payload["callback"] = callback_url
+    if redirect_url:
+        payload["callback"] = redirect_url
     if metadata:
         payload["metadata"] = metadata
 
