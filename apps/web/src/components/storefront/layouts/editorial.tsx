@@ -76,11 +76,26 @@ const styles = `
   .sf-l-editorial .sf-ed-cap { padding: 0 20px 44px; }
   .sf-l-editorial .sf-ed-sec, .sf-l-editorial .sf-ed-about { padding: 56px 20px; }
   .sf-l-editorial .sf-ed-sec-h { margin-bottom: 34px; }
-  .sf-l-editorial .sf-ed-look { grid-template-columns: 1fr; gap: 40px; }
+  .sf-l-editorial .sf-ed-look { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; }
   .sf-l-editorial .sf-ed-about { grid-template-columns: 1fr; gap: 32px; }
+  .sf-l-editorial .sf-ed-about > :first-child { order: 2; }
   .sf-l-editorial .sf-ed-cats { gap: 22px; padding: 32px 20px 0; }
-  /* No hover on touch, so the cart action has to be visible outright. */
+  .sf-l-editorial .sf-ed-sub { font-size: 14px; }
   .sf-l-editorial .sf-ed-add { opacity: 1; transform: none; }
+}
+
+@media (max-width: 560px) {
+  .sf-l-editorial .sf-ed-hero { height: min(65vh, 480px); }
+  .sf-l-editorial .sf-ed-cap { padding: 0 16px 36px; }
+  .sf-l-editorial .sf-ed-h { font-size: clamp(32px, 8vw, 48px); }
+  .sf-l-editorial .sf-ed-sec, .sf-l-editorial .sf-ed-about { padding: 40px 16px; }
+  .sf-l-editorial .sf-ed-look { grid-template-columns: 1fr; gap: 32px; }
+  .sf-l-editorial .sf-ed-tile-i { aspect-ratio: 4/5; }
+  .sf-l-editorial .sf-ed-about h2 { font-size: 24px; }
+  .sf-l-editorial .sf-ed-about p { font-size: 15px; }
+  .sf-l-editorial .sf-ed-cats { display: flex; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; gap: 12px 18px; padding: 28px 16px 0; scrollbar-width: none; -ms-overflow-style: none; }
+  .sf-l-editorial .sf-ed-cats::-webkit-scrollbar { display: none; }
+  .sf-l-editorial .sf-ed-cat { flex-shrink: 0; }
 }
 `;
 

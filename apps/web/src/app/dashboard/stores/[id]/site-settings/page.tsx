@@ -21,7 +21,7 @@
 
 import PageTitle from "@/components/PageTitle";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -91,9 +91,26 @@ export default function SiteSettingsPage() {
   const [storeDraft, setStoreDraft] = useState<Draft>({});
   const [saving, setSaving] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 860px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   useEffect(() => {
     if (data && !active) setActive(data.panels[0]?.key ?? "");
   }, [data, active]);
+
+  useLayoutEffect(() => {
+    if (!isMobile || !navRef.current) return;
+    const btn = navRef.current.querySelector("[aria-current='true']");
+    if (btn) btn.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
+  }, [active, isMobile]);
 
   const panel = useMemo(
     () => data?.panels.find(p => p.key === active) ?? data?.panels[0],
@@ -158,12 +175,12 @@ export default function SiteSettingsPage() {
     <>
       <PageTitle title={`Site settings — ${data?.store.name ?? "Store"} — Koraa`} />
 
-      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto" }} className="site-settings-outer">
         <Link href={`/dashboard/stores/${id}`} style={backLink}>
           <LuArrowLeft size={15} /> Back to store
         </Link>
 
-        <div style={headerRow}>
+        <div style={headerRow} className="site-settings-header">
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4, letterSpacing: "-0.02em" }}>
               Site settings
@@ -173,10 +190,12 @@ export default function SiteSettingsPage() {
               it handles images and crawlers.
             </p>
           </div>
-          <button className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
-            {saving ? <LuLoader size={16} className="spin" /> : <LuSave size={16} />}
-            {dirty ? "Save changes" : "Saved"}
-          </button>
+          {!isMobile && (
+            <button className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
+              {saving ? <LuLoader size={16} className="spin" /> : <LuSave size={16} />}
+              {dirty ? "Save changes" : "Saved"}
+            </button>
+          )}
         </div>
 
         {isLoading || !data || !panel ? (
@@ -185,7 +204,12 @@ export default function SiteSettingsPage() {
           </div>
         ) : (
           <div className="site-settings-grid">
-            <nav className="card" style={{ padding: 8, alignSelf: "start" }} aria-label="Settings sections">
+            <nav
+              ref={navRef}
+              className={isMobile ? "site-settings-nav-mobile" : "card"}
+              style={isMobile ? undefined : { padding: 8, alignSelf: "start" }}
+              aria-label="Settings sections"
+            >
               {data.panels.map(p => {
                 const Icon = PANEL_ICONS[p.key] ?? LuGlobe;
                 const on = p.key === active;
@@ -193,31 +217,49 @@ export default function SiteSettingsPage() {
                   <button
                     key={p.key}
                     onClick={() => setActive(p.key)}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 12px",
-                      background: on ? "var(--surface-850)" : "none",
-                      border: "none",
-                      borderRadius: "var(--radius-md)",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      color: on ? "var(--text-primary)" : "var(--text-secondary)",
-                      fontSize: 14,
-                      fontWeight: on ? 600 : 500,
-                    }}
+                    style={
+                      isMobile
+                        ? {
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "8px 14px",
+                            background: on ? "var(--brand-100)" : "var(--surface-850)",
+                            border: `1px solid ${on ? "var(--brand-500)" : "var(--border)"}`,
+                            borderRadius: 999,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                            color: on ? "var(--brand-600)" : "var(--text-secondary)",
+                            fontSize: 13,
+                            fontWeight: on ? 600 : 500,
+                            flexShrink: 0,
+                          }
+                        : {
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "10px 12px",
+                            background: on ? "var(--surface-850)" : "none",
+                            border: "none",
+                            borderRadius: "var(--radius-md)",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            color: on ? "var(--text-primary)" : "var(--text-secondary)",
+                            fontSize: 14,
+                            fontWeight: on ? 600 : 500,
+                          }
+                    }
                     aria-current={on ? "true" : undefined}
                   >
-                    <Icon size={16} color={on ? "var(--brand-500)" : "var(--text-muted)"} />
-                    <span style={{ flex: 1, minWidth: 0 }}>{p.title}</span>
+                    <Icon size={isMobile ? 14 : 16} color={on ? "var(--brand-500)" : "var(--text-muted)"} />
+                    <span style={isMobile ? undefined : { flex: 1, minWidth: 0 }}>{p.title}</span>
                   </button>
                 );
               })}
             </nav>
 
-            <section className="card">
+            <section className="card site-settings-content">
               <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 5 }}>{panel.title}</h2>
               <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 26 }}>
                 {panel.blurb}
@@ -258,6 +300,15 @@ export default function SiteSettingsPage() {
         )}
       </div>
 
+      {isMobile && dirty && (
+        <div className="site-settings-sticky-save">
+          <button className="btn btn-primary" onClick={save} disabled={saving} style={{ width: "100%" }}>
+            {saving ? <LuLoader size={16} className="spin" /> : <LuSave size={16} />}
+            Save changes
+          </button>
+        </div>
+      )}
+
       <style jsx>{`
         .site-settings-grid {
           display: grid;
@@ -266,9 +317,41 @@ export default function SiteSettingsPage() {
           align-items: start;
           padding-bottom: 40px;
         }
+        .site-settings-nav-mobile {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding: 0 0 12px;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .site-settings-nav-mobile::-webkit-scrollbar { display: none; }
+        .site-settings-sticky-save {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: 12px 16px;
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          z-index: 10;
+        }
         @media (max-width: 860px) {
           .site-settings-grid {
             grid-template-columns: 1fr;
+          }
+          .site-settings-outer {
+            padding: 0 16px;
+          }
+          .site-settings-header {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .site-settings-content {
+            padding: 16px;
+          }
+          .site-settings-grid {
+            padding-bottom: 80px;
           }
         }
       `}</style>
