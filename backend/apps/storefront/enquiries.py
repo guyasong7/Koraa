@@ -350,7 +350,7 @@ def notify(submission: FormSubmission) -> bool:
         message = EmailMultiAlternatives(
             subject=f"New enquiry from {who} — {store.name}",
             body=_plain(context, for_sender=False),
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=settings.NOTIFICATION_FROM_EMAIL,
             to=recipients,
             # Hitting Reply answers the customer. Without this the merchant
             # replies to Koraa's noreply address and the lead dies there.
@@ -373,7 +373,7 @@ def notify(submission: FormSubmission) -> bool:
             copy = EmailMultiAlternatives(
                 subject=f"We got your message — {store.name}",
                 body=_plain(context, for_sender=True),
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=settings.NOTIFICATION_FROM_EMAIL,
                 to=[submission.sender_email],
                 reply_to=recipients[:1],
             )

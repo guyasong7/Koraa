@@ -147,7 +147,7 @@ def send_invoice(order: Order) -> bool:
         message = EmailMultiAlternatives(
             subject=subject,
             body=plain_text(context),
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=settings.NOTIFICATION_FROM_EMAIL,
             to=[order.customer_email],
             # A shopper replying to an invoice wants the shop, not Koraa's
             # noreply address.

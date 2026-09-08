@@ -6,6 +6,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.db.models import Sum
 from django.http import FileResponse, StreamingHttpResponse
@@ -271,6 +272,15 @@ class StorefrontOrderChargeView(APIView):
                 redirect_url=redirect_url,
                 external_id=str(order.id),
                 message=message,
+            )
+        except ImproperlyConfigured as exc:
+            logger.error(
+                "Payment gateway not configured — order %s cannot proceed: %s",
+                order.id, exc,
+            )
+            return Response(
+                {"error": "The payment gateway is not configured. Please contact support."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except fapshi.FapshiRejected as exc:
             logger.warning("Fapshi refused the charge for order %s: %s", order.id, exc)

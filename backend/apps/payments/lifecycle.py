@@ -62,7 +62,7 @@ def _send(template: str, subject: str, user, context: dict, text: str) -> None:
         send_mail(
             subject=subject,
             message=text,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=settings.NOTIFICATION_FROM_EMAIL,
             recipient_list=[user.email],
             fail_silently=True,
             html_message=render_to_string(

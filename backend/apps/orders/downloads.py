@@ -185,7 +185,7 @@ def send_downloads(order: Order, grants: list[DownloadGrant] | None = None) -> b
         message = EmailMultiAlternatives(
             subject=subject,
             body=plain_text(context),
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=settings.NOTIFICATION_FROM_EMAIL,
             to=[order.customer_email],
             reply_to=[order.store.email] if order.store.email else None,
         )

@@ -1,6 +1,8 @@
 import logging
 
+from django.conf import settings as django_settings
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction as db_transaction
 from django.utils import timezone
 from rest_framework.views import APIView
@@ -111,7 +113,7 @@ class InitiatePaymentView(APIView):
             amount_paid=amount,
         )
 
-        redirect_url = "https://koraa.cm/dashboard/billing/success"
+        redirect_url = f"{django_settings.KORAA_DASHBOARD_URL}/dashboard/billing/success"
 
         try:
             link, trans_id = fapshi.initiate_pay(
@@ -120,6 +122,16 @@ class InitiatePaymentView(APIView):
                 redirect_url=redirect_url,
                 external_id=str(sub.pk),
                 message=f"Koraa {plan_key.title()} Plan — {CYCLE_TERMS[billing]}",
+            )
+        except ImproperlyConfigured as exc:
+            logger.error(
+                "Payment gateway not configured — subscription %s cannot proceed: %s",
+                sub.pk, exc,
+            )
+            sub.delete()
+            return Response(
+                {"error": "The payment gateway is not configured. Please contact support."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except fapshi.FapshiRejected as exc:
             logger.warning(
@@ -225,7 +237,13 @@ class InitiatePaymentView(APIView):
         if tx is None:
             return None
 
-        result = settlement.settle_transaction(tx)
+        try:
+            result = settlement.settle_transaction(tx)
+        except ImproperlyConfigured:
+            return Response(
+                {"error": "The payment gateway is not configured. Please contact support."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         if result == settlement.ACTIVATED:
             return Response(
