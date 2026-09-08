@@ -49,7 +49,7 @@ Pillow>=10.4.0
 python-slugify==8.0.4
 phonenumbers==8.13.42
 requests==2.32.3
-# products.views / stores.views read OPENROUTER_* through decouple's config().
+# products.views / stores.views read AI_API_* through decouple's config().
 python-decouple==3.8
 
 # Admin theme

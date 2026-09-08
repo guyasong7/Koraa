@@ -1,12 +1,10 @@
-"""
-The shared OpenRouter caller, and the free-tier failures it has to absorb.
+"""AI caller tests.
 
-Every test here is a thing that actually happened against the free tier while
-this was being built: a model rate-limited for ten minutes, a model that spent
-its whole token budget thinking and returned no answer, and a model that put
-its thinking in the reply where a merchant would read it. The point of the
-chain is that none of those reach the caller as long as one model is healthy,
-so that is what these assert.
+Every test here is a thing that actually happened against the previous
+free-tier provider: a model rate-limited for ten minutes, a model that
+spent its whole token budget thinking and returned no answer, and a
+model that put its thinking in the reply. The chain walks past all of
+these as long as one model is healthy.
 """
 import pytest
 from datetime import datetime, timedelta, timezone
@@ -37,7 +35,7 @@ def reply(content):
 
 
 @pytest.fixture
-def openrouter(monkeypatch):
+def ai_api(monkeypatch):
     """
     Queue one response per model the chain will try, in order.
 
@@ -46,9 +44,7 @@ def openrouter(monkeypatch):
     """
     state = {"queue": [], "models": [], "payloads": []}
 
-    monkeypatch.setattr(ai, "config", lambda key, default=None: (
-        "test-key" if key == "OPENROUTER_API_KEY" else default
-    ))
+    monkeypatch.setattr(ai, "API_KEY", "test-key")
 
     def fake_post(url, **kwargs):
         payload = kwargs.get("json") or {}
@@ -63,35 +59,35 @@ def openrouter(monkeypatch):
 
 
 class TestTheChainMovesOn:
-    def test_first_healthy_model_answers(self, openrouter):
-        openrouter["queue"] = [FakeResponse(reply("Go to Products, then Add."))]
+    def test_first_healthy_model_answers(self, ai_api):
+        ai_api["queue"] = [FakeResponse(reply("Go to Products, then Add."))]
 
         text = chat_completion(["a", "b"], MESSAGES, max_tokens=100)
 
         assert text == "Go to Products, then Add."
-        assert openrouter["models"] == ["a"], "a healthy first model must end the walk"
+        assert ai_api["models"] == ["a"], "a healthy first model must end the walk"
 
-    def test_rate_limited_model_is_skipped(self, openrouter):
-        """429 "rate-limited upstream" is the free tier's normal weather."""
-        openrouter["queue"] = [
+    def test_rate_limited_model_is_skipped(self, ai_api):
+        """429 rate-limit is the normal weather."""
+        ai_api["queue"] = [
             FakeResponse({"error": {"code": 429, "message": "rate-limited upstream"}}, 429),
             FakeResponse(reply("Go to Products.")),
         ]
 
         assert chat_completion(["a", "b"], MESSAGES, max_tokens=100) == "Go to Products."
-        assert openrouter["models"] == ["a", "b"]
+        assert ai_api["models"] == ["a", "b"]
 
-    def test_empty_content_is_a_failure_not_an_answer(self, openrouter):
+    def test_empty_content_is_a_failure_not_an_answer(self, ai_api):
         """A reasoning model that spends the budget returns content=None."""
-        openrouter["queue"] = [
+        ai_api["queue"] = [
             FakeResponse({"choices": [{"message": {"content": None}}]}),
             FakeResponse(reply("Go to Products.")),
         ]
 
         assert chat_completion(["a", "b"], MESSAGES, max_tokens=100) == "Go to Products."
-        assert openrouter["models"] == ["a", "b"]
+        assert ai_api["models"] == ["a", "b"]
 
-    def test_unreachable_model_is_skipped(self, openrouter, monkeypatch):
+    def test_unreachable_model_is_skipped(self, ai_api, monkeypatch):
         import requests
 
         calls = []
@@ -107,20 +103,20 @@ class TestTheChainMovesOn:
         assert chat_completion(["a", "b"], MESSAGES, max_tokens=100) == "Go to Products."
         assert calls == ["a", "b"]
 
-    def test_duplicate_models_are_asked_once(self, openrouter):
+    def test_duplicate_models_are_asked_once(self, ai_api):
         """The configured model is often already in the hard-coded chain."""
-        openrouter["queue"] = [
+        ai_api["queue"] = [
             FakeResponse({"error": "down"}),
             FakeResponse(reply("Go to Products.")),
         ]
 
         chat_completion(["a", "a", "b"], MESSAGES, max_tokens=100)
 
-        assert openrouter["models"] == ["a", "b"]
+        assert ai_api["models"] == ["a", "b"]
 
-    def test_exhausted_chain_raises_with_every_reason(self, openrouter):
+    def test_exhausted_chain_raises_with_every_reason(self, ai_api):
         """Callers turn this into a 503, so it has to say what went wrong."""
-        openrouter["queue"] = [
+        ai_api["queue"] = [
             FakeResponse({"error": "rate limited"}),
             FakeResponse({"error": "no credit"}),
         ]
@@ -132,26 +128,18 @@ class TestTheChainMovesOn:
         assert "no credit" in str(exc.value)
 
     def test_missing_api_key_fails_before_any_call(self, monkeypatch):
-        monkeypatch.setattr(ai, "config", lambda key, default=None: default)
+        monkeypatch.setattr(ai, "API_KEY", "")
         monkeypatch.setattr("requests.post", lambda *a, **k: pytest.fail("called anyway"))
 
-        with pytest.raises(AIUnavailable, match="OPENROUTER_API_KEY"):
+        with pytest.raises(AIUnavailable, match="AI_API_KEY"):
             chat_completion(["a"], MESSAGES, max_tokens=100)
 
 
 class TestLeakedReasoningIsRejected:
     """
-    reasoning.exclude is sent on every request and is still not enough: the
-    spill is stochastic, so the same prompt leaked once in production and not
-    at all on the next run. A reply that opens as a thought is a failure.
+    A reply that opens as a thought rather than an answer is treated as a
+    failure, and the chain moves on.
     """
-
-    def test_every_request_asks_for_reasoning_to_be_excluded(self, openrouter):
-        openrouter["queue"] = [FakeResponse(reply("Go to Products."))]
-
-        chat_completion(["a"], MESSAGES, max_tokens=100)
-
-        assert openrouter["payloads"][0]["reasoning"] == {"exclude": True}
 
     @pytest.mark.parametrize("leak", [
         "Okay, the user says their store has no orders yet and asks what to check.",
@@ -163,8 +151,8 @@ class TestLeakedReasoningIsRejected:
         "Let me think about what this merchant needs.",
         "<think>They have no store yet</think>",
     ])
-    def test_a_thought_shaped_reply_advances_the_chain(self, openrouter, leak):
-        openrouter["queue"] = [
+    def test_a_thought_shaped_reply_advances_the_chain(self, ai_api, leak):
+        ai_api["queue"] = [
             FakeResponse(reply(leak)),
             FakeResponse(reply("Go to Products, then Add.")),
         ]
@@ -172,7 +160,7 @@ class TestLeakedReasoningIsRejected:
         text = chat_completion(["a", "b"], MESSAGES, max_tokens=100)
 
         assert text == "Go to Products, then Add."
-        assert openrouter["models"] == ["a", "b"]
+        assert ai_api["models"] == ["a", "b"]
 
     @pytest.mark.parametrize("answer", [
         "It's normal for new stores to have zero orders initially.",
@@ -186,41 +174,29 @@ class TestLeakedReasoningIsRejected:
         "Right away: check that your product has stock.",
         "I don't have your sales data, but here is what to check.",
     ])
-    def test_a_real_answer_is_not_mistaken_for_a_thought(self, openrouter, answer):
+    def test_a_real_answer_is_not_mistaken_for_a_thought(self, ai_api, answer):
         """A false positive costs a silent extra model call, so it matters."""
-        openrouter["queue"] = [FakeResponse(reply(answer))]
+        ai_api["queue"] = [FakeResponse(reply(answer))]
 
         assert chat_completion(["a", "b"], MESSAGES, max_tokens=100) == answer
-        assert openrouter["models"] == ["a"]
+        assert ai_api["models"] == ["a"]
 
-    def test_json_replies_are_never_leak_checked(self, openrouter):
-        """
-        Auto-fill's answer is JSON, and a product could legitimately be named
-        anything at all — including something the prose detector would flag.
-        """
+    def test_json_replies_are_never_leak_checked(self, ai_api):
         body = '{"name": "The User Wants Tote", "sku": "KORAA-THE-1234"}'
-        openrouter["queue"] = [FakeResponse(reply(body))]
+        ai_api["queue"] = [FakeResponse(reply(body))]
 
         assert chat_completion(["a"], MESSAGES, max_tokens=100, json_mode=True) == body
-        assert openrouter["models"] == ["a"]
+        assert ai_api["models"] == ["a"]
 
-    def test_json_mode_asks_for_a_json_object(self, openrouter):
-        openrouter["queue"] = [FakeResponse(reply("{}"))]
+    def test_json_mode_asks_for_a_json_object(self, ai_api):
+        ai_api["queue"] = [FakeResponse(reply("{}"))]
 
         chat_completion(["a"], MESSAGES, max_tokens=100, json_mode=True)
 
-        assert openrouter["payloads"][0]["response_format"] == {"type": "json_object"}
+        assert ai_api["payloads"][0]["response_format"] == {"type": "json_object"}
 
 
 class TestDailyQuota:
-    """
-    The one failure the chain cannot route around. A free key gets 50
-    free-model requests per day across the whole account, so once it is spent
-    every model returns this same 429 — asking the next one is pointless, and
-    telling a merchant to "try again" is wrong until the quota resets.
-    """
-
-    # Verbatim from production on 2026-09-07, reset header included.
     QUOTA_429 = {
         "error": {
             "message": ("Rate limit exceeded: free-models-per-day. Add 10 credits "
@@ -234,25 +210,24 @@ class TestDailyQuota:
         }
     }
 
-    def test_it_stops_the_chain_instead_of_asking_every_model(self, openrouter):
-        openrouter["queue"] = [FakeResponse(self.QUOTA_429, 429)]
+    def test_it_stops_the_chain_instead_of_asking_every_model(self, ai_api):
+        ai_api["queue"] = [FakeResponse(self.QUOTA_429, 429)]
 
         with pytest.raises(AIQuotaExhausted):
             chat_completion(["a", "b", "c"], MESSAGES, max_tokens=100)
 
-        assert openrouter["models"] == ["a"], "b and c would refuse identically"
+        assert ai_api["models"] == ["a"], "b and c would refuse identically"
 
-    def test_it_reports_when_the_quota_resets(self, openrouter):
-        openrouter["queue"] = [FakeResponse(self.QUOTA_429, 429)]
+    def test_it_reports_when_the_quota_resets(self, ai_api):
+        ai_api["queue"] = [FakeResponse(self.QUOTA_429, 429)]
 
         with pytest.raises(AIQuotaExhausted) as exc:
             chat_completion(["a"], MESSAGES, max_tokens=100)
 
         assert exc.value.resets_at == datetime(2026, 9, 8, tzinfo=timezone.utc)
 
-    def test_a_missing_reset_header_is_still_a_quota_failure(self, openrouter):
-        """The cap is real whether or not the header can be read."""
-        openrouter["queue"] = [FakeResponse(
+    def test_a_missing_reset_header_is_still_a_quota_failure(self, ai_api):
+        ai_api["queue"] = [FakeResponse(
             {"error": {"message": "Rate limit exceeded: free-models-per-day.", "code": 429}}, 429
         )]
 
@@ -261,25 +236,20 @@ class TestDailyQuota:
 
         assert exc.value.resets_at is None
 
-    def test_callers_that_only_catch_AIUnavailable_still_work(self, openrouter):
-        openrouter["queue"] = [FakeResponse(self.QUOTA_429, 429)]
+    def test_callers_that_only_catch_AIUnavailable_still_work(self, ai_api):
+        ai_api["queue"] = [FakeResponse(self.QUOTA_429, 429)]
 
         with pytest.raises(AIUnavailable):
             chat_completion(["a"], MESSAGES, max_tokens=100)
 
-    def test_a_transient_per_model_429_is_not_the_daily_cap(self, openrouter):
-        """
-        This is the distinction that matters: "rate-limited upstream" means the
-        next model can answer, so the chain must keep walking rather than
-        telling the merchant to come back tomorrow.
-        """
-        openrouter["queue"] = [
+    def test_a_transient_per_model_429_is_not_the_daily_cap(self, ai_api):
+        ai_api["queue"] = [
             FakeResponse({"error": {"code": 429, "message": "rate-limited upstream"}}, 429),
             FakeResponse(reply("Go to Products.")),
         ]
 
         assert chat_completion(["a", "b"], MESSAGES, max_tokens=100) == "Go to Products."
-        assert openrouter["models"] == ["a", "b"]
+        assert ai_api["models"] == ["a", "b"]
 
 
 class TestQuotaWaitHint:

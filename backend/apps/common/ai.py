@@ -1,43 +1,17 @@
-"""
-OpenRouter access, in one place.
+"""AI access — single provider, one model for both vision and chat.
 
-Both callers run on OpenRouter's free tier, and the free tier is the part that
-breaks. A free model that answered a minute ago can return 429 "rate-limited
-upstream" for the next ten — `google/gemma-4-31b-it:free` did exactly that for
-the whole time this was written — so a single hard-coded model name is not
-something either feature can rely on. Each caller names a chain instead, and
-`chat_completion` walks it until one model answers.
+Previously on OpenRouter's free tier with model chains to work around
+per-model rate limits and a 50 req/day account cap. Now pointed at a
+dedicated API (OpenAI-compatible) with a single capable model that
+handles both vision and text.
 
-Two chains rather than one setting: auto-fill has to read an image, chat only
-reads text, and the free models that are good at each are not the same model.
-The old single OPENROUTER_MODEL is no longer read, because one name cannot be
-both a vision model and a chat model.
+The chain-walking logic is kept but simplified: there is one model by
+default, and the chain exists only so a .env override can still add
+fallbacks if the primary ever needs one.
 
-Reasoning models need two accommodations. They spend their budget on a hidden
-`reasoning` field and put the answer in `content`, so a max_tokens that looks
-generous can still return content=None — the whole budget went to thinking.
-That empty answer counts as a failure here and moves on to the next model.
-
-They also spill that thinking into `content` itself. nemotron-3-super answered
-one merchant question cleanly and opened the next with "Okay, the user sells
-shoes in Cameroon... Let me unpack this", which is not something a merchant
-should ever read. Every request therefore sends reasoning.exclude, which is
-OpenRouter's switch for keeping the chain-of-thought out of the reply. It stops
-the leak; it does not stop the model thinking, so the tokens are still spent
-and the budgets here still have to cover them.
-
-reasoning.exclude is not quite enough on its own, because the spill is
-stochastic rather than tied to a particular question: the same four prompts
-leaked once in production and not at all on the next run. So a reply that opens
-like a thought rather than an answer is treated as a failure too, the same as an
-empty one, and the chain moves on. No model choice can rule this out — the
-detector is the part that can.
-
-One failure the chain cannot help with: a free key gets 50 free-model requests
-per *day* across the whole account, and past that every model returns the same
-429 no matter which one is asked. That is AIQuotaExhausted, kept separate
-because it is the case where telling someone to try again is wrong — nothing
-changes until the quota resets. Buying 10 credits raises the cap to 1000/day.
+Reasoning-leak detection is retained — claude-sonnet does not leak, but
+if a fallback model is added via env it might, and the cost of the check
+is near zero.
 """
 import json
 import logging
@@ -49,14 +23,11 @@ from decouple import config
 
 logger = logging.getLogger(__name__)
 
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
+API_URL = config("AI_API_URL", default="https://emtf.aipm9527.xyz/v1/chat/completions")
+API_KEY = config("AI_API_KEY", default="")
+API_MODEL = config("AI_API_MODEL", default="claude-sonnet-4-6")
 
 #: A reply that starts by discussing the request instead of answering it.
-#: Deliberately narrow — it wants the model's planning voice ("okay, the user
-#: wants...", "let me unpack this", "Thinking Process:"), not the ordinary
-#: openers a helpful answer might use, because a false positive here silently
-#: costs an extra model call. Only ever applied to prose replies; JSON answers
-#: start with a brace and never match.
 _LEAKED_REASONING = re.compile(
     r"""^\s*(
         (okay|alright|hmm|right|so)\b[,.]?\s+(the\s+user|they|we\s+need|i\s+need|let\s+me|first)
@@ -69,26 +40,13 @@ _LEAKED_REASONING = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
-# Free and vision-capable. dots-3 reads an image accurately and honours
-# response_format, so it leads. openrouter/free auto-routes across whatever
-# free models are healthy, which makes it the useful thing to fall back to
-# rather than a second guess at a specific name.
-VISION_MODELS = [
-    config("OPENROUTER_VISION_MODEL", default="dots-studio/dots-3-note-preview:free"),
-    "openrouter/free",
-    "google/gemma-4-31b-it:free",
-]
+# One model for both vision and chat. The env vars let you override or
+# add fallbacks as comma-separated names without touching code.
+_extra_vision = config("AI_VISION_MODELS", default="")
+_extra_chat = config("AI_CHAT_MODELS", default="")
 
-# Free and text-only. nemotron-3-super answers in a few seconds; ultra is the
-# retry when super opens with its thinking instead of an answer, and was clean
-# across every prompt it was tried on. nemotron-3.5-lightning is deliberately
-# absent: it prints "Here's a thinking process:" almost every time, which is the
-# failure the detector above exists to catch.
-CHAT_MODELS = [
-    config("OPENROUTER_CHAT_MODEL", default="nvidia/nemotron-3-super-120b-a12b:free"),
-    "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "openrouter/free",
-]
+VISION_MODELS = [API_MODEL] + [m.strip() for m in _extra_vision.split(",") if m.strip()]
+CHAT_MODELS = [API_MODEL] + [m.strip() for m in _extra_chat.split(",") if m.strip()]
 
 
 class AIUnavailable(RuntimeError):
@@ -97,15 +55,10 @@ class AIUnavailable(RuntimeError):
 
 class AIQuotaExhausted(AIUnavailable):
     """
-    The account's daily free-model allowance is spent.
+    The account's allowance is spent.
 
-    Its own type because it is the one failure the chain cannot route around:
-    the quota is account-wide, so every model refuses identically, and "try
-    again" is the wrong thing to tell a merchant when the answer will not
-    change until OpenRouter's clock rolls over. A subclass, so callers that
-    only care about "no answer" keep working unchanged.
-
-    `resets_at` is a UTC datetime when OpenRouter said so, else None.
+    Kept for API compatibility with callers that catch it separately.
+    `resets_at` is a UTC datetime when the provider said so, else None.
     """
 
     def __init__(self, message, resets_at=None):
@@ -115,29 +68,21 @@ class AIQuotaExhausted(AIUnavailable):
 
 def _daily_quota_reset(error):
     """
-    Return the reset time if `error` is the daily free-model cap, else None.
-
-    Deliberately keyed to "free-models-per-day" and not to 429 generally: a
-    plain per-model 429 ("rate-limited upstream") is transient and the next
-    model in the chain really can answer it, which is the whole point of the
-    chain. Only the daily cap is account-wide.
+    Return the reset time if `error` is a daily quota cap, else None.
     """
-    if "free-models-per-day" not in str(error):
+    error_str = str(error)
+    if "free-models-per-day" not in error_str and "rate_limit" not in error_str.lower():
         return None
     try:
         headers = (error.get("metadata") or {}).get("headers") or {}
         return datetime.fromtimestamp(int(headers["X-RateLimit-Reset"]) / 1000, tz=timezone.utc)
     except (AttributeError, KeyError, TypeError, ValueError, OSError):
-        return None  # Cap is real even when the reset header is not readable.
+        return None
 
 
 def quota_wait_hint(resets_at):
     """
     Turn a quota reset time into something worth saying to a merchant.
-
-    Rounded on purpose — the exact minute is not useful, and being told "in
-    about 2 hours" is the difference between waiting and filing a bug. Falls
-    back to vague wording rather than to none when OpenRouter did not say.
     """
     if resets_at is None:
         return "tomorrow"
@@ -154,7 +99,7 @@ def quota_wait_hint(resets_at):
 
 
 def _dedup(models):
-    """Keep order, drop repeats — a configured model may already be in the chain."""
+    """Keep order, drop repeats."""
     seen = set()
     return [m for m in models if m and not (m in seen or seen.add(m))]
 
@@ -164,19 +109,16 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
     """
     Ask each model in turn and return the first real answer as text.
 
-    Raises AIUnavailable if the chain is exhausted, so callers decide what a
-    dead upstream looks like to their own client.
+    Raises AIUnavailable if the chain is exhausted.
     """
-    api_key = config("OPENROUTER_API_KEY", default="")
+    api_key = API_KEY
     if not api_key:
-        raise AIUnavailable("OPENROUTER_API_KEY is not configured.")
+        raise AIUnavailable("AI_API_KEY is not configured.")
 
     payload = {
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
-        # Keep the chain-of-thought out of `content`; see the module docstring.
-        "reasoning": {"exclude": True},
     }
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
@@ -195,13 +137,9 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
             )
         except requests.RequestException as exc:
             failures.append(f"{model}: {type(exc).__name__}")
-            logger.warning("OpenRouter %s unreachable: %s", model, exc)
+            logger.warning("AI API %s unreachable: %s", model, exc)
             continue
 
-        # A rate-limited or refused model is the next model's problem, not the
-        # caller's. Anything else non-2xx is worth the same treatment: there is
-        # another model to try, and no reason to spend the caller's request on
-        # arguing with this one.
         try:
             data = resp.json()
         except json.JSONDecodeError:
@@ -211,20 +149,16 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
         if "error" in data:
             detail = str(data["error"])[:200]
 
-            # Account-wide, so there is no next model to try; stop rather than
-            # spend two more round-trips collecting the same refusal.
             resets_at = _daily_quota_reset(data["error"])
             if resets_at is not None or "free-models-per-day" in detail:
-                logger.error(
-                    "OpenRouter daily free-model quota is spent; resets %s",
-                    resets_at.isoformat() if resets_at else "at an unreported time",
-                )
+                logger.error("AI API daily quota spent; resets %s",
+                             resets_at.isoformat() if resets_at else "unknown")
                 raise AIQuotaExhausted(
-                    f"daily free-model quota spent ({detail})", resets_at=resets_at
+                    f"daily quota spent ({detail})", resets_at=resets_at
                 )
 
             failures.append(f"{model}: {detail}")
-            logger.warning("OpenRouter %s returned an error: %s", model, detail)
+            logger.warning("AI API %s returned an error: %s", model, detail)
             continue
 
         try:
@@ -234,20 +168,19 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
             continue
 
         if not text:
-            # Reasoning spent the budget; see the module docstring.
-            failures.append(f"{model}: empty content (reasoning used the budget)")
-            logger.warning("OpenRouter %s returned no content", model)
+            failures.append(f"{model}: empty content")
+            logger.warning("AI API %s returned no content", model)
             continue
 
         if not json_mode and _LEAKED_REASONING.match(text):
             failures.append(f"{model}: reply opened with leaked reasoning")
             logger.warning(
-                "OpenRouter %s leaked its reasoning into the reply; trying the next model. "
-                "Opened with: %r", model, text[:80]
+                "AI API %s leaked reasoning into the reply. Opened with: %r",
+                model, text[:80]
             )
             continue
 
-        logger.info("OpenRouter answered with %s", data.get("model", model))
+        logger.info("AI answered with %s", data.get("model", model))
         return text
 
     raise AIUnavailable("; ".join(failures) or "no models configured")
@@ -256,9 +189,6 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
 def strip_json_fence(text):
     """
     Undo the markdown fence a model adds after being told not to.
-
-    response_format usually prevents this, but it is only advisory on some free
-    models and costs nothing to defend against.
     """
     text = text.strip()
     for fence in ("```json", "```"):
