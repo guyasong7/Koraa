@@ -113,7 +113,7 @@ class RegisterView(generics.CreateAPIView):
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
-                fail_silently=True,
+                fail_silently=False,
                 html_message=html_message,
             )
             return
@@ -134,7 +134,7 @@ class RegisterView(generics.CreateAPIView):
             message=f"Your verification code is: {otp}\n\nThis code expires in 10 minutes.",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
-            fail_silently=True,
+            fail_silently=False,
             html_message=html_message,
         )
 
@@ -216,7 +216,7 @@ class RequestEmailOTPView(APIView):
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
-                fail_silently=True,
+                fail_silently=False,
                 html_message=html_message,
             )
         except Exception as exc:
@@ -234,7 +234,7 @@ class RequestEmailOTPView(APIView):
                 message=f"Your code is: {otp}\n\nExpires in 10 minutes.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
-                fail_silently=True,
+                fail_silently=False,
                 html_message=html_message,
             )
         return Response({"message": "Verification code sent."})
@@ -301,7 +301,7 @@ class PasswordResetRequestView(APIView):
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
-                fail_silently=True,
+                fail_silently=False,
                 html_message=html_message,
             )
             return Response({"message": "If an account exists, a reset link has been sent."})
@@ -329,7 +329,7 @@ class PasswordResetRequestView(APIView):
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
-                fail_silently=True,
+                fail_silently=False,
                 html_message=fallback_html,
             )
         else:
@@ -344,7 +344,7 @@ class PasswordResetRequestView(APIView):
                 message=f"Click to reset your password:\n\n{reset_url}\n\nExpires in 1 hour.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
-                fail_silently=True,
+                fail_silently=False,
                 html_message=token_html,
             )
         return Response({"message": "If an account exists, a reset link has been sent."})
