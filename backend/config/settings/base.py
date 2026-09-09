@@ -377,6 +377,8 @@ CORS_ALLOWED_ORIGIN_REGEXES = env.list(
     default=[
         r"^http://[a-z0-9\-]+\.localhost:3000$",
         rf"^https://[a-z0-9\-]+\.{_root_re}$",
+        # Vercel preview/production deployments
+        r"^https://[a-z0-9\-]+\.vercel\.app$",
     ],
 )
 CORS_ALLOW_CREDENTIALS = True

@@ -91,6 +91,15 @@ backend_env: dict[str, str] = {
     "KORAA_STOREFRONT_DOMAIN": ROOT_DOMAIN,
     "KORAA_DASHBOARD_URL": f"https://{ROOT_DOMAIN}",
     "KORAA_API_URL": f"https://{API_HOST}",
+    # CORS: the apex and www are in base.py's default list via KORAA_ROOT_DOMAIN,
+    # and storefront subdomains + Vercel previews are covered by the regex list.
+    # No need to override CORS_ALLOWED_ORIGINS unless a custom merchant domain is
+    # added — in that case append it here.
+    "CORS_ALLOWED_ORIGIN_REGEXES": (
+        rf"^http://[a-z0-9\-]+\.localhost:3000$,"
+        rf"^https://[a-z0-9\-]+\.{ROOT_DOMAIN.replace('.', r'\.')}$,"
+        r"^https://[a-z0-9\-]+\.vercel\.app$"
+    ),
     "FIREBASE_PROJECT_ID": "koraa-a3ecd",
     # nginx redirects HTTP and forwards X-Forwarded-Proto, so True is correct.
     "SECURE_SSL_REDIRECT": "True",
