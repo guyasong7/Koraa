@@ -65,7 +65,7 @@ const FONT_VARS = [inter, outfit, poppins, lato, raleway, nunito]
 export const metadata: Metadata = {
   metadataBase: new URL("https://koraa.cm"),
   title: {
-    default: "Koraa — Open your online shop in Cameroon",
+    default: "Koraa - Open your online shop in Cameroon",
     template: "%s | Koraa",
   },
   description:
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
     "yaounde",
   ],
   openGraph: {
-    title: "Koraa — Open your online shop in Cameroon",
+    title: "Koraa - Open your online shop in Cameroon",
     description:
       "Create your online store, accept MTN Mobile Money & Orange Money, and manage everything from one dashboard. Free to start.",
     url: "https://koraa.cm",

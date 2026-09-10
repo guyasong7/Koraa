@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   description:
     "Koraa gives you a storefront, a checkout that takes MTN Mobile Money and Orange Money, and one dashboard to run it all. Free to start.",
   openGraph: {
-    title: "Koraa — Open your online shop in Cameroon",
+    title: "Koraa - Open your online shop in Cameroon",
     description:
       "A storefront, mobile money checkout and one dashboard to run it all. Free to start.",
     type: "website",
