@@ -140,7 +140,51 @@ class StoreCreateSerializer(serializers.ModelSerializer):
         StorefrontConfig.objects.get_or_create(store=store)
         create_default_sections(store)
 
+        self._notify_store_created(store, merchant)
+
         return store
+
+    @staticmethod
+    def _notify_store_created(store, merchant):
+        import logging
+        from django.conf import settings
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        from apps.notifications.models import Notification
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            Notification.objects.create(
+                recipient=merchant.user,
+                type=Notification.Type.STORE_CREATED,
+                title="Store Created!",
+                body=f"Your store \"{store.name}\" is now live on Koraa.",
+                data={"store_id": str(store.id)},
+            )
+        except Exception:
+            logger.exception("Store %s: could not create notification", store.id)
+
+        dashboard_url = settings.KORAA_DASHBOARD_URL.rstrip("/")
+        try:
+            html = render_to_string("emails/new_store_merchant.html", {
+                "merchant_name": merchant.user.first_name or merchant.user.email,
+                "store_name": store.name,
+                "dashboard_url": dashboard_url,
+            })
+            send_mail(
+                subject=f"Your store \"{store.name}\" is live on Koraa!",
+                message=(
+                    f"Congratulations! Your store \"{store.name}\" has been created "
+                    f"on Koraa and is ready for business."
+                ),
+                from_email=settings.NOTIFICATION_FROM_EMAIL,
+                recipient_list=[merchant.user.email],
+                fail_silently=False,
+                html_message=html,
+            )
+        except Exception:
+            logger.exception("Store %s: could not send creation email", store.id)
 
 
 class StoreUpdateSerializer(serializers.ModelSerializer):

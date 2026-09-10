@@ -1,0 +1,32 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Your store is live on Koraa{% endblock %}
+
+{% block content %}
+<h1>Your store is live!</h1>
+
+<p>Hi {{ merchant_name }},</p>
+
+<p>
+    Congratulations &mdash; <strong>{{ store_name }}</strong> has been created
+    and is ready for business on Koraa.
+</p>
+
+<div class="panel">
+    <p style="margin: 0 0 8px;"><strong>What&rsquo;s next?</strong></p>
+    <ul style="margin: 0; padding-left: 18px; color: #475569; font-size: 14px; line-height: 1.8;">
+        <li>Add your first products from the dashboard</li>
+        <li>Customise your storefront look &amp; feel</li>
+        <li>Share your store link with customers</li>
+    </ul>
+</div>
+
+<p style="text-align: center; margin: 28px 0;">
+    <a class="cta" href="{{ dashboard_url }}/dashboard/stores">Go to my store</a>
+</p>
+
+<p class="muted">
+    Need help getting started?
+    <a href="mailto:support@koraa.cm" style="color: #64748b;">Reach out to our team</a>.
+</p>
+{% endblock %}

@@ -12,6 +12,7 @@ class Notification(models.Model):
         ORDER_PLACED = "order_placed", "Order Placed"
         PLAN_EXPIRING = "plan_expiring", "Plan Expiring"
         PLAN_EXPIRED = "plan_expired", "Plan Expired"
+        STORE_CREATED = "store_created", "Store Created"
         GENERAL = "general", "General"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
