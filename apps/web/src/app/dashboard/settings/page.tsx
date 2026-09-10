@@ -370,10 +370,29 @@ function IdentityTab() {
   const [loadingIdentity, setLoadingIdentity] = useState(true);
 
   useEffect(() => {
-    merchantApi.getIdentity()
-      .then(res => setIdentityData(res.data))
-      .catch(() => {})
-      .finally(() => setLoadingIdentity(false));
+    const params = new URLSearchParams(window.location.search);
+    const returnedFromDidit = params.get("verified") === "1";
+
+    const fetchIdentity = () =>
+      merchantApi.getIdentity()
+        .then(res => setIdentityData(res.data))
+        .catch(() => {})
+        .finally(() => setLoadingIdentity(false));
+
+    fetchIdentity();
+
+    // When the merchant returns from Didit, the decision may not be
+    // ready immediately. Poll a few times to pick it up.
+    if (returnedFromDidit) {
+      const timers = [5000, 12000, 25000].map(delay =>
+        setTimeout(() => {
+          merchantApi.getIdentity()
+            .then(res => setIdentityData(res.data))
+            .catch(() => {});
+        }, delay)
+      );
+      return () => timers.forEach(clearTimeout);
+    }
   }, []);
 
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {

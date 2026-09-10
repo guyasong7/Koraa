@@ -101,26 +101,11 @@ def verify_webhook_signature(payload_bytes, signature, timestamp, max_age=300):
     return hmac.compare_digest(expected, signature or "")
 
 
-def process_webhook(data):
-    """Process a Didit status.updated webhook payload.
+def _apply_decision(identity, status, decision):
+    """Write Didit decision data onto a MerchantIdentity and save.
 
-    Updates the MerchantIdentity row and returns (identity, changed).
-    Returns (None, False) if the session doesn't match any merchant.
+    Shared by both the webhook handler and the polling fallback.
     """
-    from .models import MerchantIdentity
-
-    session_id = data.get("session_id")
-    status = data.get("status", "")
-    decision = data.get("decision") or {}
-
-    try:
-        identity = MerchantIdentity.objects.select_related("merchant").get(
-            didit_session_id=session_id
-        )
-    except MerchantIdentity.DoesNotExist:
-        logger.warning("Didit webhook for unknown session %s", session_id)
-        return None, False
-
     identity.verification_status = status
 
     # Extract data from the decision object
@@ -151,8 +136,66 @@ def process_webhook(data):
 
     identity.save()
 
+
+def process_webhook(data):
+    """Process a Didit status.updated webhook payload.
+
+    Updates the MerchantIdentity row and returns (identity, changed).
+    Returns (None, False) if the session doesn't match any merchant.
+    """
+    from .models import MerchantIdentity
+
+    session_id = data.get("session_id")
+    status = data.get("status", "")
+    decision = data.get("decision") or {}
+
+    try:
+        identity = MerchantIdentity.objects.select_related("merchant").get(
+            didit_session_id=session_id
+        )
+    except MerchantIdentity.DoesNotExist:
+        logger.warning("Didit webhook for unknown session %s", session_id)
+        return None, False
+
+    _apply_decision(identity, status, decision)
+
     logger.info(
         "Didit session %s updated to %s for merchant %s",
         session_id, status, identity.merchant_id,
     )
     return identity, True
+
+
+def poll_and_save(identity):
+    """Poll the Didit decision for *identity* and save any data returned.
+
+    The decision endpoint returns the decision object directly (not wrapped
+    in a webhook envelope), so we normalise the shape before applying.
+    Returns True if the identity was updated, False otherwise.
+    """
+    if not identity.didit_session_id:
+        return False
+
+    resp = get_decision(str(identity.didit_session_id))
+    if not resp:
+        return False
+
+    logger.info(
+        "Didit poll response for session %s: %s",
+        identity.didit_session_id,
+        {k: v for k, v in resp.items() if k != "decision"},
+    )
+
+    # The polled response may carry the decision inline or nested.
+    # Webhook: {session_id, status, decision: {...}}
+    # Poll:    {session_id, status, ...checks at top level...}
+    status = resp.get("status", "")
+    decision = resp.get("decision") or resp
+
+    _apply_decision(identity, status, decision)
+
+    logger.info(
+        "Didit poll updated session %s to %s for merchant %s",
+        identity.didit_session_id, status, identity.merchant_id,
+    )
+    return True

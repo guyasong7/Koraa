@@ -154,11 +154,34 @@ class MerchantIdentityUploadView(generics.RetrieveUpdateAPIView):
         except Exception:
             from rest_framework.exceptions import NotFound
             raise NotFound("Merchant profile not found.")
-        
+
         identity, _ = MerchantIdentity.objects.get_or_create(merchant=merchant)
         # Ensure the merchant can be used for permission check
         identity.user = merchant.user
         return identity
+
+    def retrieve(self, request, *args, **kwargs):
+        identity = self.get_object()
+        # When a Didit session exists and hasn't reached a terminal state,
+        # poll the decision API so identity data is saved even if the
+        # webhook was missed.
+        if (
+            identity.didit_session_id
+            and identity.verification_status
+            in (
+                MerchantIdentity.VerificationStatus.IN_PROGRESS,
+                MerchantIdentity.VerificationStatus.PENDING,
+                MerchantIdentity.VerificationStatus.IN_REVIEW,
+            )
+        ):
+            from . import didit
+            try:
+                if didit.poll_and_save(identity):
+                    identity.refresh_from_db()
+            except Exception:
+                logger.exception("Didit poll on identity GET failed")
+        serializer = self.get_serializer(identity)
+        return Response(serializer.data)
 
     def perform_update(self, serializer):
         instance = serializer.save()
