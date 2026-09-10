@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./theme.css";
 
 /* Inter and Outfit are Koraa's own chrome faces, loaded by
    next/font/google in app/layout.tsx, which self-hosts them and exposes

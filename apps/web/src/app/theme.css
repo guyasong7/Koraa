@@ -1,0 +1,153 @@
+/* ─────────────────────────────────────────────────────────────────
+   Tailwind theme mapping
+
+   Koraa's tokens live in globals.css as three layers (primitive ramp →
+   semantic alias → component). This file is the *bridge*: it exposes
+   those tokens to Tailwind's utility generator so `bg-surface-900` and
+   `text-brand-text` resolve to the same values the hand-written CSS
+   already uses. It defines no new colours.
+
+   `@theme inline` is load-bearing, not stylistic. Without `inline`,
+   Tailwind resolves each token once at build time and bakes the value
+   into the utility — which would freeze every utility at its light-mode
+   value, because the semantic layer is re-pointed at runtime by `.dark`
+   (--brand-solid moves 600 → 400, --surface-900 moves bone → indigo).
+   With `inline`, the utility emits `var(--brand-solid)` and follows the
+   theme the same way the CSS does.
+
+   Two namespaces are deliberately absent:
+
+   - Radius. Koraa's --radius-sm…2xl are 4/6/8/12/16px, which is exactly
+     Tailwind's own scale, so `rounded-lg` is already correct. Mapping
+     them would also self-reference: Tailwind's namespace for radius is
+     literally --radius-*. Only --radius-control is added, for the shared
+     button/field corner that regions override as a group.
+   - Spacing. --space-1…16 is the 4px scale Tailwind already generates.
+   ───────────────────────────────────────────────────────────────── */
+
+@theme inline {
+  /* ── Brand ramp — theme-independent, see globals.css ───────────── */
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  /* ── Indigo — the dominant; dark-mode surfaces are these stops ─── */
+  --color-indigo-50: var(--indigo-50);
+  --color-indigo-100: var(--indigo-100);
+  --color-indigo-200: var(--indigo-200);
+  --color-indigo-300: var(--indigo-300);
+  --color-indigo-400: var(--indigo-400);
+  --color-indigo-500: var(--indigo-500);
+  --color-indigo-600: var(--indigo-600);
+  --color-indigo-700: var(--indigo-700);
+  --color-indigo-800: var(--indigo-800);
+  --color-indigo-900: var(--indigo-900);
+  --color-indigo-950: var(--indigo-950);
+
+  /* ── Bone — paper ──────────────────────────────────────────────── */
+  --color-bone-50: var(--bone-50);
+  --color-bone-100: var(--bone-100);
+  --color-bone-200: var(--bone-200);
+  --color-bone-300: var(--bone-300);
+  --color-bone-400: var(--bone-400);
+  --color-bone-500: var(--bone-500);
+
+  /* ── Clay — support ────────────────────────────────────────────── */
+  --color-clay-400: var(--clay-400);
+  --color-clay-500: var(--clay-500);
+  --color-clay-600: var(--clay-600);
+  --color-clay-text: var(--clay-text);
+
+  /* ── Brand, semantic. Prefer these over the ramp. ──────────────── */
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-solid-hover: var(--brand-solid-hover);
+  --color-on-brand-solid: var(--on-brand-solid);
+  --color-brand-text: var(--brand-text);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand-tint-border: var(--brand-tint-border);
+
+  /* ── Surfaces ──────────────────────────────────────────────────── */
+  --color-surface: var(--surface);
+  --color-surface-950: var(--surface-950);
+  --color-surface-900: var(--surface-900);
+  --color-surface-850: var(--surface-850);
+  --color-surface-800: var(--surface-800);
+  --color-surface-700: var(--surface-700);
+  --color-surface-600: var(--surface-600);
+  --color-surface-500: var(--surface-500);
+
+  /* ── Text hierarchy ────────────────────────────────────────────── */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+
+  /* ── Borders ───────────────────────────────────────────────────── */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+
+  /* ── Status. The -text variant is the one that clears 4.5:1 as type
+     on a tint; the plain one is for fills, dots and chart series. ── */
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
+  --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
+  --color-info: var(--info);
+  --color-info-text: var(--info-text);
+
+  /* ── Texture ───────────────────────────────────────────────────── */
+  --color-motif-ink: var(--motif-ink);
+
+  /* ── shadcn/ui aliases ─────────────────────────────────────────────
+     shadcn's generated components reference a fixed vocabulary
+     (background, card, primary, muted, ring…). Pointing that vocabulary
+     at Koraa's tokens is what makes a stock `npx shadcn add` component
+     land already wearing Koraa's colours, in both themes, instead of
+     shadcn's default slate. Do not give these independent values. */
+  --color-background: var(--surface);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-900);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-900);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--brand-solid);
+  --color-primary-foreground: var(--on-brand-solid);
+  --color-secondary: var(--surface-850);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--surface-850);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--brand-tint);
+  --color-accent-foreground: var(--brand-text);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: #ffffff;
+  --color-input: var(--border-strong);
+  --color-ring: var(--border-focus);
+
+  /* ── Type ──────────────────────────────────────────────────────── */
+  --font-display: var(--font-outfit), var(--font-inter), system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* ── The shared control corner ─────────────────────────────────── */
+  --radius-control: var(--control-radius);
+
+  /* ── Elevation. Neutral only, and re-pointed by .dark. ─────────── */
+  --shadow-e1: var(--shadow-xs);
+  --shadow-e2: var(--shadow-sm);
+  --shadow-e3: var(--shadow-md);
+  --shadow-e4: var(--shadow-lg);
+  --shadow-e5: var(--shadow-xl);
+
+  /* ── Motion ────────────────────────────────────────────────────── */
+  --ease-out-koraa: var(--ease-out);
+  --ease-in-out-koraa: var(--ease-in-out);
+}
