@@ -11,8 +11,8 @@ import { authApi } from "@/lib/api";
  * Completes the Django-side password reset (POST /auth/password-reset/confirm/).
  *
  * Accounts that sign in through Firebase do not land here — the request
- * endpoint mails those users to /auth/forgot-password instead, because a
- * Django password is not what Firebase login checks.
+ * endpoint mails those users a Firebase action link, handled by
+ * /_/auth/action, because a Django password is not what Firebase checks.
  */
 export default function ResetPasswordPage() {
   return (

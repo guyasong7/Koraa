@@ -260,12 +260,13 @@ class VerifyEmailOTPView(APIView):
 @extend_schema(tags=["auth"])
 class PasswordResetRequestView(APIView):
     """
-    Initiate a Django-side password reset — sends a token via email.
+    Initiate a password reset — sends a reset link by email.
 
-    Note: the web app signs in through Firebase, so a Firebase-backed account
-    must reset via /auth/forgot-password (Firebase's own flow) instead. This
-    endpoint exists for accounts that authenticate against Django directly,
-    such as staff using the API without Firebase.
+    This is what the web app's /auth/forgot-password posts to. It no longer
+    calls Firebase from the browser, so the Firebase side is handled here:
+    a Firebase Admin action link is tried first because that is what actually
+    resets the credential the web app signs in with. The Django token below
+    is the fallback for accounts that only exist in Django.
     """
     permission_classes = [permissions.AllowAny]
     serializer_class = PasswordResetRequestSerializer
@@ -315,17 +316,24 @@ class PasswordResetRequestView(APIView):
         # ── Fallback: Django token reset ──────────────────────────────────────
         # Used for pure OTP-only accounts that never created a Firebase session.
         if not user.has_usable_password():
-            reset_url = f"{dashboard_url}/auth/forgot-password"
+            # Not /auth/forgot-password: that page posts straight back to
+            # this view and lands on this same branch, mailing the same link
+            # again. There is no Django password to reset here, and the
+            # Firebase link above is the one that would have reset the
+            # Firebase credential — so send them to sign-in, where Google
+            # still gets them in.
+            login_url = f"{dashboard_url}/auth/login"
             fallback_html = render_to_string("emails/password_reset_fallback.html", {
-                "reset_url": reset_url,
+                "login_url": login_url,
                 "dashboard_url": dashboard_url,
             })
             send_mail(
-                subject="Reset your Koraa password",
+                subject="Signing in to your Koraa account",
                 message=(
                     "Your Koraa account signs in with Google or with an email "
-                    "password managed by Firebase.\n\n"
-                    f"Reset it here: {reset_url}\n"
+                    "password managed by Firebase, so there is no separate "
+                    "Koraa password to reset.\n\n"
+                    f"Sign in here: {login_url}\n"
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],

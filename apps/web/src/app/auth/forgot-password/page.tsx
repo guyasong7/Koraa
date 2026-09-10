@@ -3,15 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { LuArrowLeft, LuArrowRight, LuMailCheck } from "react-icons/lu";
-import { sendPasswordReset } from "@/lib/firebase";
 import KoraaLogo from "@/components/KoraaLogo";
+import { authApi } from "@/lib/api";
 
-/**
- * Passwords are held by Firebase — registration and login both go through
- * `registerWithEmail` / `signInWithEmail`, which wrap Firebase's own calls — so
- * the reset has to be Firebase's. Django's password-reset endpoints would change
- * a password that login never checks, leaving the user still locked out.
- */
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -23,17 +17,16 @@ export default function ForgotPasswordPage() {
     setError("");
     setBusy(true);
     try {
-      await sendPasswordReset(email.trim());
+      await authApi.requestPasswordReset(email.trim());
       setSent(true);
     } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
-      if (code === "auth/invalid-email") {
-        setError("That does not look like a valid email address.");
-      } else if (code === "auth/too-many-requests") {
-        setError("Too many attempts. Please wait a few minutes and try again.");
+      // The endpoint answers the same whether or not the account exists,
+      // so a 4xx leaks nothing and is reported as sent. A request that
+      // never landed is different — "check your email" would be a lie.
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === undefined || status >= 500) {
+        setError("We could not reach Koraa. Check your connection and try again.");
       } else {
-        // Anything else — including user-not-found — is reported the same way
-        // so this page cannot be used to discover which emails have accounts.
         setSent(true);
       }
     } finally {
