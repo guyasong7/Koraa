@@ -5,7 +5,7 @@ import KoraaLogo from "@/components/KoraaLogo";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import { LuEye, LuEyeOff, LuArrowRight } from "react-icons/lu";
 import { FcGoogle } from "react-icons/fc";
 import { signInWithEmail } from "@/lib/firebase";

@@ -4,7 +4,7 @@ import { LuPackage, LuPlus, LuLoader, LuSearch, LuFilter, LuEllipsis, LuImage, L
 import { useState, useEffect } from "react";
 import { storeApi, productApi } from "@/lib/api";
 import { useRouter, useSearchParams } from "next/navigation";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import StoreBackLink from "@/components/StoreBackLink";
 import CategoriesDialog from "./CategoriesDialog";
 

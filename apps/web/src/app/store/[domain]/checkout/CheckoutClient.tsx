@@ -16,7 +16,7 @@ import { trackEvent } from "@/lib/analytics";
 import { STOREFRONT_DEFAULTS } from "@/components/storefront/theme";
 import { formatPrice } from "@/components/storefront/shared";
 import { isPlausibleEmail } from "@/lib/momo";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 
 type StoreTheme = {
   name: string;

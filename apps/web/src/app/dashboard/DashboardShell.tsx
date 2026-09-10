@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useState, useEffect, Fragment } from "react";
 import { useAuthStore } from "@/stores/auth";
 import KoraaLogo from "@/components/KoraaLogo";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import {
   LuMenu, LuLayoutDashboard, LuStore, LuPackage, LuShoppingCart,
   LuUsers, LuSettings, LuLogOut, LuBell, LuGlobe, LuLoader,
@@ -166,7 +166,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   return (
     /* The data and notification providers wrap from here rather than from the
        root layout, so the marketing pages stop shipping react-query and
-       react-hot-toast; see `components/Providers.tsx`. Inside the two early
+       sonner; see `components/Providers.tsx`. Inside the two early
        returns above rather than around them on purpose — the loader and the
        unauthenticated `null` use neither, and everything that does (the
        breadcrumb header's NotificationBell, `handleLogout`'s toast, and every

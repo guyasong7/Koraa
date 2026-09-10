@@ -20,7 +20,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRef } from "react";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import {
   LuDownload, LuFile, LuInfo, LuLoader, LuMail, LuTrash2, LuUpload, LuX,
 } from "react-icons/lu";

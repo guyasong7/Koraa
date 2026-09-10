@@ -616,7 +616,7 @@ function About({ s }: any) {
   );
 }
 
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 
 function Newsletter({ s }: any) {
   if (!s.enabled) return null;

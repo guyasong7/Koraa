@@ -27,7 +27,7 @@ import {
   LuSearch,
   LuShoppingCart,
 } from "react-icons/lu";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 
 import { orderApi, storeApi } from "@/lib/api";
 import type { MerchantOrder, OrderListParams } from "@/lib/api";

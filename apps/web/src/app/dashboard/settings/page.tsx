@@ -7,7 +7,7 @@ import { useAuthStore } from "@/stores/auth";
 import { authApi, merchantApi, storeApi, teamApi } from "@/lib/api";
 import { ROOT_DOMAIN, storefrontHost } from "@/lib/rootDomain";
 
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import {
   LuUser,
   LuCreditCard,

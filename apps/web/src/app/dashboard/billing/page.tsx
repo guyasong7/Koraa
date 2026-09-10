@@ -7,7 +7,7 @@ import {
   CONTACT_SALES_PLAN, POPULAR_PLAN, formatXaf, planBullets,
 } from "@/lib/planCopy";
 import PurchaseDialog from "./PurchaseDialog";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import {
   LuCheck, LuZap, LuStar, LuBuilding, LuShield, LuTriangleAlert,
   LuRotateCcw, LuLoader,

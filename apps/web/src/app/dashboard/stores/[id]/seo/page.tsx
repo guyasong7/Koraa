@@ -29,7 +29,7 @@ import {
   LuSave,
   LuTriangleAlert,
 } from "react-icons/lu";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 
 import { storeApi } from "@/lib/api";
 import type { SeoCheck, SeoReport, SeoStatus } from "@/lib/api";

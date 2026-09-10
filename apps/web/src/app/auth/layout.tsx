@@ -20,7 +20,7 @@ export const metadata: Metadata = {
  * hints without anyone remembering to add them.
  *
  * `AppProviders` is here rather than in the root layout so the marketing pages
- * stop shipping react-query and react-hot-toast; see `components/Providers.tsx`.
+ * stop shipping react-query and sonner; see `components/Providers.tsx`.
  * Every /auth page raises toasts on a failed sign-in, so all of them need it.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {

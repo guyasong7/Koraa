@@ -8,7 +8,7 @@ import { storeApi } from "@/lib/api";
 import Link from "next/link";
 import { LuArrowLeft, LuGlobe, LuExternalLink, LuInbox, LuMail, LuSettings, LuSlidersHorizontal, LuPackage, LuShoppingCart, LuPalette, LuSearch, LuSparkles, LuTrash2, LuLoader } from 'react-icons/lu';
 import { FiBarChart2 as LuBarChart3 } from "react-icons/fi";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function StoreDetailPage() {

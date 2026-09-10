@@ -35,7 +35,7 @@ import {
   LuSave,
   LuTrash2,
 } from "react-icons/lu";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 
 import { storefrontApi, storeApi, type ServiceFormConfig, type ServiceFormFieldType } from "@/lib/api";
 import type { ServiceFormField } from "@/types/storefront";

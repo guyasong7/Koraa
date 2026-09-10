@@ -28,7 +28,7 @@ import {
   LuTrash2,
   LuTriangleAlert,
 } from "react-icons/lu";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 
 import { storefrontApi, storeApi, type FormSubmission, type Paginated } from "@/lib/api";
 

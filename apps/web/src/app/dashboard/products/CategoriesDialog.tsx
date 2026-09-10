@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { categoryApi, Category } from "@/lib/api";
 import { LuX, LuPlus, LuTrash, LuPencil, LuCheck } from "react-icons/lu";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 
 export default function CategoriesDialog({
   storeId,

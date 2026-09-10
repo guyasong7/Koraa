@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import KoraaLogo from "@/components/KoraaLogo";
 import { MtnLogo } from "@/components/RailLogos";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import { LuEye, LuEyeOff, LuArrowRight, LuTrendingUp } from "react-icons/lu";
 import { FcGoogle } from "react-icons/fc";
 import { registerWithEmail } from "@/lib/firebase";

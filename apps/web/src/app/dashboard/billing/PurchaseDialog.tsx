@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import {
   LuCircleCheck, LuClock, LuLoader, LuLock, LuTriangleAlert,
 } from "react-icons/lu";

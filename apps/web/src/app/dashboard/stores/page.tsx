@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
 import { storeApi, Store, StoreCreateData } from "@/lib/api";
 import { storefrontHost, storefrontUrl } from "@/lib/rootDomain";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import Link from "next/link";
 import {
   LuPlus, LuGlobe, LuZap, LuWifiOff, LuLoader,

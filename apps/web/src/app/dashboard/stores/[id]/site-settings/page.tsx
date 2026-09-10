@@ -47,7 +47,7 @@ import {
   LuTriangleAlert,
   LuUpload,
 } from "react-icons/lu";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 
 import { productApi, storeApi, storefrontApi } from "@/lib/api";
 import type {

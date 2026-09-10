@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import { merchantApi } from "@/lib/api";
 import KoraaLogo from "@/components/KoraaLogo";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import { LuArrowRight, LuArrowLeft, LuCheck, LuStore, LuSparkles } from "react-icons/lu";
 
 /**

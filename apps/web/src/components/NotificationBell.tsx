@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { useNotificationStore, AppNotification } from "@/stores/notifications";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import { useAuthStore } from "@/stores/auth";
 import { teamApi } from "@/lib/api";
 

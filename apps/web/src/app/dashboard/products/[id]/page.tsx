@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { storeApi, productApi, categoryApi, Category } from "@/lib/api";
-import toast from "react-hot-toast";
+import { toast } from "@/lib/toast";
 import Link from "next/link";
 import {
   LuArrowLeft, LuLoader, LuPackage, LuSave, LuEye,
