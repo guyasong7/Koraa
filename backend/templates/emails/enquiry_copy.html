@@ -15,18 +15,26 @@ merchant never agreed to is a promise made on their behalf.
 {% block title %}We got your message — {{ store.name }}{% endblock %}
 
 {% block header %}
-{% if store_logo %}
-    <a href="{{ store_url }}" style="text-decoration: none;">
-        <img src="{{ store_logo }}" alt="{{ store.name }}" class="logo">
-    </a>
-{% else %}
-    <a href="{{ store_url }}" style="text-decoration: none; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
-        {{ store.name }}
-    </a>
-{% endif %}
+<a href="{{ store_url }}" style="text-decoration: none;">
+    <img src="https://koraa.cm/koraa-logo-white.png" alt="Koraa" class="logo">
+</a>
 {% endblock %}
 
 {% block content %}
+{% if store_logo %}
+<div style="text-align: center; margin-bottom: 24px;">
+    <a href="{{ store_url }}" style="text-decoration: none;">
+        <img src="{{ store_logo }}" alt="{{ store.name }}" style="height: 48px; width: auto;">
+    </a>
+</div>
+{% else %}
+<div style="text-align: center; margin-bottom: 24px;">
+    <a href="{{ store_url }}" style="text-decoration: none; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
+        {{ store.name }}
+    </a>
+</div>
+{% endif %}
+
 <h1 style="margin-bottom: 6px;">Thank you for getting in touch</h1>
 <p class="muted" style="margin-bottom: 24px;">{{ submission.created_at|date:"j F Y, H:i" }}</p>
 
@@ -62,8 +70,5 @@ merchant never agreed to is a promise made on their behalf.
     <a href="{{ store_url }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ store.name }}</a>
     · &copy; {% now "Y" %}
 </p>
-<a href="{{ koraa_url }}" style="text-decoration: none; color: #94a3b8; font-size: 12px;">
-    <span style="font-weight: 800; color: #a8530f; letter-spacing: -0.03em;">Koraa</span>
-    <span style="vertical-align: middle; margin-left: 4px;">Built with Koraa</span>
-</a>
+<p style="margin: 0; font-size: 12px; color: #94a3b8;">Built with <a href="{{ koraa_url }}" style="color: #a8530f; font-weight: 700; text-decoration: none;">Koraa</a></p>
 {% endblock %}
