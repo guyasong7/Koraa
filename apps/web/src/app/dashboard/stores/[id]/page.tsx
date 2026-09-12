@@ -6,10 +6,26 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
 import { storeApi } from "@/lib/api";
 import Link from "next/link";
-import { LuArrowLeft, LuGlobe, LuExternalLink, LuInbox, LuMail, LuSettings, LuSlidersHorizontal, LuPackage, LuShoppingCart, LuPalette, LuSearch, LuSparkles, LuTrash2, LuLoader } from 'react-icons/lu';
-import { FiBarChart2 as LuBarChart3 } from "react-icons/fi";
 import { toast } from "@/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+  GlobalIcon,
+  LinkSquare02Icon,
+  InboxIcon,
+  Mail01Icon,
+  Settings01Icon,
+  PreferenceHorizontalIcon,
+  Package01Icon,
+  ShoppingCart01Icon,
+  PaintBoardIcon,
+  Search01Icon,
+  SparklesIcon,
+  Delete02Icon,
+  Loading03Icon,
+  ChartColumnIcon,
+} from "@hugeicons/core-free-icons";
 
 export default function StoreDetailPage() {
   const router = useRouter();
@@ -68,14 +84,14 @@ export default function StoreDetailPage() {
   const storefrontUrl: string = store.storefront_url || `https://${store.slug}.koraa.cm`;
 
   const QUICK_LINKS = [
-    { label: "Products", href: `/dashboard/products?store=${id}`, icon: LuPackage, desc: "Manage your product catalogue" },
-    { label: "Orders", href: `/dashboard/orders?store=${id}`, icon: LuShoppingCart, desc: "View and fulfil orders" },
-    { label: "Analytics", href: `/dashboard/analytics?store=${id}`, icon: LuBarChart3, desc: "Track store performance" },
-    { label: "Enquiries", href: `/dashboard/stores/${id}/enquiries`, icon: LuInbox, desc: "Leads sent through your enquiry form" },
-    { label: "Enquiry Form", href: `/dashboard/stores/${id}/enquiry-form`, icon: LuMail, desc: "Choose what visitors are asked for a quote" },
-    { label: "SEO", href: `/dashboard/stores/${id}/seo`, icon: LuSearch, desc: "Run an audit and fix what search engines miss" },
-    { label: "Site Settings", href: `/dashboard/stores/${id}/site-settings`, icon: LuSlidersHorizontal, desc: "Availability, languages, privacy, crawlers and images" },
-    { label: "Settings", href: `/dashboard/stores/${id}/settings`, icon: LuSettings, desc: "Customize your store" },
+    { label: "Products", href: `/dashboard/products?store=${id}`, icon: Package01Icon, desc: "Manage your product catalogue" },
+    { label: "Orders", href: `/dashboard/orders?store=${id}`, icon: ShoppingCart01Icon, desc: "View and fulfil orders" },
+    { label: "Analytics", href: `/dashboard/analytics?store=${id}`, icon: ChartColumnIcon, desc: "Track store performance" },
+    { label: "Enquiries", href: `/dashboard/stores/${id}/enquiries`, icon: InboxIcon, desc: "Leads sent through your enquiry form" },
+    { label: "Enquiry Form", href: `/dashboard/stores/${id}/enquiry-form`, icon: Mail01Icon, desc: "Choose what visitors are asked for a quote" },
+    { label: "SEO", href: `/dashboard/stores/${id}/seo`, icon: Search01Icon, desc: "Run an audit and fix what search engines miss" },
+    { label: "Site Settings", href: `/dashboard/stores/${id}/site-settings`, icon: PreferenceHorizontalIcon, desc: "Availability, languages, privacy, crawlers and images" },
+    { label: "Settings", href: `/dashboard/stores/${id}/settings`, icon: Settings01Icon, desc: "Customize your store" },
   ];
 
   return (
@@ -88,7 +104,7 @@ export default function StoreDetailPage() {
           href="/dashboard/stores"
           style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-muted)", fontSize: 13, textDecoration: "none", marginBottom: 24 }}
         >
-          <LuArrowLeft size={14} /> Back to stores
+          <HugeiconsIcon icon={ArrowLeft02Icon} size={14} /> Back to stores
         </Link>
 
         {/* Store hero */}
@@ -120,7 +136,7 @@ export default function StoreDetailPage() {
                 flexShrink: 0,
               }}
             >
-              <LuGlobe size={32} color="var(--brand-500)" />
+              <HugeiconsIcon icon={GlobalIcon} size={32} color="var(--brand-500)" />
             </div>
           )}
           <div style={{ flex: 1, width: isMobile ? "100%" : undefined }}>
@@ -143,21 +159,21 @@ export default function StoreDetailPage() {
                 className="btn btn-secondary btn-sm"
                 style={{ gap: 6, fontSize: isMobile ? 12 : undefined, padding: isMobile ? "6px 10px" : undefined }}
               >
-                <LuExternalLink size={13} /> {isMobile ? store.slug + ".koraa.cm" : storefrontUrl.replace(/^https?:\/\//, "")}
+                <HugeiconsIcon icon={LinkSquare02Icon} size={13} /> {isMobile ? store.slug + ".koraa.cm" : storefrontUrl.replace(/^https?:\/\//, "")}
               </a>
               <Link
                 href={`/dashboard/stores/${id}/blueprint`}
                 className="btn btn-primary btn-sm"
                 style={{ gap: 6, fontSize: isMobile ? 12 : undefined, padding: isMobile ? "6px 10px" : undefined }}
               >
-                <LuSparkles size={13} /> {isMobile ? "Blueprint" : "Design with Blueprint"}
+                <HugeiconsIcon icon={SparklesIcon} size={13} /> {isMobile ? "Blueprint" : "Design with Blueprint"}
               </Link>
               <Link
                 href={`/dashboard/stores/${id}/settings?tab=customisation`}
                 className="btn btn-secondary btn-sm"
                 style={{ gap: 6, fontSize: isMobile ? 12 : undefined, padding: isMobile ? "6px 10px" : undefined }}
               >
-                <LuPalette size={13} /> Edit details
+                <HugeiconsIcon icon={PaintBoardIcon} size={13} /> Edit details
               </Link>
               <span
                 style={{
@@ -187,7 +203,7 @@ export default function StoreDetailPage() {
 
         {/* Quick links grid */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fit, minmax(220px, 1fr))", gap: isMobile ? 10 : 16 }}>
-          {QUICK_LINKS.map(({ label, href, icon: Icon, desc }) => (
+          {QUICK_LINKS.map(({ label, href, icon, desc }) => (
             <Link
               key={href}
               href={href}
@@ -218,7 +234,7 @@ export default function StoreDetailPage() {
                     marginBottom: isMobile ? 10 : 16,
                   }}
                 >
-                  <Icon size={isMobile ? 17 : 20} color="var(--brand-500)" />
+                  <HugeiconsIcon icon={icon} size={isMobile ? 17 : 20} color="var(--brand-500)" />
                 </div>
                 <h3 style={{ fontSize: isMobile ? 13 : 15, fontWeight: 600, marginBottom: 4 }}>{label}</h3>
                 {!isMobile && <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>{desc}</p>}
@@ -231,7 +247,7 @@ export default function StoreDetailPage() {
         {store.is_owner !== false && (
           <div style={{ marginTop: isMobile ? 32 : 48, padding: isMobile ? 16 : 24, border: "1px solid rgba(239,68,68,0.3)", borderRadius: "12px", background: "rgba(239,68,68,0.05)" }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: "#ef4444", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-              <LuTrash2 size={20} /> Danger Zone
+              <HugeiconsIcon icon={Delete02Icon} size={20} /> Danger Zone
             </h3>
             <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 16 }}>
               Permanently delete this store, including all its products, orders, and customer data. This action cannot be undone.
@@ -256,7 +272,7 @@ export default function StoreDetailPage() {
           <div className="modal-panel" style={{ maxWidth: 440, borderRadius: "16px" }}>
             <div className="modal-body" style={{ padding: "22px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               <div style={{ width: 52, height: 52, borderRadius: "50%", background: "color-mix(in srgb, var(--danger) 12%, transparent)", color: "var(--danger-text)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-                <LuTrash2 size={24} />
+                <HugeiconsIcon icon={Delete02Icon} size={24} />
               </div>
               <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 10px 0", fontFamily: "var(--font-display)" }}>
                 Delete store?
@@ -297,7 +313,7 @@ export default function StoreDetailPage() {
                   transition: "all 0.2s"
                 }}
               >
-                {deleteMutation.isPending ? <LuLoader size={17} className="spin" /> : "Delete Store"}
+                {deleteMutation.isPending ? <HugeiconsIcon icon={Loading03Icon} size={17} className="spin" /> : "Delete Store"}
               </button>
             </div>
           </div>

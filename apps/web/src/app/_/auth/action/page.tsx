@@ -3,8 +3,16 @@
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { LuCircleCheck, LuCircleX, LuLoader, LuArrowRight, LuEye, LuEyeOff } from "react-icons/lu";
 import KoraaLogo from "@/components/KoraaLogo";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  CheckmarkCircle02Icon,
+  CancelCircleIcon,
+  Loading03Icon,
+  ArrowRight02Icon,
+  ViewIcon,
+  ViewOffSlashIcon,
+} from "@hugeicons/core-free-icons";
 
 /**
  * Firebase custom action URL handler.
@@ -37,7 +45,7 @@ function ActionSkeleton() {
     <div className="auth-container">
       <div className="auth-card" style={{ textAlign: "center" }}>
         <KoraaLogo className="auth-logo" style={{ marginBottom: 32 }} />
-        <LuLoader size={28} className="spin-fast" style={{ color: "var(--brand-600)", margin: "0 auto" }} />
+        <HugeiconsIcon icon={Loading03Icon} size={28} className="spin-fast" style={{ color: "var(--brand-600)", margin: "0 auto" }} />
       </div>
     </div>
   );
@@ -156,7 +164,7 @@ function ActionContent() {
         {/* Loading / in-progress states */}
         {(phase.status === "loading" || phase.status === "verifying" || phase.status === "recovering") && (
           <div style={{ textAlign: "center", padding: "24px 0" }}>
-            <LuLoader
+            <HugeiconsIcon icon={Loading03Icon}
               size={32}
               className="spin-fast"
               style={{ color: "var(--brand-600)", display: "block", margin: "0 auto 20px" }}
@@ -180,7 +188,7 @@ function ActionContent() {
             </p>
             <Link href="/auth/login" className="btn btn-primary btn-full" style={{ padding: 14 }}>
               <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                Continue to sign in <LuArrowRight size={16} />
+                Continue to sign in <HugeiconsIcon icon={ArrowRight02Icon} size={16} />
               </span>
             </Link>
           </>
@@ -221,7 +229,7 @@ function ActionContent() {
                       color: "var(--text-muted)", display: "flex", alignItems: "center",
                     }}
                   >
-                    {show ? <LuEyeOff size={17} /> : <LuEye size={17} />}
+                    {show ? <HugeiconsIcon icon={ViewOffSlashIcon} size={17} /> : <HugeiconsIcon icon={ViewIcon} size={17} />}
                   </button>
                 </div>
               </div>
@@ -254,7 +262,7 @@ function ActionContent() {
                   </span>
                 ) : (
                   <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    Change password <LuArrowRight size={16} />
+                    Change password <HugeiconsIcon icon={ArrowRight02Icon} size={16} />
                   </span>
                 )}
               </button>
@@ -332,7 +340,7 @@ function SuccessIcon() {
       background: "rgba(34,197,94,0.1)", color: "#16a34a",
       marginBottom: 20,
     }}>
-      <LuCircleCheck size={28} />
+      <HugeiconsIcon icon={CheckmarkCircle02Icon} size={28} />
     </div>
   );
 }
@@ -345,7 +353,7 @@ function ErrorIcon() {
       background: "rgba(248,113,113,0.1)", color: "#ef4444",
       marginBottom: 20,
     }}>
-      <LuCircleX size={28} />
+      <HugeiconsIcon icon={CancelCircleIcon} size={28} />
     </div>
   );
 }

@@ -2,10 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import {
-  LuLock, LuChevronRight, LuPackage, LuArrowLeft,
-  LuShoppingBag, LuCheck, LuLoader, LuTriangleAlert, LuClock, LuCircleAlert,
-} from "react-icons/lu";
 import { useCartStore } from "@/stores/cart";
 import {
   publicStorefrontApi,
@@ -17,6 +13,19 @@ import { STOREFRONT_DEFAULTS } from "@/components/storefront/theme";
 import { formatPrice } from "@/components/storefront/shared";
 import { isPlausibleEmail } from "@/lib/momo";
 import { toast } from "@/lib/toast";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  SquareLock02Icon,
+  ArrowRight01Icon,
+  Package01Icon,
+  ArrowLeft02Icon,
+  ShoppingBag03Icon,
+  Tick02Icon,
+  Loading03Icon,
+  Alert02Icon,
+  Clock01Icon,
+  AlertCircleIcon,
+} from "@hugeicons/core-free-icons";
 
 type StoreTheme = {
   name: string;
@@ -383,7 +392,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         {styles}
         <div className="co-outcome">
           <div className="co-outcome-ring" style={{ background: "rgba(0,0,0,0.06)" }}>
-            <LuLock size={30} style={{ opacity: 0.5 }} />
+            <HugeiconsIcon icon={SquareLock02Icon} size={30} style={{ opacity: 0.5 }} />
           </div>
           <h1>Checkout is closed</h1>
           <p>
@@ -405,7 +414,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         {styles}
         <div className="co-outcome">
           <div className="co-outcome-ring co-pulse" style={{ background: `${primary}20` }}>
-            <LuLoader size={30} color={primary} className="co-spin" />
+            <HugeiconsIcon icon={Loading03Icon} size={30} color={primary} className="co-spin" />
           </div>
           <h1>Checking your payment</h1>
           <p>One moment — we are confirming your payment with the provider.</p>
@@ -420,7 +429,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         {styles}
         <div className="co-outcome">
           <div className="co-outcome-ring" style={{ background: `${primary}20` }}>
-            <LuCheck size={32} color={primary} />
+            <HugeiconsIcon icon={Tick02Icon} size={32} color={primary} />
           </div>
           <h1>Payment received</h1>
           <p>
@@ -442,7 +451,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         {styles}
         <div className="co-outcome">
           <div className="co-outcome-ring" style={{ background: "rgba(217,119,6,0.15)" }}>
-            <LuClock size={30} color="#d97706" />
+            <HugeiconsIcon icon={Clock01Icon} size={30} color="#d97706" />
           </div>
           <h1>Still waiting on your provider</h1>
           <p>
@@ -469,7 +478,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         {styles}
         <div className="co-outcome">
           <div className="co-outcome-ring co-pulse" style={{ background: `${primary}20` }}>
-            <LuLoader size={30} color={primary} className="co-spin" />
+            <HugeiconsIcon icon={Loading03Icon} size={30} color={primary} className="co-spin" />
           </div>
           <h1>Redirecting to payment</h1>
           <p>You are being taken to a secure payment page. Please do not close this tab.</p>
@@ -515,7 +524,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         <div className="co-nav-i">
           <Link href="/" className="co-logo">{theme?.name || domain}</Link>
           <div className="co-secure">
-            <LuLock size={13} />
+            <HugeiconsIcon icon={SquareLock02Icon} size={13} />
             Secure Checkout
           </div>
         </div>
@@ -524,14 +533,14 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       <div className="co-body">
         <div>
           <Link href="/" className="co-back">
-            <LuArrowLeft size={16} /> Continue Shopping
+            <HugeiconsIcon icon={ArrowLeft02Icon} size={16} /> Continue Shopping
           </Link>
 
           <div className="co-breadcrumb">
             <span>Cart</span>
-            <LuChevronRight size={12} />
+            <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
             <span className={onReview ? undefined : "active"}>Information &amp; Shipping</span>
-            <LuChevronRight size={12} />
+            <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
             <span className={onReview ? "active" : undefined}>Payment</span>
           </div>
 
@@ -580,7 +589,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
             {!onReview && (
               <button className="co-btn" type="submit" disabled={items.length === 0 || busy}>
                 {state.kind === "creating" ? (
-                  <><LuLoader size={16} className="co-spin" /> Pricing your order…</>
+                  <><HugeiconsIcon icon={Loading03Icon} size={16} className="co-spin" /> Pricing your order…</>
                 ) : (
                   <>Continue to Payment</>
                 )}
@@ -597,7 +606,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
 
                 {priceDiffers && (
                   <div className="co-notice" style={{ background: "rgba(217,119,6,0.12)", color: "#92400e" }}>
-                    <LuTriangleAlert size={17} color="#d97706" />
+                    <HugeiconsIcon icon={Alert02Icon} size={17} color="#d97706" />
                     <span>
                       The total has been updated to <strong>{money(serverTotal!)}</strong> — your cart
                       showed {money(cartEstimate)}. Prices are confirmed against the shop&apos;s current
@@ -608,7 +617,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
 
                 {state.kind === "failed" && (
                   <div className="co-notice" style={{ background: "rgba(220,38,38,0.1)", color: "#991b1b" }}>
-                    <LuCircleAlert size={17} color="#dc2626" />
+                    <HugeiconsIcon icon={AlertCircleIcon} size={17} color="#dc2626" />
                     <span>{state.reason}</span>
                   </div>
                 )}
@@ -651,9 +660,9 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                     style={{ flex: 2, marginTop: 0 }}
                   >
                     {state.kind === "charging" ? (
-                      <><LuLoader size={16} className="co-spin" /> Preparing payment…</>
+                      <><HugeiconsIcon icon={Loading03Icon} size={16} className="co-spin" /> Preparing payment…</>
                     ) : (
-                      <><LuLock size={16} /> Pay {money(order.total_amount)}</>
+                      <><HugeiconsIcon icon={SquareLock02Icon} size={16} /> Pay {money(order.total_amount)}</>
                     )}
                   </button>
                 </div>
@@ -662,14 +671,14 @@ export default function CheckoutClient({ domain }: { domain: string }) {
           )}
 
           <p className="co-trust">
-            <LuLock size={12} /> Your payment is secured with 256-bit encryption
+            <HugeiconsIcon icon={SquareLock02Icon} size={12} /> Your payment is secured with 256-bit encryption
           </p>
         </div>
 
         {/* Right: Order Summary */}
         <div className="co-summary">
           <div className="co-summary-title">
-            <LuShoppingBag size={18} style={{ display: "inline", verticalAlign: "middle", marginRight: 8, color: primary }} />
+            <HugeiconsIcon icon={ShoppingBag03Icon} size={18} style={{ display: "inline", verticalAlign: "middle", marginRight: 8, color: primary }} />
             Order Summary ({items.reduce((t, i) => t + i.quantity, 0)} items)
           </div>
 
@@ -683,7 +692,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                     {item.product.image ? (
                       <img src={item.product.image} alt={item.product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
-                      <LuPackage size={22} style={{ opacity: 0.35 }} />
+                      <HugeiconsIcon icon={Package01Icon} size={22} style={{ opacity: 0.35 }} />
                     )}
                   </div>
                   <div className="co-item-info">

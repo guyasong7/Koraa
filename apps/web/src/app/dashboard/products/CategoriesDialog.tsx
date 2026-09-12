@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import { categoryApi, Category } from "@/lib/api";
-import { LuX, LuPlus, LuTrash, LuPencil, LuCheck } from "react-icons/lu";
 import { toast } from "@/lib/toast";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Cancel01Icon,
+  PlusSignIcon,
+  Delete02Icon,
+  Edit02Icon,
+  Tick02Icon,
+} from "@hugeicons/core-free-icons";
 
 export default function CategoriesDialog({
   storeId,
@@ -89,7 +96,7 @@ export default function CategoriesDialog({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1px solid var(--border)", background: "var(--surface-900)" }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Manage Categories</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", display: "flex" }}>
-            <LuX size={20} />
+            <HugeiconsIcon icon={Cancel01Icon} size={20} />
           </button>
         </div>
 
@@ -121,13 +128,13 @@ export default function CategoriesDialog({
                     <div style={{ display: "flex", gap: 8 }}>
                       {editingId === c.id ? (
                         <>
-                          <button onClick={cancelEdit} className="btn btn-secondary" style={{ padding: 6 }}><LuX size={16} /></button>
-                          <button onClick={saveCategory} disabled={saving} className="btn btn-primary" style={{ padding: 6 }}><LuCheck size={16} /></button>
+                          <button onClick={cancelEdit} className="btn btn-secondary" style={{ padding: 6 }}><HugeiconsIcon icon={Cancel01Icon} size={16} /></button>
+                          <button onClick={saveCategory} disabled={saving} className="btn btn-primary" style={{ padding: 6 }}><HugeiconsIcon icon={Tick02Icon} size={16} /></button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => startEdit(c)} className="btn btn-secondary" style={{ padding: 6, color: "var(--text-secondary)" }}><LuPencil size={15} /></button>
-                          <button onClick={() => deleteCategory(c.id)} className="btn btn-secondary" style={{ padding: 6, color: "var(--danger)" }}><LuTrash size={15} /></button>
+                          <button onClick={() => startEdit(c)} className="btn btn-secondary" style={{ padding: 6, color: "var(--text-secondary)" }}><HugeiconsIcon icon={Edit02Icon} size={15} /></button>
+                          <button onClick={() => deleteCategory(c.id)} className="btn btn-secondary" style={{ padding: 6, color: "var(--danger)" }}><HugeiconsIcon icon={Delete02Icon} size={15} /></button>
                         </>
                       )}
                     </div>
@@ -141,15 +148,15 @@ export default function CategoriesDialog({
                     <input className="input" autoFocus placeholder="Category name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{ width: "100%" }} />
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={cancelEdit} className="btn btn-secondary" style={{ padding: 6 }}><LuX size={16} /></button>
-                    <button onClick={saveCategory} disabled={saving} className="btn btn-primary" style={{ padding: 6 }}><LuCheck size={16} /></button>
+                    <button onClick={cancelEdit} className="btn btn-secondary" style={{ padding: 6 }}><HugeiconsIcon icon={Cancel01Icon} size={16} /></button>
+                    <button onClick={saveCategory} disabled={saving} className="btn btn-primary" style={{ padding: 6 }}><HugeiconsIcon icon={Tick02Icon} size={16} /></button>
                   </div>
                 </div>
               )}
 
               {!isAdding && !editingId && (
                 <button onClick={startAdd} className="btn btn-secondary" style={{ width: "100%", marginTop: 16, display: "flex", justifyContent: "center", gap: 8 }}>
-                  <LuPlus size={16} /> Add Category
+                  <HugeiconsIcon icon={PlusSignIcon} size={16} /> Add Category
                 </button>
               )}
             </>

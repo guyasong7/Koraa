@@ -2,20 +2,41 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { storefrontApi, storeApi, StorefrontConfig, StorefrontSection, Store } from "@/lib/api";
-import {
-  LuSave, LuGlobe, LuEye, LuMonitor, LuSmartphone, LuTablet, LuUpload, LuCheck,
-  LuChevronRight, LuPalette, LuType, LuMegaphone, LuImage, LuFolder, LuStar,
-  LuShoppingBag, LuGift, LuInfo, LuMail, LuLink, LuPackage, LuSparkles,
-  LuLayoutTemplate
-} from "react-icons/lu";
 // Labels only — importing from the registry would pull all six layout modules
 // into the dashboard bundle.
 import { LAYOUT_CHOICES } from "@/components/storefront/layoutMeta";
+import { HugeiconsIcon } from "@hugeicons/react";
+import type { IconSvgElement } from "@hugeicons/react";
+import {
+  FloppyDiskIcon,
+  GlobalIcon,
+  ViewIcon,
+  MonitorIcon,
+  SmartPhone01Icon,
+  Tablet01Icon,
+  Upload04Icon,
+  Tick02Icon,
+  ArrowRight01Icon,
+  PaintBoardIcon,
+  TextFontIcon,
+  Megaphone01Icon,
+  Image01Icon,
+  Folder01Icon,
+  StarIcon,
+  ShoppingBag03Icon,
+  GiftIcon,
+  InformationCircleIcon,
+  Mail01Icon,
+  Link01Icon,
+  Package01Icon,
+  SparklesIcon,
+  Layout01Icon,
+} from "@hugeicons/core-free-icons";
 
 // ─── Schema: all sections + their editable fields ─────────────────────────────
-const SECTIONS_SCHEMA: Record<string, { label: string; icon: React.ElementType; fields: { key: string; label: string; type: "text"|"textarea"|"url"|"toggle"|"color"|"image" }[] }> = {
+const SECTIONS_SCHEMA: Record<string, { label: string; icon: IconSvgElement; fields: { key: string; label: string; type: "text"|"textarea"|"url"|"toggle"|"color"|"image" }[] }> = {
   announcement_bar: {
-    label: "Announcement Bar", icon: LuMegaphone,
+    label: "Announcement Bar", icon: Megaphone01Icon,
     fields: [
       { key: "text",       label: "Message",          type: "text"   },
       { key: "bg_color",   label: "Background Colour", type: "color"  },
@@ -23,7 +44,7 @@ const SECTIONS_SCHEMA: Record<string, { label: string; icon: React.ElementType; 
     ],
   },
   hero: {
-    label: "Hero Banner", icon: LuImage,
+    label: "Hero Banner", icon: Image01Icon,
     fields: [
       { key: "title",       label: "Headline",          type: "text"     },
       { key: "subtitle",    label: "Subheadline",        type: "textarea" },
@@ -33,27 +54,27 @@ const SECTIONS_SCHEMA: Record<string, { label: string; icon: React.ElementType; 
     ],
   },
   categories: {
-    label: "Categories", icon: LuFolder,
+    label: "Categories", icon: Folder01Icon,
     fields: [
       { key: "title",    label: "Section Title", type: "text"   },
       { key: "show_all", label: "Show All Button", type: "toggle" },
     ],
   },
   featured_products: {
-    label: "Featured Products", icon: LuStar,
+    label: "Featured Products", icon: StarIcon,
     fields: [
       { key: "title", label: "Section Title", type: "text" },
     ],
   },
   catalog: {
-    label: "Product Catalog", icon: LuShoppingBag,
+    label: "Product Catalog", icon: ShoppingBag03Icon,
     fields: [
       { key: "title",        label: "Section Title",        type: "text"   },
       { key: "show_sidebar", label: "Show Category Sidebar", type: "toggle" },
     ],
   },
   promo_banner: {
-    label: "Promo Banner", icon: LuGift,
+    label: "Promo Banner", icon: GiftIcon,
     fields: [
       { key: "title",       label: "Headline",    type: "text"    },
       { key: "subtitle",    label: "Subheadline", type: "textarea"},
@@ -63,7 +84,7 @@ const SECTIONS_SCHEMA: Record<string, { label: string; icon: React.ElementType; 
     ],
   },
   about: {
-    label: "About Us", icon: LuInfo,
+    label: "About Us", icon: InformationCircleIcon,
     fields: [
       { key: "title",   label: "Title",   type: "text"     },
       { key: "content", label: "Content", type: "textarea" },
@@ -71,7 +92,7 @@ const SECTIONS_SCHEMA: Record<string, { label: string; icon: React.ElementType; 
     ],
   },
   newsletter: {
-    label: "Newsletter", icon: LuMail,
+    label: "Newsletter", icon: Mail01Icon,
     fields: [
       { key: "title",       label: "Headline",    type: "text"     },
       { key: "subtitle",    label: "Subheadline", type: "textarea" },
@@ -80,14 +101,14 @@ const SECTIONS_SCHEMA: Record<string, { label: string; icon: React.ElementType; 
     ],
   },
   contact_form: {
-    label: "Enquiry Form", icon: LuMail,
+    label: "Enquiry Form", icon: Mail01Icon,
     fields: [
       { key: "title",    label: "Headline",    type: "text"     },
       { key: "subtitle", label: "Subheadline", type: "textarea" },
     ],
   },
   footer: {
-    label: "Footer", icon: LuLink,
+    label: "Footer", icon: Link01Icon,
     fields: [
       { key: "tagline", label: "Tagline", type: "textarea" },
     ],
@@ -121,7 +142,7 @@ function ImageUploadField({ value, sectionId, storeId, onUploaded }: { value: st
         disabled={uploading}
         style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "var(--surface-900)", border: "1.5px dashed var(--border)", borderRadius: 0, cursor: "pointer", fontSize: 13, color: "var(--text-secondary)", width: "100%" }}
       >
-        <LuUpload size={14} /> {uploading ? "Uploading…" : "Upload from PC"}
+        <HugeiconsIcon icon={Upload04Icon} size={14} /> {uploading ? "Uploading…" : "Upload from PC"}
       </button>
       <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
     </div>
@@ -156,7 +177,7 @@ function AssetUpload({ label, current, field, storeId, onUploaded }: { label: st
         disabled={uploading}
         style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 14px", background: "var(--surface-900)", border: "1.5px dashed var(--border)", borderRadius: 0, cursor: "pointer", fontSize: 13, color: "var(--text-secondary)" }}
       >
-        <LuUpload size={13} /> {uploading ? "Uploading…" : `Upload ${label}`}
+        <HugeiconsIcon icon={Upload04Icon} size={13} /> {uploading ? "Uploading…" : `Upload ${label}`}
       </button>
       <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
     </div>
@@ -274,11 +295,11 @@ export default function StorefrontEditor() {
           <span className="sf-store-badge">{store.name}</span>
         </div>
         <div className="sf-topbar-right">
-          {saved && <span style={{ fontSize: 12, color: "#22c55e", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}><LuCheck size={12} /> Saved</span>}
-          <button onClick={() => router.push(`/dashboard/stores/${store.id}/blueprint`)} className="btn btn-secondary sf-btn-icon" title="Blueprint"><LuSparkles size={14} /> <span className="sf-btn-label">Blueprint</span></button>
-          <button onClick={handleSave} disabled={saving} className="btn btn-secondary sf-btn-icon" title="Save Draft"><LuSave size={14} /> <span className="sf-btn-label">{saving ? "Saving…" : "Save"}</span></button>
-          <button onClick={handlePublish} disabled={saving} className="btn btn-primary sf-btn-icon" title="Publish"><LuGlobe size={14} /> <span className="sf-btn-label">Publish</span></button>
-          <button className="btn btn-secondary sf-btn-icon" title="View Live" onClick={() => window.open(store.storefront_url, "_blank")}><LuEye size={14} /> <span className="sf-btn-label">Live</span></button>
+          {saved && <span style={{ fontSize: 12, color: "#22c55e", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}><HugeiconsIcon icon={Tick02Icon} size={12} /> Saved</span>}
+          <button onClick={() => router.push(`/dashboard/stores/${store.id}/blueprint`)} className="btn btn-secondary sf-btn-icon" title="Blueprint"><HugeiconsIcon icon={SparklesIcon} size={14} /> <span className="sf-btn-label">Blueprint</span></button>
+          <button onClick={handleSave} disabled={saving} className="btn btn-secondary sf-btn-icon" title="Save Draft"><HugeiconsIcon icon={FloppyDiskIcon} size={14} /> <span className="sf-btn-label">{saving ? "Saving…" : "Save"}</span></button>
+          <button onClick={handlePublish} disabled={saving} className="btn btn-primary sf-btn-icon" title="Publish"><HugeiconsIcon icon={GlobalIcon} size={14} /> <span className="sf-btn-label">Publish</span></button>
+          <button className="btn btn-secondary sf-btn-icon" title="View Live" onClick={() => window.open(store.storefront_url, "_blank")}><HugeiconsIcon icon={ViewIcon} size={14} /> <span className="sf-btn-label">Live</span></button>
         </div>
       </header>
 
@@ -339,7 +360,7 @@ export default function StorefrontEditor() {
                   ))}
                 </div>
                 <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ width: "100%", marginTop: 20, padding: "10px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <LuSave size={13} /> {saving ? "Saving…" : "Save Changes"}
+                  <HugeiconsIcon icon={FloppyDiskIcon} size={13} /> {saving ? "Saving…" : "Save Changes"}
                 </button>
               </div>
 
@@ -355,7 +376,7 @@ export default function StorefrontEditor() {
                       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderRadius: 0, border: "1.5px solid var(--border)", background: "var(--surface-900)", cursor: "pointer", minHeight: 52 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ fontSize: 18, display: "flex", alignItems: "center" }}>
-                          {sc?.icon ? <sc.icon size={18} /> : <LuPackage size={18} />}
+                          {sc?.icon ? <HugeiconsIcon icon={sc.icon} size={18} /> : <HugeiconsIcon icon={Package01Icon} size={18} />}
                         </span>
                         <div>
                           <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{sc?.label || s.type}</p>
@@ -367,7 +388,7 @@ export default function StorefrontEditor() {
                           <input type="checkbox" checked={s.enabled}
                             onChange={e => setSections(prev => prev.map(x => x.id === s.id ? { ...x, enabled: e.target.checked } : x))} />
                         </label>
-                        <LuChevronRight size={15} color="var(--text-secondary)" />
+                        <HugeiconsIcon icon={ArrowRight01Icon} size={15} color="var(--text-secondary)" />
                       </div>
                     </div>
                   );
@@ -381,7 +402,7 @@ export default function StorefrontEditor() {
                     everything below only changes its surface. */}
                 <div>
                   <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                    <LuLayoutTemplate size={13} /> Layout
+                    <HugeiconsIcon icon={Layout01Icon} size={13} /> Layout
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {LAYOUT_CHOICES.map(l => {
@@ -400,7 +421,7 @@ export default function StorefrontEditor() {
 
                 <div>
                   <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                    <LuPalette size={13} /> Colours
+                    <HugeiconsIcon icon={PaintBoardIcon} size={13} /> Colours
                   </p>
                   {[
                     { key: "primary_color",    label: "Primary"    },
@@ -423,7 +444,7 @@ export default function StorefrontEditor() {
 
                 <div>
                   <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                    <LuType size={13} /> Font
+                    <HugeiconsIcon icon={TextFontIcon} size={13} /> Font
                   </p>
                   <select className="input" value={config.font} onChange={e => setConfig({ ...config, font: e.target.value } as StorefrontConfig)} style={{ width: "100%", padding: "8px 12px" }}>
                     {["Inter","Outfit","Poppins","Lato","Raleway","Nunito"].map(f => <option key={f} value={f}>{f}</option>)}
@@ -443,7 +464,7 @@ export default function StorefrontEditor() {
                 </div>
 
                 <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ padding: "10px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <LuSave size={13} /> {saving ? "Saving…" : "Save Brand"}
+                  <HugeiconsIcon icon={FloppyDiskIcon} size={13} /> {saving ? "Saving…" : "Save Brand"}
                 </button>
               </div>
 
@@ -469,7 +490,7 @@ export default function StorefrontEditor() {
                 </div>
 
                 <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ padding: "10px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12 }}>
-                  <LuSave size={13} /> {saving ? "Saving…" : "Save Store Info"}
+                  <HugeiconsIcon icon={FloppyDiskIcon} size={13} /> {saving ? "Saving…" : "Save Store Info"}
                 </button>
               </div>
             )}
@@ -480,10 +501,10 @@ export default function StorefrontEditor() {
         <main className="sf-preview">
           {/* Device switcher */}
           <div style={{ background: "var(--surface)", borderRadius: 20, border: "1px solid var(--border)", padding: 4, display: "flex", gap: 2, marginBottom: 16, flexShrink: 0 }}>
-            {([["desktop", LuMonitor], ["tablet", LuTablet], ["mobile", LuSmartphone]] as const).map(([mode, Icon]) => (
+            {([["desktop", MonitorIcon], ["tablet", Tablet01Icon], ["mobile", SmartPhone01Icon]] as const).map(([mode, icon]) => (
               <button key={mode} onClick={() => setPreviewMode(mode)}
                 style={{ padding: "7px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: previewMode === mode ? "rgba(168,85,247,0.12)" : "transparent", color: previewMode === mode ? "var(--brand-500)" : "var(--text-secondary)", transition: "all .15s" }}>
-                <Icon size={16} />
+                <HugeiconsIcon icon={icon} size={16} />
               </button>
             ))}
           </div>

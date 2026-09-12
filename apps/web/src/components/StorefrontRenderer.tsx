@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import { useStorefront } from "./StorefrontProvider";
-import { LuGlobe, LuMenu, LuSearch, LuX } from "react-icons/lu";
 import { usePageView } from "../lib/analytics";
 import {
   CartButton,
@@ -379,7 +378,7 @@ export function Navbar({ store, cfg }: NavbarProps) {
         </nav>
 
         <form action="/shop" method="GET" className="sf-search sf-search-desktop">
-          <LuSearch size={15} className="sf-si" />
+          <HugeiconsIcon icon={Search01Icon} size={15} className="sf-si" />
           <input name="q" placeholder="Search products…" />
         </form>
 
@@ -389,10 +388,10 @@ export function Navbar({ store, cfg }: NavbarProps) {
             onClick={() => setSearchOpen(open => !open)}
             aria-label={searchOpen ? "Close search" : "Search products"}
           >
-            {searchOpen ? <LuX size={20} /> : <LuSearch size={20} />}
+            {searchOpen ? <HugeiconsIcon icon={Cancel01Icon} size={20} /> : <HugeiconsIcon icon={Search01Icon} size={20} />}
           </button>
           <div className="sf-btn" style={{ gap: 4 }}>
-            <LuGlobe size={18} />
+            <HugeiconsIcon icon={GlobalIcon} size={18} />
             <select
               className="sf-lang"
               onChange={(e) => {
@@ -416,13 +415,13 @@ export function Navbar({ store, cfg }: NavbarProps) {
             aria-expanded={menuOpen}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
           >
-            {menuOpen ? <LuX size={24} /> : <LuMenu size={24} />}
+            {menuOpen ? <HugeiconsIcon icon={Cancel01Icon} size={24} /> : <HugeiconsIcon icon={Menu01Icon} size={24} />}
           </button>
         </div>
       </div>
       {searchOpen && (
         <form action="/shop" method="GET" className="sf-search-mobile">
-          <LuSearch size={15} className="sf-si" />
+          <HugeiconsIcon icon={Search01Icon} size={15} className="sf-si" />
           <input name="q" placeholder="Search products…" autoFocus />
         </form>
       )}
@@ -617,6 +616,13 @@ function About({ s }: any) {
 }
 
 import { toast } from "@/lib/toast";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  GlobalIcon,
+  Menu01Icon,
+  Search01Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 function Newsletter({ s }: any) {
   if (!s.enabled) return null;

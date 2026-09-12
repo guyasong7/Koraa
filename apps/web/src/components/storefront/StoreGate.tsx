@@ -16,12 +16,16 @@
  * while the merchant is showing someone the shop.
  */
 import { useState } from "react";
-import { LuLoader, LuLock } from "react-icons/lu";
 
 import { StorefrontProvider } from "../StorefrontProvider";
 import { StorefrontRenderer } from "../StorefrontRenderer";
 import type { StorefrontData } from "../../types/storefront";
 import { STOREFRONT_DEFAULTS } from "./theme";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Loading03Icon,
+  SquareLock02Icon,
+} from "@hugeicons/core-free-icons";
 
 export interface GatePayload {
   locked: "private" | "password" | string;
@@ -135,7 +139,7 @@ export function StoreGate({ payload }: { payload: GatePayload }) {
               margin: "0 auto 16px",
             }}
           >
-            <LuLock size={20} color={brand} />
+            <HugeiconsIcon icon={SquareLock02Icon} size={20} color={brand} />
           </span>
 
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
@@ -204,7 +208,7 @@ export function StoreGate({ payload }: { payload: GatePayload }) {
                   gap: 8,
                 }}
               >
-                {busy && <LuLoader size={15} className="spin" />}
+                {busy && <HugeiconsIcon icon={Loading03Icon} size={15} className="spin" />}
                 {busy ? "Checking…" : "Enter shop"}
               </button>
             </form>

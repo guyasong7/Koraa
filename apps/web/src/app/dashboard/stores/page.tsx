@@ -9,26 +9,45 @@ import { storeApi, Store, StoreCreateData } from "@/lib/api";
 import { storefrontHost, storefrontUrl } from "@/lib/rootDomain";
 import { toast } from "@/lib/toast";
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import type { IconSvgElement } from "@hugeicons/react";
 import {
-  LuPlus, LuGlobe, LuZap, LuWifiOff, LuLoader,
-  LuStore, LuBriefcase, LuUser, LuCheck, LuCircle, LuSettings, LuTriangleAlert,
-  LuShirt, LuUtensilsCrossed, LuLaptop, LuFlower, LuHammer, LuGraduationCap, LuUsers, LuTrash2
-} from "react-icons/lu";
-import { FiEdit2 as LuEdit2 } from "react-icons/fi";
+  PlusSignIcon,
+  GlobalIcon,
+  FlashIcon,
+  WifiOff01Icon,
+  Loading03Icon,
+  Store01Icon,
+  Briefcase01Icon,
+  UserIcon,
+  Tick02Icon,
+  CircleIcon,
+  Settings01Icon,
+  Alert02Icon,
+  TShirtIcon,
+  Restaurant02Icon,
+  ComputerIcon,
+  Flower01Icon,
+  HammerIcon,
+  Mortarboard02Icon,
+  UserMultipleIcon,
+  Delete02Icon,
+  Edit02Icon,
+} from "@hugeicons/core-free-icons";
 
 type BizCategory = {
   id: string; label: string; taglinePlaceholder: string;
-  namePlaceholder: string; color: string; bg: string; icon: React.ElementType;
+  namePlaceholder: string; color: string; bg: string; icon: IconSvgElement;
 };
 
 const BIZ_CATEGORIES: BizCategory[] = [
-  { id: "fashion",  label: "Fashion & Apparel",    color: "#ec4899", bg: "rgba(236,72,153,0.08)",  icon: LuShirt,            taglinePlaceholder: "Style that speaks Africa", namePlaceholder: "e.g. Ama Fashion House" },
-  { id: "food",     label: "Food & Drinks",         color: "#f97316", bg: "rgba(249,115,22,0.08)",  icon: LuUtensilsCrossed,  taglinePlaceholder: "Fresh flavours, delivered fast", namePlaceholder: "e.g. Mama Chop Kitchen" },
-  { id: "tech",     label: "Tech & Electronics",    color: "#3b82f6", bg: "rgba(59,130,246,0.08)",  icon: LuLaptop,           taglinePlaceholder: "The best tech at your fingertips", namePlaceholder: "e.g. NaijaTech Store" },
-  { id: "beauty",   label: "Beauty & Wellness",     color: "#a855f7", bg: "rgba(168,85,247,0.08)",  icon: LuFlower,           taglinePlaceholder: "Glow up with us", namePlaceholder: "e.g. Glowskin Cosmetics" },
-  { id: "crafts",   label: "Handmade & Crafts",     color: "#22c55e", bg: "rgba(34,197,94,0.08)",   icon: LuHammer,           taglinePlaceholder: "Handcrafted with love", namePlaceholder: "e.g. Kente Craft Co." },
-  { id: "education",label: "Education & Courses",   color: "#f59e0b", bg: "rgba(245,158,11,0.08)",  icon: LuGraduationCap,    taglinePlaceholder: "Learn, grow, succeed", namePlaceholder: "e.g. AfriLearn Hub" },
-  { id: "other",    label: "Other / General",       color: "#64748b", bg: "rgba(100,116,139,0.08)", icon: LuStore,            taglinePlaceholder: "Your one-stop shop", namePlaceholder: "e.g. My Online Store" },
+  { id: "fashion",  label: "Fashion & Apparel",    color: "#ec4899", bg: "rgba(236,72,153,0.08)",  icon: TShirtIcon,            taglinePlaceholder: "Style that speaks Africa", namePlaceholder: "e.g. Ama Fashion House" },
+  { id: "food",     label: "Food & Drinks",         color: "#f97316", bg: "rgba(249,115,22,0.08)",  icon: Restaurant02Icon,  taglinePlaceholder: "Fresh flavours, delivered fast", namePlaceholder: "e.g. Mama Chop Kitchen" },
+  { id: "tech",     label: "Tech & Electronics",    color: "#3b82f6", bg: "rgba(59,130,246,0.08)",  icon: ComputerIcon,           taglinePlaceholder: "The best tech at your fingertips", namePlaceholder: "e.g. NaijaTech Store" },
+  { id: "beauty",   label: "Beauty & Wellness",     color: "#a855f7", bg: "rgba(168,85,247,0.08)",  icon: Flower01Icon,           taglinePlaceholder: "Glow up with us", namePlaceholder: "e.g. Glowskin Cosmetics" },
+  { id: "crafts",   label: "Handmade & Crafts",     color: "#22c55e", bg: "rgba(34,197,94,0.08)",   icon: HammerIcon,           taglinePlaceholder: "Handcrafted with love", namePlaceholder: "e.g. Kente Craft Co." },
+  { id: "education",label: "Education & Courses",   color: "#f59e0b", bg: "rgba(245,158,11,0.08)",  icon: Mortarboard02Icon,    taglinePlaceholder: "Learn, grow, succeed", namePlaceholder: "e.g. AfriLearn Hub" },
+  { id: "other",    label: "Other / General",       color: "#64748b", bg: "rgba(100,116,139,0.08)", icon: Store01Icon,            taglinePlaceholder: "Your one-stop shop", namePlaceholder: "e.g. My Online Store" },
 ];
 
 const STATUS = {
@@ -68,7 +87,7 @@ function StoreCard({ store, onPublish, onUnpublish, onDelete }: {
         }}>
           {store.logo
             ? <img src={store.logo} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            : <LuGlobe size={28} color="var(--brand-500)" />}
+            : <HugeiconsIcon icon={GlobalIcon} size={28} color="var(--brand-500)" />}
         </div>
         
         {/* Status Badge */}
@@ -99,7 +118,7 @@ function StoreCard({ store, onPublish, onUnpublish, onDelete }: {
               title={`${store.shared_by || "Another merchant"} shared this store with you`}
               style={{ padding: "4px 10px", borderRadius: "8px", fontSize: 12, fontWeight: 600, background: "var(--brand-tint)", color: "var(--brand-text)", display: "inline-flex", alignItems: "center", gap: 5 }}
             >
-              <LuUsers size={12} /> Shared &middot; {roleLabel} {store.shared_by && `by ${store.shared_by}`}
+              <HugeiconsIcon icon={UserMultipleIcon} size={12} /> Shared &middot; {roleLabel} {store.shared_by && `by ${store.shared_by}`}
             </span>
           </div>
         )}
@@ -122,20 +141,20 @@ function StoreCard({ store, onPublish, onUnpublish, onDelete }: {
       {/* Actions */}
       <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 8 }}>
         <Link href={`/dashboard/stores/${store.id}`} className="btn btn-secondary" style={{ flex: 1, fontSize: 14, padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: "10px" }}>
-          <LuSettings size={15} /> Manage
+          <HugeiconsIcon icon={Settings01Icon} size={15} /> Manage
         </Link>
         {store.status !== "published" ? (
           <button onClick={() => onPublish(store.id)} className="btn btn-primary" style={{ flex: 1, fontSize: 14, padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: "10px" }}>
-            <LuZap size={15} fill="white" /> Publish
+            <HugeiconsIcon icon={FlashIcon} size={15} fill="white" /> Publish
           </button>
         ) : (
           <button onClick={() => onUnpublish(store.id)} className="btn btn-secondary" style={{ flex: 1, fontSize: 14, padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: "10px" }}>
-            <LuWifiOff size={15} /> Unpublish
+            <HugeiconsIcon icon={WifiOff01Icon} size={15} /> Unpublish
           </button>
         )}
         {!isShared && (
           <button onClick={() => onDelete(store)} className="btn btn-secondary" style={{ padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "10px", color: "#ef4444", borderColor: "transparent", background: "rgba(239,68,68,0.1)" }} title="Delete store">
-            <LuTrash2 size={16} />
+            <HugeiconsIcon icon={Delete02Icon} size={16} />
           </button>
         )}
       </div>
@@ -216,7 +235,7 @@ function CreateStoreModal({ onClose }: { onClose: () => void }) {
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
             <div style={{ width: 36, height: 36, borderRadius: 0, background: accentBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.2s" }}>
-              {category ? <category.icon size={18} color={accent} /> : <LuStore size={18} color="var(--brand-500)" />}
+              {category ? <HugeiconsIcon icon={category.icon} size={18} color={accent} /> : <HugeiconsIcon icon={Store01Icon} size={18} color="var(--brand-500)" />}
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, fontFamily: "var(--font-display)" }}>
               {step === 1 ? "What type of store?" : `Set up your ${category?.label || ""} store`}
@@ -238,7 +257,6 @@ function CreateStoreModal({ onClose }: { onClose: () => void }) {
             <div className="modal-body">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {BIZ_CATEGORIES.map((cat) => {
-                  const Icon = cat.icon;
                   return (
                     <button
                       key={cat.id} type="button"
@@ -252,7 +270,7 @@ function CreateStoreModal({ onClose }: { onClose: () => void }) {
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.background = "var(--surface)"; }}
                     >
                       <div style={{ width: 32, height: 32, borderRadius: 0, background: cat.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <Icon size={17} color={cat.color} />
+                        <HugeiconsIcon icon={cat.icon} size={17} color={cat.color} />
                       </div>
                       <span style={{ fontSize: 15, fontWeight: 600 }}>{cat.label}</span>
                     </button>
@@ -272,7 +290,7 @@ function CreateStoreModal({ onClose }: { onClose: () => void }) {
               {/* Category badge */}
               {category && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: accentBg, border: `1px solid ${accent}30`, fontSize: 14, fontWeight: 600, color: accent }}>
-                  <category.icon size={15} /> {category.label}
+                  <HugeiconsIcon icon={category.icon} size={15} /> {category.label}
                   <button type="button" onClick={() => setStep(1)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: accent, fontWeight: 600 }}>Change ›</button>
                 </div>
               )}
@@ -287,7 +305,7 @@ function CreateStoreModal({ onClose }: { onClose: () => void }) {
                   value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   style={{ width: "100%", padding: "11px 14px", fontSize: 15, borderColor: errors.name ? "var(--danger)" : undefined, borderRadius: 0 }}
                 />
-                {errors.name && <p style={{ fontSize: 13, color: "var(--danger-text)", marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}><LuTriangleAlert size={13} /> {errors.name}</p>}
+                {errors.name && <p style={{ fontSize: 13, color: "var(--danger-text)", marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}><HugeiconsIcon icon={Alert02Icon} size={13} /> {errors.name}</p>}
                 {slugPreview && !errors.name && (
                   <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
                     🔗 <strong style={{ color: accent }}>{storefrontHost(slugPreview)}</strong>
@@ -307,8 +325,8 @@ function CreateStoreModal({ onClose }: { onClose: () => void }) {
                 />
               </div>
 
-              {errors.non_field_errors && <div style={{ padding: "10px 14px", background: "color-mix(in srgb, var(--danger) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", fontSize: 14, color: "var(--danger-text)", display: "flex", alignItems: "center", gap: 8 }}><LuTriangleAlert size={15} /> {errors.non_field_errors}</div>}
-              {errors.detail && <div style={{ padding: "10px 14px", background: "color-mix(in srgb, var(--danger) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", fontSize: 14, color: "var(--danger-text)", display: "flex", alignItems: "center", gap: 8 }}><LuTriangleAlert size={15} /> {errors.detail}</div>}
+              {errors.non_field_errors && <div style={{ padding: "10px 14px", background: "color-mix(in srgb, var(--danger) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", fontSize: 14, color: "var(--danger-text)", display: "flex", alignItems: "center", gap: 8 }}><HugeiconsIcon icon={Alert02Icon} size={15} /> {errors.non_field_errors}</div>}
+              {errors.detail && <div style={{ padding: "10px 14px", background: "color-mix(in srgb, var(--danger) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", fontSize: 14, color: "var(--danger-text)", display: "flex", alignItems: "center", gap: 8 }}><HugeiconsIcon icon={Alert02Icon} size={15} /> {errors.detail}</div>}
             </div>
 
             <div className="modal-footer">
@@ -323,7 +341,7 @@ function CreateStoreModal({ onClose }: { onClose: () => void }) {
                   opacity: createMutation.isPending ? 0.8 : 1, transition: "all .15s",
                 }}
               >
-                {createMutation.isPending ? <><LuLoader size={17} className="spin" /> Creating…</> : <><LuCheck size={17} /> Create store</>}
+                {createMutation.isPending ? <><HugeiconsIcon icon={Loading03Icon} size={17} className="spin" /> Creating…</> : <><HugeiconsIcon icon={Tick02Icon} size={17} /> Create store</>}
               </button>
             </div>
           </form>
@@ -363,7 +381,7 @@ function DeleteStoreModal({ store, onClose }: { store: Store; onClose: () => voi
       <div className="modal-panel" style={{ maxWidth: 440, borderRadius: "16px" }}>
         <div className="modal-body" style={{ padding: "22px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
           <div style={{ width: 52, height: 52, borderRadius: "50%", background: "color-mix(in srgb, var(--danger) 12%, transparent)", color: "var(--danger-text)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-            <LuTrash2 size={24} />
+            <HugeiconsIcon icon={Delete02Icon} size={24} />
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 10px 0", fontFamily: "var(--font-display)" }}>
             Delete store?
@@ -404,7 +422,7 @@ function DeleteStoreModal({ store, onClose }: { store: Store; onClose: () => voi
               transition: "all 0.2s"
             }}
           >
-            {deleteMutation.isPending ? <LuLoader size={17} className="spin" /> : "Delete Store"}
+            {deleteMutation.isPending ? <HugeiconsIcon icon={Loading03Icon} size={17} className="spin" /> : "Delete Store"}
           </button>
         </div>
       </div>
@@ -464,12 +482,12 @@ export default function StoresPage() {
           </div>
           {user?.merchant_is_verified ? (
             <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ fontSize: 14, padding: "11px 20px", display: "flex", alignItems: "center", gap: 8 }}>
-              <LuPlus size={16} /> New store
+              <HugeiconsIcon icon={PlusSignIcon} size={16} /> New store
             </button>
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 13, color: "#f59e0b", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                <LuTriangleAlert size={14} /> ID Verification Required
+                <HugeiconsIcon icon={Alert02Icon} size={14} /> ID Verification Required
               </span>
               <Link href="/dashboard/settings?tab=identity" className="btn btn-secondary" style={{ fontSize: 13, padding: "8px 16px" }}>
                 Verify Identity →
@@ -481,13 +499,13 @@ export default function StoresPage() {
         {/* Content */}
         {isLoading ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "40vh", gap: 16 }}>
-            <LuLoader size={36} className="spin" color="var(--brand-500)" />
+            <HugeiconsIcon icon={Loading03Icon} size={36} className="spin" color="var(--brand-500)" />
             <p style={{ color: "var(--text-secondary)", fontWeight: 500 }}>Loading stores…</p>
           </div>
         ) : stores.length === 0 ? (
           <div style={{ background: "var(--surface-900)", border: "2px dashed var(--border)", borderRadius: 0, padding: "80px 32px", textAlign: "center" }}>
             <div style={{ width: 72, height: 72, borderRadius: 0, background: "rgba(168,85,247,0.08)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-              <LuStore size={32} color="var(--brand-500)" />
+              <HugeiconsIcon icon={Store01Icon} size={32} color="var(--brand-500)" />
             </div>
             <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10, fontFamily: "Outfit, sans-serif" }}>No stores yet</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, maxWidth: 420, margin: "0 auto 28px", lineHeight: 1.6 }}>
@@ -495,12 +513,12 @@ export default function StoresPage() {
             </p>
             {user?.merchant_is_verified ? (
               <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ fontSize: 15, padding: "12px 28px" }}>
-                <LuPlus size={17} /> Create your first store
+                <HugeiconsIcon icon={PlusSignIcon} size={17} /> Create your first store
               </button>
             ) : (
               <div style={{ display: "inline-flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
                 <div style={{ padding: "12px 16px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, color: "#d97706", fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-                  <LuTriangleAlert size={18} /> You must verify your business identity before creating a store.
+                  <HugeiconsIcon icon={Alert02Icon} size={18} /> You must verify your business identity before creating a store.
                 </div>
                 <Link href="/dashboard/settings?tab=identity" className="btn btn-primary" style={{ fontSize: 15, padding: "12px 28px" }}>
                   Verify Identity

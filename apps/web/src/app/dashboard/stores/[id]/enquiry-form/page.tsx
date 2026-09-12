@@ -23,22 +23,23 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  LuArrowLeft,
-  LuChevronDown,
-  LuChevronUp,
-  LuCircleAlert,
-  LuExternalLink,
-  LuInbox,
-  LuLoader,
-  LuPlus,
-  LuSave,
-  LuTrash2,
-} from "react-icons/lu";
 import { toast } from "@/lib/toast";
 
 import { storefrontApi, storeApi, type ServiceFormConfig, type ServiceFormFieldType } from "@/lib/api";
 import type { ServiceFormField } from "@/types/storefront";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  AlertCircleIcon,
+  LinkSquare02Icon,
+  InboxIcon,
+  Loading03Icon,
+  PlusSignIcon,
+  FloppyDiskIcon,
+  Delete02Icon,
+} from "@hugeicons/core-free-icons";
 
 /** Mirrors the RegexField on the backend's field serializer. */
 const KEY_PATTERN = /^[a-z][a-z0-9_]{0,39}$/;
@@ -258,7 +259,7 @@ export default function EnquiryFormBuilderPage() {
             color: "var(--text-muted)", fontSize: 14, textDecoration: "none", marginBottom: 20,
           }}
         >
-          <LuArrowLeft size={15} /> Back to store
+          <HugeiconsIcon icon={ArrowLeft02Icon} size={15} /> Back to store
         </Link>
 
         <div
@@ -278,7 +279,7 @@ export default function EnquiryFormBuilderPage() {
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link className="btn btn-secondary" href={`/dashboard/stores/${id}/enquiries`}>
-              <LuInbox size={16} /> Enquiries
+              <HugeiconsIcon icon={InboxIcon} size={16} /> Enquiries
               {!!remote?.submission_count && ` (${remote.submission_count})`}
             </Link>
             <button
@@ -286,7 +287,7 @@ export default function EnquiryFormBuilderPage() {
               onClick={() => save.mutate()}
               disabled={save.isPending || !draft || problems.length > 0}
             >
-              {save.isPending ? <LuLoader size={16} className="spin" /> : <LuSave size={16} />}
+              {save.isPending ? <HugeiconsIcon icon={Loading03Icon} size={16} className="spin" /> : <HugeiconsIcon icon={FloppyDiskIcon} size={16} />}
               Save form
             </button>
           </div>
@@ -299,7 +300,7 @@ export default function EnquiryFormBuilderPage() {
               minHeight: "40vh", justifyContent: "center",
             }}
           >
-            <LuLoader size={32} className="spin" color="var(--brand-500)" />
+            <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" color="var(--brand-500)" />
             <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>Loading your form…</p>
           </div>
         ) : (
@@ -312,7 +313,7 @@ export default function EnquiryFormBuilderPage() {
                   display: "flex", gap: 12, alignItems: "flex-start",
                 }}
               >
-                <LuCircleAlert size={18} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <HugeiconsIcon icon={AlertCircleIcon} size={18} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>
                     Fix these before saving
@@ -391,7 +392,7 @@ export default function EnquiryFormBuilderPage() {
                           textAlign: "left", padding: 0, color: "var(--text-primary)",
                         }}
                       >
-                        {open ? <LuChevronUp size={14} /> : <LuChevronDown size={14} />}
+                        {open ? <HugeiconsIcon icon={ArrowUp01Icon} size={14} /> : <HugeiconsIcon icon={ArrowDown01Icon} size={14} />}
                         <span style={{ fontSize: 14, fontWeight: 600 }}>{field.label || "(no label)"}</span>
                         <span
                           className="badge"
@@ -410,7 +411,7 @@ export default function EnquiryFormBuilderPage() {
                         disabled={index === 0}
                         className="ef-icon"
                       >
-                        <LuChevronUp size={13} />
+                        <HugeiconsIcon icon={ArrowUp01Icon} size={13} />
                       </button>
                       <button
                         type="button"
@@ -419,7 +420,7 @@ export default function EnquiryFormBuilderPage() {
                         disabled={index === draft.fields.length - 1}
                         className="ef-icon"
                       >
-                        <LuChevronDown size={13} />
+                        <HugeiconsIcon icon={ArrowDown01Icon} size={13} />
                       </button>
                       <button
                         type="button"
@@ -428,7 +429,7 @@ export default function EnquiryFormBuilderPage() {
                         className="ef-icon"
                         style={{ color: "var(--danger)" }}
                       >
-                        <LuTrash2 size={13} />
+                        <HugeiconsIcon icon={Delete02Icon} size={13} />
                       </button>
                     </div>
 
@@ -536,7 +537,7 @@ export default function EnquiryFormBuilderPage() {
                     className="btn btn-secondary btn-sm"
                     onClick={() => addField(t.type)}
                   >
-                    <LuPlus size={13} /> {t.label}
+                    <HugeiconsIcon icon={PlusSignIcon} size={13} /> {t.label}
                   </button>
                 ))}
               </div>
@@ -564,7 +565,7 @@ export default function EnquiryFormBuilderPage() {
             </section>
 
             <p style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-              <LuExternalLink size={14} />
+              <HugeiconsIcon icon={LinkSquare02Icon} size={14} />
               The form appears in the “Enquiry Form” section of your storefront — add it from{" "}
               <Link href={`/dashboard/stores/${id}/settings`} style={{ color: "var(--brand-500)" }}>
                 Customize

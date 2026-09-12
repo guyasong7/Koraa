@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import { toast } from "@/lib/toast";
-import {
-  LuCircleCheck, LuClock, LuLoader, LuLock, LuTriangleAlert,
-} from "react-icons/lu";
 
 import { paymentApi, type BillingCycle } from "@/lib/api";
 import { formatXaf } from "@/lib/planCopy";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  CheckmarkCircle02Icon,
+  Clock01Icon,
+  Loading03Icon,
+  SquareLock02Icon,
+  Alert02Icon,
+} from "@hugeicons/core-free-icons";
 
 type Stage =
   | { kind: "form" }
@@ -99,7 +104,7 @@ export default function PurchaseDialog({
             <div className="modal-body" style={{ padding: 22 }}>
               <div style={{ textAlign: "center", marginBottom: 20 }}>
                 <Ring tint="var(--brand-600)">
-                  <LuLock size={24} />
+                  <HugeiconsIcon icon={SquareLock02Icon} size={24} />
                 </Ring>
                 <h2 style={headingStyle}>
                   {renewal ? `Renew ${plan.name}` : `Pay for ${plan.name}`}
@@ -183,7 +188,7 @@ export default function PurchaseDialog({
                 style={{ ...footerButtonStyle, opacity: stage.kind === "charging" ? 0.8 : 1 }}
               >
                 {stage.kind === "charging"
-                  ? <LuLoader size={17} className="spin" />
+                  ? <HugeiconsIcon icon={Loading03Icon} size={17} className="spin" />
                   : `Pay ${formatXaf(amount)} XAF`}
               </button>
             </div>
@@ -193,7 +198,7 @@ export default function PurchaseDialog({
         {stage.kind === "redirecting" && (
           <Outcome
             tint="var(--brand-600)"
-            icon={<LuLoader size={24} className="spin" />}
+            icon={<HugeiconsIcon icon={Loading03Icon} size={24} className="spin" />}
             title="Redirecting to payment"
           >
             <p style={bodyTextStyle}>
@@ -205,7 +210,7 @@ export default function PurchaseDialog({
         {stage.kind === "paid" && (
           <Outcome
             tint="var(--success, #16a34a)"
-            icon={<LuCircleCheck size={24} />}
+            icon={<HugeiconsIcon icon={CheckmarkCircle02Icon} size={24} />}
             title={renewal ? `${plan.name} renewed` : `You're on ${plan.name}`}
             footer={
               <button onClick={onClose} className="btn btn-primary" style={{ ...footerButtonStyle, flex: 1 }}>
@@ -223,7 +228,7 @@ export default function PurchaseDialog({
         {stage.kind === "failed" && (
           <Outcome
             tint="var(--danger)"
-            icon={<LuTriangleAlert size={24} />}
+            icon={<HugeiconsIcon icon={Alert02Icon} size={24} />}
             title="That payment didn't go through"
             footer={
               <>
@@ -250,7 +255,7 @@ export default function PurchaseDialog({
         {stage.kind === "unknown" && (
           <Outcome
             tint="#d97706"
-            icon={<LuClock size={24} />}
+            icon={<HugeiconsIcon icon={Clock01Icon} size={24} />}
             title="Still waiting on your provider"
             footer={
               <button onClick={onClose} className="btn btn-secondary" style={{ ...footerButtonStyle, flex: 1 }}>

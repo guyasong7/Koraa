@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { publicStorefrontApi, ShowcaseStore } from "@/lib/api";
 import Link from "next/link";
-import { LuGlobe, LuExternalLink, LuLoader } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  GlobalIcon,
+  LinkSquare02Icon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
 
 function StoreCard({ store }: { store: ShowcaseStore }) {
   return (
@@ -13,10 +18,10 @@ function StoreCard({ store }: { store: ShowcaseStore }) {
           {store.logo ? (
             <img src={store.logo} alt={store.name} className="showcase-logo" />
           ) : (
-            <LuGlobe size={24} color="var(--brand-500)" />
+            <HugeiconsIcon icon={GlobalIcon} size={24} color="var(--brand-500)" />
           )}
         </div>
-        <LuExternalLink size={16} className="showcase-external-icon" />
+        <HugeiconsIcon icon={LinkSquare02Icon} size={16} className="showcase-external-icon" />
       </div>
       <div className="showcase-card-body">
         <h3 className="showcase-name">{store.name}</h3>
@@ -53,7 +58,7 @@ export default function ShowcasePage() {
         <div className="lp-wrap">
           {isLoading ? (
             <div className="showcase-loading">
-              <LuLoader size={32} className="spin" color="var(--brand-500)" />
+              <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" color="var(--brand-500)" />
               <p>Loading stores...</p>
             </div>
           ) : stores.length === 0 ? (

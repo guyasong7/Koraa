@@ -34,7 +34,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LuCheck } from "react-icons/lu";
 
 import type { PlanCatalogueEntry } from "@/lib/api";
 import { useIsSignedIn } from "@/hooks/useIsSignedIn";
@@ -45,6 +44,10 @@ import {
   monthlyEquivalent,
   planCardBullets,
 } from "@/lib/planCopy";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Tick02Icon,
+} from "@hugeicons/core-free-icons";
 
 /** Which price the table is currently showing. */
 type View = "monthly" | "yearly";
@@ -159,7 +162,7 @@ export function PricingPlans({
               <ul className="lp-plan__features">
                 {planCardBullets(plan, plans).map((bullet) => (
                   <li key={bullet}>
-                    <LuCheck size={15} aria-hidden="true" />
+                    <HugeiconsIcon icon={Tick02Icon} size={15} aria-hidden="true" />
                     {bullet}
                   </li>
                 ))}
@@ -192,7 +195,7 @@ export function PricingPlans({
           <span>Included on every plan:</span>
           {universal.map((f) => (
             <span key={f.key}>
-              <LuCheck size={16} aria-hidden="true" />
+              <HugeiconsIcon icon={Tick02Icon} size={16} aria-hidden="true" />
               {f.label}
             </span>
           ))}

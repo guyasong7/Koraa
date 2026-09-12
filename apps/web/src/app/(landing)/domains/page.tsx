@@ -2,18 +2,19 @@
 
 import { useState, useEffect, useRef, useId } from "react";
 import Link from "next/link";
-import {
-  LuSearch,
-  LuCheck,
-  LuX,
-  LuShoppingCart,
-  LuGlobe,
-  LuArrowUpRight,
-  LuStar,
-  LuShield,
-  LuZap,
-} from "react-icons/lu";
 import { gsap } from "gsap";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Search01Icon,
+  Tick02Icon,
+  Cancel01Icon,
+  ShoppingCart01Icon,
+  GlobalIcon,
+  ArrowUpRight01Icon,
+  StarIcon,
+  ShieldIcon,
+  FlashIcon,
+} from "@hugeicons/core-free-icons";
 
 const EXTENSIONS = [".com", ".africa", ".shop", ".store", ".co", ".net", ".org", ".io"];
 
@@ -26,17 +27,17 @@ const PREMIUM_DOMAINS = [
 
 const FEATURES = [
   {
-    icon: LuShield,
+    icon: ShieldIcon,
     title: "Free WHOIS privacy",
     desc: "Your personal details stay out of the public WHOIS database at no extra cost.",
   },
   {
-    icon: LuZap,
+    icon: FlashIcon,
     title: "Instant activation",
     desc: "Point a domain at your storefront and it resolves in minutes, not days.",
   },
   {
-    icon: LuGlobe,
+    icon: GlobalIcon,
     title: "DNS you control",
     desc: "Full record management from your Koraa dashboard — no registrar login needed.",
   },
@@ -138,7 +139,7 @@ export default function DomainsPage() {
               </label>
 
               <span className="dm-search__icon" aria-hidden="true">
-                <LuSearch size={20} strokeWidth={2} />
+                <HugeiconsIcon icon={Search01Icon} size={20} strokeWidth={2} />
               </span>
               <input
                 id={searchId}
@@ -204,7 +205,7 @@ export default function DomainsPage() {
                   </h2>
                   {cart.length > 0 && (
                     <button type="button" className="lp-btn lp-btn--primary">
-                      <LuShoppingCart size={16} strokeWidth={2} aria-hidden="true" />
+                      <HugeiconsIcon icon={ShoppingCart01Icon} size={16} strokeWidth={2} aria-hidden="true" />
                       Checkout ({cart.length})
                     </button>
                   )}
@@ -219,9 +220,9 @@ export default function DomainsPage() {
                       <div className="dm-row__id">
                         <span className="dm-row__mark" aria-hidden="true">
                           {r.available ? (
-                            <LuCheck size={16} strokeWidth={2} />
+                            <HugeiconsIcon icon={Tick02Icon} size={16} strokeWidth={2} />
                           ) : (
-                            <LuX size={16} strokeWidth={2} />
+                            <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
                           )}
                         </span>
                         <div>
@@ -269,7 +270,7 @@ export default function DomainsPage() {
 
             {!loading && results.length === 0 && (
               <div className="dm-state">
-                <LuGlobe
+                <HugeiconsIcon icon={GlobalIcon}
                   size={40}
                   strokeWidth={1.5}
                   className="dm-state__icon"
@@ -291,7 +292,7 @@ export default function DomainsPage() {
         <div className="lp-wrap">
           <div className="dm-body">
             <div className="dm-sec-head">
-              <LuStar size={18} strokeWidth={2} aria-hidden="true" />
+              <HugeiconsIcon icon={StarIcon} size={18} strokeWidth={2} aria-hidden="true" />
               <h2 className="lp-display lp-h3">Premium domains</h2>
             </div>
             <div className="dm-premium">
@@ -326,7 +327,7 @@ export default function DomainsPage() {
             {FEATURES.map((f) => (
               <div className="dm-feature" key={f.title}>
                 <span className="dm-feature__icon" aria-hidden="true">
-                  <f.icon size={20} strokeWidth={2} />
+                  <HugeiconsIcon icon={f.icon} size={20} strokeWidth={2} />
                 </span>
                 <h3 className="lp-display lp-h3">{f.title}</h3>
                 <p className="lp-body">{f.desc}</p>
@@ -345,7 +346,7 @@ export default function DomainsPage() {
           </p>
           <Link href="/auth/register" className="lp-btn lp-btn--primary lp-btn--lg">
             Get started free
-            <LuArrowUpRight size={18} strokeWidth={2} aria-hidden="true" />
+            <HugeiconsIcon icon={ArrowUpRight01Icon} size={18} strokeWidth={2} aria-hidden="true" />
           </Link>
         </div>
       </section>

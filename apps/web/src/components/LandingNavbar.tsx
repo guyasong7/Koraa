@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { LuMenu, LuX } from "react-icons/lu";
 import KoraaLogo from "./KoraaLogo";
 import { useIsSignedIn } from "@/hooks/useIsSignedIn";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Menu01Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 /* Only destinations that exist. /domains is a real route; the old
    /domains/search, /domains/transfer, /domains/premium, /domains/privacy
@@ -85,7 +89,7 @@ export default function LandingNavbar() {
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
             >
-              {menuOpen ? <LuX size={26} /> : <LuMenu size={26} />}
+              {menuOpen ? <HugeiconsIcon icon={Cancel01Icon} size={26} /> : <HugeiconsIcon icon={Menu01Icon} size={26} />}
             </button>
           </div>
         </div>

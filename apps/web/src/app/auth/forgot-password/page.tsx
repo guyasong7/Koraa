@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LuArrowLeft, LuArrowRight, LuMailCheck } from "react-icons/lu";
 import KoraaLogo from "@/components/KoraaLogo";
 import { authApi } from "@/lib/api";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+  ArrowRight02Icon,
+  MailValidation01Icon,
+} from "@hugeicons/core-free-icons";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -55,7 +60,7 @@ export default function ForgotPasswordPage() {
                 marginBottom: 20,
               }}
             >
-              <LuMailCheck size={24} />
+              <HugeiconsIcon icon={MailValidation01Icon} size={24} />
             </div>
             <h1
               className="font-display"
@@ -132,7 +137,7 @@ export default function ForgotPasswordPage() {
                   </span>
                 ) : (
                   <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    Send reset link <LuArrowRight size={16} />
+                    Send reset link <HugeiconsIcon icon={ArrowRight02Icon} size={16} />
                   </span>
                 )}
               </button>
@@ -150,7 +155,7 @@ export default function ForgotPasswordPage() {
                   gap: 6,
                 }}
               >
-                <LuArrowLeft size={14} /> Back to sign in
+                <HugeiconsIcon icon={ArrowLeft02Icon} size={14} /> Back to sign in
               </Link>
             </p>
           </>

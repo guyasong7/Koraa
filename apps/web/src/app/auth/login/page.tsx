@@ -6,10 +6,15 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "@/lib/toast";
-import { LuEye, LuEyeOff, LuArrowRight } from "react-icons/lu";
-import { FcGoogle } from "react-icons/fc";
 import { signInWithEmail } from "@/lib/firebase";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ViewIcon,
+  ViewOffSlashIcon,
+  ArrowRight02Icon,
+} from "@hugeicons/core-free-icons";
+import GoogleMark from "@/components/GoogleMark";
 
 /**
  * Why the user is here, when SessionGuard sent them rather than a link.
@@ -126,7 +131,7 @@ export default function LoginPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
           <button type="button" className="btn btn-secondary" style={{ width: "100%" }}
             onClick={() => handleGoogleLogin()} disabled={isLoading}>
-            <FcGoogle size={18} /> Continue with Google
+            <GoogleMark size={18} /> Continue with Google
           </button>
         </div>
 
@@ -154,7 +159,7 @@ export default function LoginPage() {
                 required style={{ paddingRight: 44 }} />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
                 style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center" }}>
-                {showPassword ? <LuEyeOff size={17} /> : <LuEye size={17} />}
+                {showPassword ? <HugeiconsIcon icon={ViewOffSlashIcon} size={17} /> : <HugeiconsIcon icon={ViewIcon} size={17} />}
               </button>
             </div>
           </div>
@@ -166,7 +171,7 @@ export default function LoginPage() {
                 Signing in…
               </span>
             ) : (
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>Sign in <LuArrowRight size={16} /></span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>Sign in <HugeiconsIcon icon={ArrowRight02Icon} size={16} /></span>
             )}
           </button>
         </form>

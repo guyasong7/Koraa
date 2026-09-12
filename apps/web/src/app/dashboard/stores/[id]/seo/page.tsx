@@ -18,21 +18,22 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  LuArrowLeft,
-  LuCircleCheck,
-  LuCircleX,
-  LuExternalLink,
-  LuGauge,
-  LuLoader,
-  LuRefreshCw,
-  LuSave,
-  LuTriangleAlert,
-} from "react-icons/lu";
 import { toast } from "@/lib/toast";
 
 import { storeApi } from "@/lib/api";
 import type { SeoCheck, SeoReport, SeoStatus } from "@/lib/api";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+  CheckmarkCircle02Icon,
+  CancelCircleIcon,
+  LinkSquare02Icon,
+  DashboardSpeed01Icon,
+  Loading03Icon,
+  Refresh01Icon,
+  FloppyDiskIcon,
+  Alert02Icon,
+} from "@hugeicons/core-free-icons";
 
 const TITLE_MAX = 70;
 const DESC_MAX = 160;
@@ -47,9 +48,9 @@ const STATUS_STYLE: Record<SeoStatus, { color: string; fill: string; label: stri
 
 function StatusIcon({ status, size = 18 }: { status: SeoStatus; size?: number }) {
   const color = STATUS_STYLE[status].fill;
-  if (status === "pass") return <LuCircleCheck size={size} color={color} />;
-  if (status === "warn") return <LuTriangleAlert size={size} color={color} />;
-  return <LuCircleX size={size} color={color} />;
+  if (status === "pass") return <HugeiconsIcon icon={CheckmarkCircle02Icon} size={size} color={color} />;
+  if (status === "warn") return <HugeiconsIcon icon={Alert02Icon} size={size} color={color} />;
+  return <HugeiconsIcon icon={CancelCircleIcon} size={size} color={color} />;
 }
 
 export default function StoreSeoPage() {
@@ -117,7 +118,7 @@ export default function StoreSeoPage() {
             marginBottom: 20,
           }}
         >
-          <LuArrowLeft size={15} /> Back to store
+          <HugeiconsIcon icon={ArrowLeft02Icon} size={15} /> Back to store
         </Link>
 
         <div
@@ -143,7 +144,7 @@ export default function StoreSeoPage() {
             onClick={() => refetch()}
             disabled={isFetching}
           >
-            {isFetching ? <LuLoader size={16} className="spin" /> : <LuRefreshCw size={16} />}
+            {isFetching ? <HugeiconsIcon icon={Loading03Icon} size={16} className="spin" /> : <HugeiconsIcon icon={Refresh01Icon} size={16} />}
             Run again
           </button>
         </div>
@@ -159,7 +160,7 @@ export default function StoreSeoPage() {
               justifyContent: "center",
             }}
           >
-            <LuLoader size={32} className="spin" color="var(--brand-500)" />
+            <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" color="var(--brand-500)" />
             <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>Running your audit…</p>
           </div>
         ) : (
@@ -271,7 +272,7 @@ export default function StoreSeoPage() {
                   onClick={() => save.mutate()}
                   disabled={save.isPending || !touched}
                 >
-                  {save.isPending ? <LuLoader size={16} className="spin" /> : <LuSave size={16} />}
+                  {save.isPending ? <HugeiconsIcon icon={Loading03Icon} size={16} className="spin" /> : <HugeiconsIcon icon={FloppyDiskIcon} size={16} />}
                   Save & re-run
                 </button>
                 <a
@@ -287,7 +288,7 @@ export default function StoreSeoPage() {
                     gap: 5,
                   }}
                 >
-                  <LuExternalLink size={13} /> View storefront
+                  <HugeiconsIcon icon={LinkSquare02Icon} size={13} /> View storefront
                 </a>
               </div>
             </section>
@@ -364,7 +365,7 @@ function ScoreCard({ report }: { report: SeoReport }) {
 
       <div style={{ flex: "1 1 260px", minWidth: 0 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
-          <LuGauge size={18} color="var(--brand-500)" /> SEO score
+          <HugeiconsIcon icon={DashboardSpeed01Icon} size={18} color="var(--brand-500)" /> SEO score
         </h2>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 14 }}>
           {summary.passed} of {summary.total} checks pass

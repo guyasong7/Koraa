@@ -31,7 +31,13 @@ import {
   useFacet,
   useQuickViewTrigger,
 } from "../shared";
-import { LuDownload, LuMail, LuSparkles, LuZap } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Download04Icon,
+  Mail01Icon,
+  SparklesIcon,
+  FlashIcon,
+} from "@hugeicons/core-free-icons";
 
 const styles = `
 /* Hero — centred, gradient, no photograph */
@@ -102,7 +108,7 @@ function ShowcaseCard({ p, store, index }: { p: StorefrontProduct; store: Sectio
           <span className="sf-sc-price">{formatPrice(store, p.base_price)}</span>
           {act.kind !== "none" && (
             <button className="sf-sc-get" disabled={act.disabled} onClick={act.run}>
-              {act.kind === "enquire" ? <LuMail size={13} /> : <LuDownload size={13} />} {act.label}
+              {act.kind === "enquire" ? <HugeiconsIcon icon={Mail01Icon} size={13} /> : <HugeiconsIcon icon={Download04Icon} size={13} />} {act.label}
             </button>
           )}
         </div>
@@ -117,14 +123,14 @@ function ShowcaseHero({ s, store }: SectionProps) {
   return (
     <section className="sf-sc-hero">
       <div className="sf-sc-hero-c">
-        <span className="sf-sc-eyebrow"><LuSparkles size={13} /> {store.name}</span>
+        <span className="sf-sc-eyebrow"><HugeiconsIcon icon={SparklesIcon} size={13} /> {store.name}</span>
         <h1 className="sf-sc-h sf-d">{str(s.settings.title, `Welcome to ${store.name}`)}</h1>
         <p className="sf-sc-sub">{str(s.settings.subtitle, store.tagline || "Digital products, delivered the moment you buy.")}</p>
         <Link href="/shop" className="sf-sc-cta">{str(s.settings.button_text, "Browse products")}</Link>
         <div className="sf-sc-trust">
-          <span><LuZap size={14} /> Instant delivery</span>
-          <span><LuDownload size={14} /> Private download links</span>
-          <span><LuSparkles size={14} /> Free updates</span>
+          <span><HugeiconsIcon icon={FlashIcon} size={14} /> Instant delivery</span>
+          <span><HugeiconsIcon icon={Download04Icon} size={14} /> Private download links</span>
+          <span><HugeiconsIcon icon={SparklesIcon} size={14} /> Free updates</span>
         </div>
       </div>
     </section>

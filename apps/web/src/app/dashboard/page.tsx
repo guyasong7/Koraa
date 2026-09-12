@@ -6,12 +6,24 @@ import { storeApi, merchantApi, analyticsApi, Store } from "@/lib/api";
 import { storefrontHost } from "@/lib/rootDomain";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import {
-  LuStore, LuPackage, LuShoppingCart, LuTrendingUp, LuArrowUpRight, LuPlus,
-  LuGlobe, LuLoader, LuCircle, LuStar, LuChevronRight, LuActivity, LuZap,
-  LuExternalLink,
-} from "react-icons/lu";
 import dynamic from "next/dynamic";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Store01Icon,
+  Package01Icon,
+  ShoppingCart01Icon,
+  TrendingUpIcon,
+  ArrowUpRight01Icon,
+  PlusSignIcon,
+  GlobalIcon,
+  Loading03Icon,
+  CircleIcon,
+  StarIcon,
+  ArrowRight01Icon,
+  Activity03Icon,
+  FlashIcon,
+  LinkSquare02Icon,
+} from "@hugeicons/core-free-icons";
 
 const RevenueChart = dynamic(() => import("@/components/dashboard/RevenueChart"), {
   ssr: false,
@@ -40,7 +52,7 @@ function StoreCard({ store }: { store: Store }) {
       <div className="store-card-logo">
         {store.logo
           ? <img src={store.logo} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }} />
-          : <LuGlobe size={20} color="var(--brand-500)" />}
+          : <HugeiconsIcon icon={GlobalIcon} size={20} color="var(--brand-500)" />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.name}</p>
@@ -48,14 +60,14 @@ function StoreCard({ store }: { store: Store }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
         <span style={{ padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, display: "flex", alignItems: "center", gap: 4 }}>
-          {store.status === "published" && <LuCircle size={6} fill={s.color} stroke="none" />}
+          {store.status === "published" && <HugeiconsIcon icon={CircleIcon} size={6} fill={s.color} stroke="none" />}
           {s.label}
         </span>
         <Link href={`/dashboard/stores/${store.id}`} style={{ display: "flex", alignItems: "center", padding: "6px 10px", borderRadius: 8, background: "var(--surface-700)", border: "1px solid var(--border)", color: "var(--text-secondary)", textDecoration: "none", fontSize: 12, fontWeight: 600, gap: 4, transition: "all .15s" }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--brand-500)"; (e.currentTarget as HTMLElement).style.color = "var(--brand-500)"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
         >
-          Manage <LuChevronRight size={13} />
+          Manage <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
         </Link>
       </div>
     </div>
@@ -108,7 +120,7 @@ export default function DashboardPage() {
               {firstName}
               {publishedCount > 0 && (
                 <span className="overview-live-badge">
-                  <LuCircle size={6} fill="#22c55e" stroke="none" /> {publishedCount} Live
+                  <HugeiconsIcon icon={CircleIcon} size={6} fill="#22c55e" stroke="none" /> {publishedCount} Live
                 </span>
               )}
             </h1>
@@ -116,15 +128,15 @@ export default function DashboardPage() {
           <div className="overview-header-actions">
             {stores.length === 0 ? (
               <Link href="/dashboard/stores" className="btn btn-primary btn-sm">
-                <LuPlus size={14} /> Create store
+                <HugeiconsIcon icon={PlusSignIcon} size={14} /> Create store
               </Link>
             ) : (
               <>
                 <Link href="/dashboard/stores" className="btn btn-secondary btn-sm">
-                  <LuStore size={14} /> Stores
+                  <HugeiconsIcon icon={Store01Icon} size={14} /> Stores
                 </Link>
                 <Link href="/dashboard/products" className="btn btn-primary btn-sm">
-                  <LuPackage size={14} /> Products
+                  <HugeiconsIcon icon={Package01Icon} size={14} /> Products
                 </Link>
               </>
             )}
@@ -134,14 +146,14 @@ export default function DashboardPage() {
         {/* ── Stat strip ── */}
         <div className="stat-strip">
           {[
-            { label: "Stores",   value: storesLoading ? "…" : stores.length,                                                         icon: LuStore,       color: "var(--brand-500)",   sub: `${publishedCount} live` },
-            { label: "Products", value: statsLoading  ? "…" : (statsData?.total_products ?? 0),                                      icon: LuPackage,     color: "var(--clay-text)",   sub: "All stores" },
-            { label: "Orders",   value: statsLoading  ? "…" : (statsData?.total_orders ?? 0),                                        icon: LuShoppingCart,color: "#f59e0b",            sub: "All time" },
-            { label: "Revenue",  value: statsLoading  ? "…" : `${(statsData?.total_revenue ?? 0).toLocaleString()}${chartCurrency ? ` ${chartCurrency}` : ""}`, icon: LuTrendingUp, color: "var(--info-text)", sub: "This month" },
-          ].map(({ label, value, icon: Icon, color, sub }) => (
+            { label: "Stores",   value: storesLoading ? "…" : stores.length,                                                         icon: Store01Icon,       color: "var(--brand-500)",   sub: `${publishedCount} live` },
+            { label: "Products", value: statsLoading  ? "…" : (statsData?.total_products ?? 0),                                      icon: Package01Icon,     color: "var(--clay-text)",   sub: "All stores" },
+            { label: "Orders",   value: statsLoading  ? "…" : (statsData?.total_orders ?? 0),                                        icon: ShoppingCart01Icon,color: "#f59e0b",            sub: "All time" },
+            { label: "Revenue",  value: statsLoading  ? "…" : `${(statsData?.total_revenue ?? 0).toLocaleString()}${chartCurrency ? ` ${chartCurrency}` : ""}`, icon: TrendingUpIcon, color: "var(--info-text)", sub: "This month" },
+          ].map(({ label, value, icon, color, sub }) => (
             <div key={label} className="stat-cell">
               <div className="stat-cell-icon" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
-                <Icon size={16} color={color} />
+                <HugeiconsIcon icon={icon} size={16} color={color} />
               </div>
               <div>
                 <p className="stat-cell-value">{value}</p>
@@ -167,12 +179,12 @@ export default function DashboardPage() {
                 </p>
               </div>
               <Link href="/dashboard/analytics" className="btn btn-secondary btn-sm">
-                Full analytics <LuArrowUpRight size={13} />
+                Full analytics <HugeiconsIcon icon={ArrowUpRight01Icon} size={13} />
               </Link>
             </div>
             {salesLoading ? (
               <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <LuLoader size={22} className="spin" color="var(--brand-500)" />
+                <HugeiconsIcon icon={Loading03Icon} size={22} className="spin" color="var(--brand-500)" />
               </div>
             ) : mixedCurrencies ? (
               <p style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 13, color: "var(--text-muted)", maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
@@ -188,22 +200,22 @@ export default function DashboardPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2 style={{ fontSize: 15, fontWeight: 700 }}>Your Stores</h2>
               <Link href="/dashboard/stores" className="btn btn-secondary btn-sm">
-                <LuPlus size={13} /> New
+                <HugeiconsIcon icon={PlusSignIcon} size={13} /> New
               </Link>
             </div>
 
             {storesLoading ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 0" }}>
-                <LuLoader size={22} className="spin" color="var(--brand-500)" />
+                <HugeiconsIcon icon={Loading03Icon} size={22} className="spin" color="var(--brand-500)" />
               </div>
             ) : stores.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 16px" }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--surface-700)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-                  <LuStore size={20} color="var(--brand-500)" />
+                  <HugeiconsIcon icon={Store01Icon} size={20} color="var(--brand-500)" />
                 </div>
                 <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 14 }}>No stores yet</p>
                 <Link href="/dashboard/stores" className="btn btn-primary btn-sm">
-                  <LuPlus size={13} /> Create store
+                  <HugeiconsIcon icon={PlusSignIcon} size={13} /> Create store
                 </Link>
               </div>
             ) : (
@@ -218,19 +230,19 @@ export default function DashboardPage() {
             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>Quick Actions</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {[
-                { icon: LuPlus,      label: "Create store",    sub: "Launch a new storefront",  href: "/dashboard/stores",    color: "var(--brand-500)" },
-                { icon: LuPackage,   label: "Add product",     sub: "List items for sale",       href: "/dashboard/products",  color: "var(--clay-text)" },
-                { icon: LuActivity,  label: "View analytics",  sub: "Track your performance",    href: "/dashboard/analytics", color: "#f59e0b" },
-              ].map(({ icon: Icon, label, sub, href, color }) => (
+                { icon: PlusSignIcon,      label: "Create store",    sub: "Launch a new storefront",  href: "/dashboard/stores",    color: "var(--brand-500)" },
+                { icon: Package01Icon,   label: "Add product",     sub: "List items for sale",       href: "/dashboard/products",  color: "var(--clay-text)" },
+                { icon: Activity03Icon,  label: "View analytics",  sub: "Track your performance",    href: "/dashboard/analytics", color: "#f59e0b" },
+              ].map(({ icon, label, sub, href, color }) => (
                 <Link key={href} href={href} className="quick-action-row">
                   <div className="quick-action-icon" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)`, color }}>
-                    <Icon size={15} />
+                    <HugeiconsIcon icon={icon} size={15} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{label}</p>
                     <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{sub}</p>
                   </div>
-                  <LuChevronRight size={13} color="var(--text-muted)" />
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={13} color="var(--text-muted)" />
                 </Link>
               ))}
             </div>
@@ -240,7 +252,7 @@ export default function DashboardPage() {
           {(user?.merchant_tier === "free" || !user?.merchant_tier) && (
             <div className="bento-upgrade">
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <LuStar size={13} fill="white" color="white" />
+                <HugeiconsIcon icon={StarIcon} size={13} fill="white" color="white" />
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.75 }}>Starter Plan</span>
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, lineHeight: 1.25, color: "white" }}>
@@ -254,7 +266,7 @@ export default function DashboardPage() {
                 background: "white", color: "var(--brand-700)", fontWeight: 700, fontSize: 13,
                 padding: "10px 0", borderRadius: 10, textDecoration: "none",
               }}>
-                <LuZap size={14} /> Upgrade to Starter
+                <HugeiconsIcon icon={FlashIcon} size={14} /> Upgrade to Starter
               </Link>
             </div>
           )}
@@ -262,7 +274,7 @@ export default function DashboardPage() {
           {user?.merchant_tier === "starter" && (
             <div className="bento-upgrade">
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <LuStar size={13} fill="white" color="white" />
+                <HugeiconsIcon icon={StarIcon} size={13} fill="white" color="white" />
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.75 }}>Pro Plan</span>
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, lineHeight: 1.25, color: "white" }}>Scale your<br />business</h3>
@@ -274,7 +286,7 @@ export default function DashboardPage() {
                 background: "white", color: "var(--brand-700)", fontWeight: 700, fontSize: 13,
                 padding: "10px 0", borderRadius: 10, textDecoration: "none",
               }}>
-                <LuZap size={14} /> Upgrade to Pro
+                <HugeiconsIcon icon={FlashIcon} size={14} /> Upgrade to Pro
               </Link>
             </div>
           )}

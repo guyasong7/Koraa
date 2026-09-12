@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { LuCircleCheck, LuClock, LuLoader, LuTriangleAlert } from "react-icons/lu";
 import { paymentApi } from "@/lib/api";
 import { Suspense } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  CheckmarkCircle02Icon,
+  Clock01Icon,
+  Loading03Icon,
+  Alert02Icon,
+} from "@hugeicons/core-free-icons";
 
 type Result =
   | { kind: "checking" }
@@ -62,7 +68,7 @@ function BillingSuccessContent() {
     >
       {result.kind === "checking" && (
         <div style={{ textAlign: "center" }}>
-          <LuLoader size={32} className="spin" style={{ color: "var(--brand-600)", marginBottom: 16 }} />
+          <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" style={{ color: "var(--brand-600)", marginBottom: 16 }} />
           <h2 style={headingStyle}>Checking your payment</h2>
           <p style={bodyStyle}>One moment — we are confirming your payment with the provider.</p>
         </div>
@@ -70,7 +76,7 @@ function BillingSuccessContent() {
 
       {result.kind === "paid" && (
         <div style={{ textAlign: "center" }}>
-          <LuCircleCheck size={36} style={{ color: "var(--success, #16a34a)", marginBottom: 16 }} />
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={36} style={{ color: "var(--success, #16a34a)", marginBottom: 16 }} />
           <h2 style={headingStyle}>Payment received</h2>
           <p style={bodyStyle}>
             Your <strong>{result.plan}</strong> plan is now active.
@@ -84,7 +90,7 @@ function BillingSuccessContent() {
 
       {result.kind === "pending" && (
         <div style={{ textAlign: "center" }}>
-          <LuClock size={36} style={{ color: "#d97706", marginBottom: 16 }} />
+          <HugeiconsIcon icon={Clock01Icon} size={36} style={{ color: "#d97706", marginBottom: 16 }} />
           <h2 style={headingStyle}>Still waiting on your provider</h2>
           <p style={bodyStyle}>
             We haven&apos;t had confirmation yet.{" "}
@@ -107,7 +113,7 @@ function BillingSuccessContent() {
 
       {result.kind === "failed" && (
         <div style={{ textAlign: "center" }}>
-          <LuTriangleAlert size={36} style={{ color: "var(--danger, #dc2626)", marginBottom: 16 }} />
+          <HugeiconsIcon icon={Alert02Icon} size={36} style={{ color: "var(--danger, #dc2626)", marginBottom: 16 }} />
           <h2 style={headingStyle}>Payment not completed</h2>
           <p style={bodyStyle}>
             The payment was not completed. Nothing has been charged — you can try again from the billing page.
@@ -138,7 +144,7 @@ export default function BillingSuccessPage() {
     <Suspense
       fallback={
         <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <LuLoader size={32} className="spin" style={{ color: "var(--brand-600)" }} />
+          <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" style={{ color: "var(--brand-600)" }} />
         </div>
       }
     >

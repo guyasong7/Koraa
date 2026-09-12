@@ -32,7 +32,15 @@ import {
   useFacet,
   useQuickViewTrigger,
 } from "../shared";
-import { LuCheck, LuCpu, LuDownload, LuMail, LuShoppingBag, LuX } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Tick02Icon,
+  CpuIcon,
+  Download04Icon,
+  Mail01Icon,
+  ShoppingBag03Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 const styles = `
 .sf-l-techgrid {
@@ -119,20 +127,20 @@ type Sort = "featured" | "price-asc" | "price-desc";
  */
 function AvailabilitySpec({ p }: { p: StorefrontProduct }) {
   if (p.product_type === "service") {
-    return <li><LuMail size={12} /> Quoted per job</li>;
+    return <li><HugeiconsIcon icon={Mail01Icon} size={12} /> Quoted per job</li>;
   }
   if (p.product_type === "digital") {
     const ready = (p.file_count ?? 0) > 0;
     return (
       <li>
-        {ready ? <LuDownload size={12} /> : <LuX size={12} />}
+        {ready ? <HugeiconsIcon icon={Download04Icon} size={12} /> : <HugeiconsIcon icon={Cancel01Icon} size={12} />}
         {ready ? "Instant download" : "Not yet available"}
       </li>
     );
   }
   return (
     <li>
-      {p.in_stock ? <LuCheck size={12} /> : <LuX size={12} />}
+      {p.in_stock ? <HugeiconsIcon icon={Tick02Icon} size={12} /> : <HugeiconsIcon icon={Cancel01Icon} size={12} />}
       {p.in_stock ? "In stock" : "Out of stock"}
     </li>
   );
@@ -147,7 +155,7 @@ function TechCard({ p, store }: { p: StorefrontProduct; store: SectionProps["sto
   return (
     <article className="sf-tg-card sf-card-tap" {...trigger}>
       <div className="sf-tg-ci">
-        <ProductMedia product={p} placeholder={<LuCpu size={34} color="var(--tg-dim)" />} />
+        <ProductMedia product={p} placeholder={<HugeiconsIcon icon={CpuIcon} size={34} color="var(--tg-dim)" />} />
         {flag && <span className="sf-tg-flag">{flag}</span>}
         <PinSaveButton product={p} store={store} />
       </div>
@@ -164,7 +172,7 @@ function TechCard({ p, store }: { p: StorefrontProduct; store: SectionProps["sto
       </div>
       {act.kind !== "none" && (
         <button className="sf-tg-add" disabled={act.disabled} onClick={act.run}>
-          {act.kind === "enquire" ? <LuMail size={13} /> : <LuShoppingBag size={13} />} {act.label}
+          {act.kind === "enquire" ? <HugeiconsIcon icon={Mail01Icon} size={13} /> : <HugeiconsIcon icon={ShoppingBag03Icon} size={13} />} {act.label}
         </button>
       )}
     </article>
@@ -188,7 +196,7 @@ function TechHero({ s, store }: SectionProps) {
     <>
       <section className="sf-tg-hero">
         <div className="sf-tg-copy">
-          <span className="sf-tg-eyebrow"><LuCpu size={13} /> {store.name}</span>
+          <span className="sf-tg-eyebrow"><HugeiconsIcon icon={CpuIcon} size={13} /> {store.name}</span>
           <h1 className="sf-tg-h sf-d">{str(s.settings.title, `Welcome to ${store.name}`)}</h1>
           <p className="sf-tg-sub">{str(s.settings.subtitle, store.tagline || "Specified, stocked and supported.")}</p>
           <Link href="/shop" className="sf-tg-cta">{str(s.settings.button_text, "Browse catalogue")}</Link>

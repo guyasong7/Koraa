@@ -1,12 +1,23 @@
 "use client";
 import PageTitle from "@/components/PageTitle";
-import { LuPackage, LuPlus, LuLoader, LuSearch, LuFilter, LuEllipsis, LuImage, LuExternalLink, LuSettings2 } from "react-icons/lu";
 import { useState, useEffect } from "react";
 import { storeApi, productApi } from "@/lib/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import StoreBackLink from "@/components/StoreBackLink";
 import CategoriesDialog from "./CategoriesDialog";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Package01Icon,
+  PlusSignIcon,
+  Loading03Icon,
+  Search01Icon,
+  FilterIcon,
+  MoreHorizontalIcon,
+  Image01Icon,
+  LinkSquare02Icon,
+  Settings02Icon,
+} from "@hugeicons/core-free-icons";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -103,14 +114,14 @@ export default function ProductsPage() {
               onClick={() => setShowCategories(true)}
               disabled={!activeStoreId}
             >
-              <LuPackage size={16} /> Categories
+              <HugeiconsIcon icon={Package01Icon} size={16} /> Categories
             </button>
             <button 
               className="btn btn-primary"
               onClick={() => activeStoreId && router.push(`/dashboard/products/new?store=${activeStoreId}`)}
               disabled={!activeStoreId}
             >
-              <LuPlus size={16} /> Add Product
+              <HugeiconsIcon icon={PlusSignIcon} size={16} /> Add Product
             </button>
           </div>
         </div>
@@ -118,7 +129,7 @@ export default function ProductsPage() {
         {stores.length === 0 && !isLoading ? (
           <div style={{ textAlign: "center", padding: "80px 20px", background: "var(--surface-900)", borderRadius: "var(--radius-2xl)", border: "1px dashed var(--border)", boxShadow: "var(--shadow-sm)" }}>
             <div style={{ width: 64, height: 64, borderRadius: "var(--radius-xl)", background: "var(--surface-850)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-              <LuPackage size={28} color="var(--text-muted)" />
+              <HugeiconsIcon icon={Package01Icon} size={28} color="var(--text-muted)" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>No stores found</h3>
             <p style={{ color: "var(--text-secondary)", marginBottom: 24, maxWidth: 400, margin: "0 auto 24px" }}>You need to create a store before you can add products to your inventory.</p>
@@ -128,27 +139,27 @@ export default function ProductsPage() {
           </div>
         ) : isLoading ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "50vh", gap: 16 }}>
-            <LuLoader size={32} className="spin" color="var(--brand-500)" />
+            <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" color="var(--brand-500)" />
             <p style={{ color: "var(--text-secondary)", fontSize: 14, fontWeight: 500 }}>Loading inventory...</p>
           </div>
         ) : products.length === 0 ? (
           <div style={{ textAlign: "center", padding: "80px 20px", background: "var(--surface-900)", border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", boxShadow: "var(--shadow-sm)" }}>
             <div style={{ width: 64, height: 64, borderRadius: "var(--radius-xl)", background: "rgba(168, 85, 247, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-              <LuPackage size={32} color="var(--brand-500)" />
+              <HugeiconsIcon icon={Package01Icon} size={32} color="var(--brand-500)" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>No products yet</h3>
             <p style={{ color: "var(--text-secondary)", maxWidth: 400, margin: "0 auto 24px" }}>
               Add your first product to start selling across Cameroon.
             </p>
             <button className="btn btn-primary" onClick={() => router.push(`/dashboard/products/new?store=${activeStoreId}`)}>
-              <LuPlus size={16} /> Add Product
+              <HugeiconsIcon icon={PlusSignIcon} size={16} /> Add Product
             </button>
           </div>
         ) : (
           <div className="table-container">
             <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 12, background: "var(--surface-900)" }}>
               <div style={{ position: "relative", flex: "1 1 200px", maxWidth: "100%" }}>
-                <LuSearch size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <HugeiconsIcon icon={Search01Icon} size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input 
                   type="text" 
                   className="input" 
@@ -159,7 +170,7 @@ export default function ProductsPage() {
                 />
               </div>
               <button className="btn btn-secondary" style={{ background: "var(--surface-900)", padding: "8px 16px" }}>
-                <LuSettings2 size={16} /> Filters
+                <HugeiconsIcon icon={Settings02Icon} size={16} /> Filters
               </button>
             </div>
             
@@ -182,7 +193,7 @@ export default function ProductsPage() {
                           {p.images?.[0]?.image ? (
                             <img src={p.images[0].image} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           ) : (
-                            <LuImage size={18} color="var(--text-disabled)" />
+                            <HugeiconsIcon icon={Image01Icon} size={18} color="var(--text-disabled)" />
                           )}
                         </div>
                         <div>
@@ -210,7 +221,7 @@ export default function ProductsPage() {
                     </td>
                     <td style={{ paddingRight: 24, textAlign: "right" }}>
                       <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 6, borderRadius: "var(--radius-sm)" }} className="hover-bg">
-                        <LuEllipsis size={16} />
+                        <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
                       </button>
                     </td>
                   </tr>

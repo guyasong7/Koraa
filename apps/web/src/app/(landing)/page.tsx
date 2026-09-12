@@ -1,15 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import {
-  LuChartLine,
-  LuCheck,
-  LuGlobe,
-  LuLock,
-  LuPalette,
-  LuReceipt,
-  LuSmartphone,
-  LuUpload,
-} from "react-icons/lu";
 
 import { getPlanCatalogue } from "@/lib/api";
 import HeroCta from "@/components/HeroCta";
@@ -19,6 +9,17 @@ import { universalFeatures, FALLBACK_PLANS } from "@/lib/planCopy";
 
 import { FaqItem, Reveal } from "./_ui";
 import { PricingPlans } from "./_pricing";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ChartLineIcon,
+  Tick02Icon,
+  GlobalIcon,
+  SquareLock02Icon,
+  PaintBoardIcon,
+  ReceiptIcon,
+  SmartPhone01Icon,
+  Upload04Icon,
+} from "@hugeicons/core-free-icons";
 
 /**
  * Marketing home page.
@@ -87,32 +88,32 @@ const HERO_MOSAIC = [
 /* Only capabilities that exist in the codebase today. */
 const FEATURES = [
   {
-    icon: LuPalette,
+    icon: PaintBoardIcon,
     title: "Storefront editor",
     body: "Choose a template, then change the type, colours and sections with a live preview beside you.",
   },
   {
-    icon: LuGlobe,
+    icon: GlobalIcon,
     title: "Your own domain",
     body: "Point a domain you already own at your shop, or search for and register a new one.",
   },
   {
-    icon: LuSmartphone,
+    icon: SmartPhone01Icon,
     title: "Mobile money checkout",
     body: "Customers pay with MTN Mobile Money or Orange Money and confirm it on their handset.",
   },
   {
-    icon: LuUpload,
+    icon: Upload04Icon,
     title: "Catalogue and CSV import",
     body: "Bring an existing product list in as a spreadsheet, and export it again whenever you want it back.",
   },
   {
-    icon: LuChartLine,
+    icon: ChartLineIcon,
     title: "Analytics",
     body: "Visitors, orders and revenue over time, so you can see which products and which days are working.",
   },
   {
-    icon: LuReceipt,
+    icon: ReceiptIcon,
     title: "Invoices and downloads",
     body: "Every paid order emails an invoice. Sell digital files and the download links go out with it.",
   },
@@ -313,7 +314,7 @@ export default async function LandingPage() {
             <div className="lp-features">
               {FEATURES.map((f) => (
                 <div key={f.title} className="lp-feature">
-                  <f.icon size={24} className="lp-feature__icon" aria-hidden="true" />
+                  <HugeiconsIcon icon={f.icon} size={24} className="lp-feature__icon" aria-hidden="true" />
                   <h3 className="lp-display lp-h3">{f.title}</h3>
                   <p className="lp-body">{f.body}</p>
                 </div>
@@ -366,7 +367,7 @@ export default async function LandingPage() {
                 </p>
                 <ul className="lp-pay__list lp-showcase__list" data-rise>
                   <li>
-                    <LuCheck size={19} className="lp-pay__check" aria-hidden="true" />
+                    <HugeiconsIcon icon={Tick02Icon} size={19} className="lp-pay__check" aria-hidden="true" />
                     <span>
                       <strong>Import what you already have</strong>
                       Upload a CSV of your products instead of typing them in
@@ -374,7 +375,7 @@ export default async function LandingPage() {
                     </span>
                   </li>
                   <li>
-                    <LuCheck size={19} className="lp-pay__check" aria-hidden="true" />
+                    <HugeiconsIcon icon={Tick02Icon} size={19} className="lp-pay__check" aria-hidden="true" />
                     <span>
                       <strong>Stock that counts down</strong>
                       Sales reduce the stock figure, so the shop stops offering
@@ -444,7 +445,7 @@ export default async function LandingPage() {
                 <ul className="lp-pay__list" data-rise>
                   {PAYMENT_POINTS.map((p) => (
                     <li key={p.title}>
-                      <LuCheck
+                      <HugeiconsIcon icon={Tick02Icon}
                         size={19}
                         className="lp-pay__check"
                         aria-hidden="true"
@@ -489,7 +490,7 @@ export default async function LandingPage() {
                           data-on={i === 0 ? "" : undefined}
                         >
                           <span className="lp-co__radio">
-                            {i === 0 ? <LuCheck size={10} /> : null}
+                            {i === 0 ? <HugeiconsIcon icon={Tick02Icon} size={10} /> : null}
                           </span>
                           <Logo className="lp-co__logo" decorative />
                           {label}
@@ -502,7 +503,7 @@ export default async function LandingPage() {
                     </div>
                     <div className="lp-co__pay">Confirm payment</div>
                     <p className="lp-co__foot">
-                      <LuLock size={11} />
+                      <HugeiconsIcon icon={SquareLock02Icon} size={11} />
                       Approved on the customer&rsquo;s phone
                     </p>
                   </div>

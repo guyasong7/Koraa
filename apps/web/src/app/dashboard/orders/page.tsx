@@ -17,21 +17,22 @@
 import PageTitle from "@/components/PageTitle";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  LuChevronDown,
-  LuChevronLeft,
-  LuChevronRight,
-  LuDownload,
-  LuLoader,
-  LuMail,
-  LuSearch,
-  LuShoppingCart,
-} from "react-icons/lu";
 import { toast } from "@/lib/toast";
 
 import { orderApi, storeApi } from "@/lib/api";
 import type { MerchantOrder, OrderListParams } from "@/lib/api";
 import StoreBackLink from "@/components/StoreBackLink";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowDown01Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Download04Icon,
+  Loading03Icon,
+  Mail01Icon,
+  Search01Icon,
+  ShoppingCart01Icon,
+} from "@hugeicons/core-free-icons";
 
 const STATUS_LABELS: Record<string, string> = {
   paid: "Paid",
@@ -194,7 +195,7 @@ function OrdersView() {
             disabled={isExporting || count === 0}
             title={isFiltered ? "Exports the filtered list" : "Exports every order"}
           >
-            {isExporting ? <LuLoader size={16} className="spin" /> : <LuDownload size={16} />}
+            {isExporting ? <HugeiconsIcon icon={Loading03Icon} size={16} className="spin" /> : <HugeiconsIcon icon={Download04Icon} size={16} />}
             Export CSV
           </button>
         </div>
@@ -211,7 +212,7 @@ function OrdersView() {
             }}
           >
             <div style={{ position: "relative", flex: "1 1 220px", maxWidth: "100%" }}>
-              <LuSearch
+              <HugeiconsIcon icon={Search01Icon}
                 size={16}
                 style={{
                   position: "absolute",
@@ -310,7 +311,7 @@ function OrdersView() {
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page <= 1}
                 >
-                  <LuChevronLeft size={15} /> Previous
+                  <HugeiconsIcon icon={ArrowLeft01Icon} size={15} /> Previous
                 </button>
                 <button
                   className="btn btn-secondary"
@@ -318,7 +319,7 @@ function OrdersView() {
                   onClick={() => setPage(p => Math.min(pages, p + 1))}
                   disabled={page >= pages}
                 >
-                  Next <LuChevronRight size={15} />
+                  Next <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
                 </button>
               </div>
             </div>
@@ -392,7 +393,7 @@ function OrderRow({ order, showStore }: { order: MerchantOrder; showStore: boole
           </span>
         </td>
         <td style={{ paddingRight: 24, textAlign: "right", color: "var(--text-muted)" }}>
-          <LuChevronDown
+          <HugeiconsIcon icon={ArrowDown01Icon}
             size={16}
             style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}
           />
@@ -404,7 +405,7 @@ function OrderRow({ order, showStore }: { order: MerchantOrder; showStore: boole
           <td colSpan={columns} style={{ padding: 0, background: "var(--surface-850)" }}>
             {!detail ? (
               <div style={{ padding: "24px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-                <LuLoader size={18} className="spin" />
+                <HugeiconsIcon icon={Loading03Icon} size={18} className="spin" />
               </div>
             ) : (
               <div
@@ -481,7 +482,7 @@ function OrderRow({ order, showStore }: { order: MerchantOrder; showStore: boole
                     disabled={isSending || !detail.customer_email}
                     style={{ width: "100%", justifyContent: "center" }}
                   >
-                    {isSending ? <LuLoader size={15} className="spin" /> : <LuMail size={15} />}
+                    {isSending ? <HugeiconsIcon icon={Loading03Icon} size={15} className="spin" /> : <HugeiconsIcon icon={Mail01Icon} size={15} />}
                     Resend invoice
                   </button>
                   <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.5 }}>
@@ -509,7 +510,7 @@ function Spinner({ label }: { label: string }) {
         gap: 16,
       }}
     >
-      <LuLoader size={32} className="spin" color="var(--brand-500)" />
+      <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" color="var(--brand-500)" />
       <p style={{ color: "var(--text-secondary)", fontSize: 14, fontWeight: 500 }}>{label}</p>
     </div>
   );
@@ -530,7 +531,7 @@ function EmptyState({ isFiltered }: { isFiltered: boolean }) {
           margin: "0 auto 24px",
         }}
       >
-        <LuShoppingCart size={32} color="var(--brand-500)" />
+        <HugeiconsIcon icon={ShoppingCart01Icon} size={32} color="var(--brand-500)" />
       </div>
       <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
         {isFiltered ? "No orders match those filters" : "No orders yet"}

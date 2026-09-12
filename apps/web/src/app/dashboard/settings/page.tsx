@@ -9,50 +9,51 @@ import { ROOT_DOMAIN, storefrontHost } from "@/lib/rootDomain";
 
 import { toast } from "@/lib/toast";
 import {
-  LuUser,
-  LuCreditCard,
-  LuShield,
-  LuUsers,
-  LuTruck,
-  LuPalette,
-  LuCircleDollarSign,
-  LuBell,
-  LuRotateCcw,
-  LuGlobe,
-  LuBadgeCheck,
-  LuLoader,
-  LuCrown,
-  LuCalendar,
-  LuCheck,
-  LuPhone,
-  LuGift,
-  LuCopy,
-  LuArrowUpRight,
-  LuStar,
-  LuZap,
-} from "react-icons/lu";
-import {
   sendVerificationEmail,
   refreshEmailVerification,
 } from "@/lib/firebase";
 import { paymentApi } from "@/lib/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  UserIcon,
+  CreditCardIcon,
+  ShieldIcon,
+  UserMultipleIcon,
+  DeliveryTruck01Icon,
+  PaintBoardIcon,
+  DollarCircleIcon,
+  Notification01Icon,
+  RefreshIcon,
+  GlobalIcon,
+  CheckmarkBadge01Icon,
+  Loading03Icon,
+  CrownIcon,
+  Calendar03Icon,
+  Tick02Icon,
+  Call02Icon,
+  GiftIcon,
+  Copy01Icon,
+  ArrowUpRight01Icon,
+  StarIcon,
+  FlashIcon,
+} from "@hugeicons/core-free-icons";
 
 const SETTINGS_TABS = [
-  { id: "profile",      label: "My Profile",    icon: LuUser },
-  { id: "plan",         label: "Subscription",  icon: LuCrown },
-  { id: "identity",    label: "Identity",       icon: LuBadgeCheck },
-  { id: "domain",      label: "Domain",         icon: LuGlobe },
-  { id: "payout",      label: "Payout Account", icon: LuCreditCard },
-  { id: "security",    label: "Security",       icon: LuShield },
-  { id: "team",        label: "Team",           icon: LuUsers },
-  { id: "delivery",    label: "Delivery",       icon: LuTruck },
-  { id: "customisation",label: "Customisation", icon: LuPalette },
-  { id: "currency",    label: "Currency",       icon: LuCircleDollarSign },
-  { id: "notification",label: "Notifications",  icon: LuBell },
-  { id: "refunds",     label: "Returns/Refunds",icon: LuRotateCcw },
-  { id: "referrals",   label: "Referrals",      icon: LuGift },
+  { id: "profile",      label: "My Profile",    icon: UserIcon },
+  { id: "plan",         label: "Subscription",  icon: CrownIcon },
+  { id: "identity",    label: "Identity",       icon: CheckmarkBadge01Icon },
+  { id: "domain",      label: "Domain",         icon: GlobalIcon },
+  { id: "payout",      label: "Payout Account", icon: CreditCardIcon },
+  { id: "security",    label: "Security",       icon: ShieldIcon },
+  { id: "team",        label: "Team",           icon: UserMultipleIcon },
+  { id: "delivery",    label: "Delivery",       icon: DeliveryTruck01Icon },
+  { id: "customisation",label: "Customisation", icon: PaintBoardIcon },
+  { id: "currency",    label: "Currency",       icon: DollarCircleIcon },
+  { id: "notification",label: "Notifications",  icon: Notification01Icon },
+  { id: "refunds",     label: "Returns/Refunds",icon: RefreshIcon },
+  { id: "referrals",   label: "Referrals",      icon: GiftIcon },
 ];
 
 const PLAN_COLORS: Record<string, string> = {
@@ -82,7 +83,7 @@ function PlanTab() {
 
   if (loading) return (
     <div style={{ padding: 40, textAlign: "center" }}>
-      <LuLoader size={28} className="spin" color="var(--brand-600)" style={{ margin: "0 auto" }} />
+      <HugeiconsIcon icon={Loading03Icon} size={28} className="spin" color="var(--brand-600)" style={{ margin: "0 auto" }} />
     </div>
   );
 
@@ -108,7 +109,7 @@ function PlanTab() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <LuCrown size={24} color={isDark ? "#fff" : planColor} />
+              <HugeiconsIcon icon={CrownIcon} size={24} color={isDark ? "#fff" : planColor} />
               <span style={{ fontSize: 24, fontWeight: 800, fontFamily: "Outfit,sans-serif", color: isDark ? "#fff" : "#1a1a1a", textTransform: "capitalize" }}>
                 {plan} Plan
               </span>
@@ -134,7 +135,7 @@ function PlanTab() {
               background: isDark ? "#fff" : planColor, color: isDark ? "#1a1a1a" : "#fff",
               fontWeight: 700, textDecoration: "none", fontSize: 14, borderRadius: 10
             }}>
-              Upgrade Plan <LuArrowUpRight size={14} />
+              Upgrade Plan <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} />
             </Link>
           )}
         </div>
@@ -145,7 +146,7 @@ function PlanTab() {
             display: "flex", alignItems: "center", gap: 8, marginTop: 20, paddingTop: 20,
             borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : `${planColor}25`}`
           }}>
-            <LuCalendar size={16} color={isDark ? "rgba(255,255,255,0.5)" : planColor} />
+            <HugeiconsIcon icon={Calendar03Icon} size={16} color={isDark ? "rgba(255,255,255,0.5)" : planColor} />
             <span style={{ fontSize: 14, color: isDark ? "rgba(255,255,255,0.6)" : "var(--text-secondary)" }}>
               Plan renews / expires on{" "}
               <strong style={{ color: isDark ? "#fff" : "var(--text-primary)" }}>{expires}</strong>
@@ -160,7 +161,7 @@ function PlanTab() {
         <div className="mobile-stack-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {(PLAN_FEATURES[plan] || []).map(f => (
             <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "var(--text-secondary)" }}>
-              <LuCheck size={15} color="#22c55e" style={{ flexShrink: 0 }} />
+              <HugeiconsIcon icon={Tick02Icon} size={15} color="#22c55e" style={{ flexShrink: 0 }} />
               {f}
             </div>
           ))}
@@ -179,7 +180,7 @@ function PlanTab() {
             background: "var(--brand-600)", color: "#fff", fontWeight: 700,
             textDecoration: "none", fontSize: 14, borderRadius: 10, whiteSpace: "nowrap"
           }}>
-            View Plans <LuArrowUpRight size={14} />
+            View Plans <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} />
           </Link>
         </div>
       )}
@@ -644,7 +645,7 @@ function IdentityTab() {
         <div style={{ padding: 16, background: "var(--surface-900)", border: "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <LuPhone size={16} color="var(--brand-600)" />
+              <HugeiconsIcon icon={Call02Icon} size={16} color="var(--brand-600)" />
               <div>
                 <p style={{ margin: "0 0 2px", fontWeight: 500 }}>Phone Verification</p>
                 <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
@@ -843,7 +844,7 @@ function IdentityTab() {
                 background: "var(--brand-tint)", textAlign: "center",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
               }}>
-                <LuShield size={32} color="var(--brand-text)" />
+                <HugeiconsIcon icon={ShieldIcon} size={32} color="var(--brand-text)" />
                 <p style={{ margin: 0, fontSize: 14, color: "var(--brand-text)", maxWidth: 400 }}>
                   {identityData?.verification_status === "Not Started" || !identityData?.verification_status
                     ? "Click below to verify your identity. You'll need your national ID card or passport."
@@ -1480,11 +1481,11 @@ function TeamTab() {
       {/* Members list */}
       {loading ? (
         <div style={{ padding: 32, textAlign: "center" }}>
-          <LuLoader size={24} className="spin" color="var(--brand-600)" style={{ margin: "0 auto" }} />
+          <HugeiconsIcon icon={Loading03Icon} size={24} className="spin" color="var(--brand-600)" style={{ margin: "0 auto" }} />
         </div>
       ) : members.length === 0 ? (
         <div style={{ padding: 48, border: "1px dashed var(--border)", textAlign: "center" }}>
-          <LuUsers size={32} color="var(--text-muted)" style={{ margin: "0 auto 12px" }} />
+          <HugeiconsIcon icon={UserMultipleIcon} size={32} color="var(--text-muted)" style={{ margin: "0 auto 12px" }} />
           <p style={{ margin: "0 0 4px", fontWeight: 600, color: "var(--text-primary)" }}>No team members yet</p>
           <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)" }}>Invite a teammate to collaborate on your store.</p>
         </div>
@@ -1545,7 +1546,7 @@ function TeamTab() {
 
       {/* Info box */}
       <div style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)", padding: "14px 18px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-        <LuBadgeCheck size={18} color="#3b82f6" style={{ flexShrink: 0, marginTop: 1 }} />
+        <HugeiconsIcon icon={CheckmarkBadge01Icon} size={18} color="#3b82f6" style={{ flexShrink: 0, marginTop: 1 }} />
         <p style={{ margin: 0, fontSize: 13, color: "#1d4ed8", lineHeight: 1.5 }}>
           <strong>How it works:</strong> An invite shares one store. Once the teammate accepts, that store — and only that store — appears in their dashboard, where they can manage products, orders, and the storefront design, and publish it. Deleting the store, inviting others, and billing stay with you.
         </p>
@@ -1852,7 +1853,7 @@ function ReferralTab() {
   if (loading) {
     return (
       <div style={{ padding: 48, textAlign: "center" }}>
-        <LuLoader size={24} className="spin" color="var(--brand-600)" style={{ margin: "0 auto" }} />
+        <HugeiconsIcon icon={Loading03Icon} size={24} className="spin" color="var(--brand-600)" style={{ margin: "0 auto" }} />
       </div>
     );
   }
@@ -1882,7 +1883,7 @@ function ReferralTab() {
         <div className="mobile-stack-flex" style={{ display: "flex", gap: 12 }}>
           <input className="input" value={stats?.referral_link || ""} readOnly style={{ flex: 1, background: "var(--surface-900)" }} />
           <button className="btn btn-primary" onClick={copyLink} style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
-            <LuCopy size={16} /> Copy Link
+            <HugeiconsIcon icon={Copy01Icon} size={16} /> Copy Link
           </button>
         </div>
       </div>
@@ -1894,7 +1895,7 @@ function ReferralTab() {
         
         {stats?.referrals?.length === 0 ? (
           <div style={{ padding: 48, border: "1px dashed var(--border)", textAlign: "center" }}>
-            <LuGift size={32} color="var(--text-muted)" style={{ margin: "0 auto 12px" }} />
+            <HugeiconsIcon icon={GiftIcon} size={32} color="var(--text-muted)" style={{ margin: "0 auto 12px" }} />
             <p style={{ margin: "0 0 4px", fontWeight: 600, color: "var(--text-primary)" }}>No referrals yet</p>
             <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)" }}>Share your link to start earning!</p>
           </div>
@@ -1978,7 +1979,6 @@ function SettingsContent() {
             {/* Left Sidebar Menu */}
             <div className="settings-tabs">
               {SETTINGS_TABS.map((tab) => {
-                const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
 
                 return (
@@ -2009,9 +2009,9 @@ function SettingsContent() {
                     }}
                   >
                     {isTabLoading && activeTab === tab.id ? (
-                      <LuLoader size={18} className="spin" />
+                      <HugeiconsIcon icon={Loading03Icon} size={18} className="spin" />
                     ) : (
-                      <Icon size={18} />
+                      <HugeiconsIcon icon={tab.icon} size={18} />
                     )}
                     {tab.label}
                   </button>
@@ -2067,7 +2067,7 @@ export default function SettingsPage() {
   return (
     <Suspense fallback={
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <LuLoader size={28} className="spin" color="var(--brand-500)" />
+        <HugeiconsIcon icon={Loading03Icon} size={28} className="spin" color="var(--brand-500)" />
       </div>
     }>
       <SettingsContent />

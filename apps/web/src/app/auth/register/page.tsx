@@ -7,10 +7,16 @@ import { useAuthStore } from "@/stores/auth";
 import KoraaLogo from "@/components/KoraaLogo";
 import { MtnLogo } from "@/components/RailLogos";
 import { toast } from "@/lib/toast";
-import { LuEye, LuEyeOff, LuArrowRight, LuTrendingUp } from "react-icons/lu";
-import { FcGoogle } from "react-icons/fc";
 import { registerWithEmail } from "@/lib/firebase";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ViewIcon,
+  ViewOffSlashIcon,
+  ArrowRight02Icon,
+  TrendingUpIcon,
+} from "@hugeicons/core-free-icons";
+import GoogleMark from "@/components/GoogleMark";
 
 export default function RegisterPage() {
   return (
@@ -171,7 +177,7 @@ function RegisterContent() {
                     aria-label={showPassword ? "Hide password" : "Show password"}
                     style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center" }}
                   >
-                    {showPassword ? <LuEyeOff size={17} /> : <LuEye size={17} />}
+                    {showPassword ? <HugeiconsIcon icon={ViewOffSlashIcon} size={17} /> : <HugeiconsIcon icon={ViewIcon} size={17} />}
                   </button>
                 </div>
                 {errors.password && <span className="error-text">{errors.password}</span>}
@@ -205,7 +211,7 @@ function RegisterContent() {
                 </>
               ) : (
                 <>
-                  Create free account <LuArrowRight size={16} />
+                  Create free account <HugeiconsIcon icon={ArrowRight02Icon} size={16} />
                 </>
               )}
             </button>
@@ -222,7 +228,7 @@ function RegisterContent() {
               onClick={() => handleGoogleLogin()}
               disabled={isLoading}
             >
-              <FcGoogle size={18} /> Continue with Google
+              <GoogleMark size={18} /> Continue with Google
             </button>
           </div>
 
@@ -268,7 +274,7 @@ function RegisterContent() {
                   color: "var(--brand-text)",
                 }}
               >
-                <LuTrendingUp size={16} />
+                <HugeiconsIcon icon={TrendingUpIcon} size={16} />
               </div>
               <div>
                 <p className="auth-split__float-label">Orders today</p>

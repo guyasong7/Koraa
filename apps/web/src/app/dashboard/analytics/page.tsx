@@ -25,13 +25,6 @@ import dynamic from "next/dynamic";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import {
-  LuArrowDownRight,
-  LuArrowUpRight,
-  LuChartNoAxesColumn,
-  LuCircleAlert,
-  LuLoader,
-} from "react-icons/lu";
 import { BAR_CHART_HEIGHT, CHART_HEIGHT } from "./_chartHeights";
 
 import { analyticsApi } from "@/lib/api";
@@ -42,6 +35,14 @@ import type {
   TrafficReport,
 } from "@/lib/api";
 import StoreBackLink from "@/components/StoreBackLink";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowDownRight01Icon,
+  ArrowUpRight01Icon,
+  ChartColumnIcon,
+  AlertCircleIcon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
 
 /**
  * The charts, and with them recharts, out of this page's initial JavaScript.
@@ -159,7 +160,7 @@ function Spinner({ label }: { label: string }) {
         gap: 16,
       }}
     >
-      <LuLoader size={32} className="spin" color="var(--brand-500)" />
+      <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" color="var(--brand-500)" />
       <p style={{ color: "var(--text-secondary)", fontSize: 14, fontWeight: 500 }}>{label}</p>
     </div>
   );
@@ -191,7 +192,7 @@ function Stat({
               color: change.up ? "var(--success)" : "var(--danger)",
             }}
           >
-            {change.up ? <LuArrowUpRight size={12} /> : <LuArrowDownRight size={12} />}
+            {change.up ? <HugeiconsIcon icon={ArrowUpRight01Icon} size={12} /> : <HugeiconsIcon icon={ArrowDownRight01Icon} size={12} />}
             {change.text}
           </span>
         )}
@@ -265,7 +266,7 @@ function MeasuredNote({ children }: { children: React.ReactNode }) {
         lineHeight: 1.5,
       }}
     >
-      <LuCircleAlert size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+      <HugeiconsIcon icon={AlertCircleIcon} size={14} style={{ flexShrink: 0, marginTop: 1 }} />
       <span>{children}</span>
     </p>
   );
@@ -339,7 +340,7 @@ function NoData({
           margin: "0 auto 20px",
         }}
       >
-        <LuChartNoAxesColumn size={26} color="var(--brand-500)" />
+        <HugeiconsIcon icon={ChartColumnIcon} size={26} color="var(--brand-500)" />
       </div>
       <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{title}</h3>
       <p style={{ color: "var(--text-secondary)", fontSize: 14, maxWidth: 460, margin: "0 auto", lineHeight: 1.6 }}>

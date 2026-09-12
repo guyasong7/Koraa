@@ -14,17 +14,18 @@
  */
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  LuArrowRight,
-  LuMinus,
-  LuPlus,
-  LuShoppingBag,
-  LuTrash2,
-  LuX,
-} from "react-icons/lu";
 import { useCartStore, useCartCount, useCartTotal } from "../../stores/cart";
 import { useStorefront } from "../StorefrontProvider";
 import { formatPrice } from "./shared";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowRight02Icon,
+  MinusSignIcon,
+  PlusSignIcon,
+  ShoppingBag03Icon,
+  Delete02Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 export default function CartDrawer() {
   const isOpen = useCartStore(state => state.isOpen);
@@ -76,13 +77,13 @@ export default function CartDrawer() {
             </p>
           </div>
           <button className="sf-cart-x" onClick={closeCart} aria-label="Close cart">
-            <LuX size={18} />
+            <HugeiconsIcon icon={Cancel01Icon} size={18} />
           </button>
         </header>
 
         {items.length === 0 ? (
           <div className="sf-cart-empty">
-            <LuShoppingBag size={38} />
+            <HugeiconsIcon icon={ShoppingBag03Icon} size={38} />
             <p>Your cart is empty.</p>
             <button className="sf-cart-ghost" onClick={closeCart}>
               Continue shopping
@@ -97,7 +98,7 @@ export default function CartDrawer() {
                     {product.image ? (
                       <img src={product.image} alt={product.name} />
                     ) : (
-                      <LuShoppingBag size={20} />
+                      <HugeiconsIcon icon={ShoppingBag03Icon} size={20} />
                     )}
                   </div>
                   <div className="sf-cart-info">
@@ -111,14 +112,14 @@ export default function CartDrawer() {
                         disabled={quantity <= 1}
                         aria-label={`Fewer ${product.name}`}
                       >
-                        <LuMinus size={13} />
+                        <HugeiconsIcon icon={MinusSignIcon} size={13} />
                       </button>
                       <span aria-live="polite">{quantity}</span>
                       <button
                         onClick={() => updateQuantity(product.id, quantity + 1)}
                         aria-label={`More ${product.name}`}
                       >
-                        <LuPlus size={13} />
+                        <HugeiconsIcon icon={PlusSignIcon} size={13} />
                       </button>
                       <button
                         className="sf-cart-rm"
@@ -126,7 +127,7 @@ export default function CartDrawer() {
                         aria-label={`Remove ${product.name}`}
                         title="Remove"
                       >
-                        <LuTrash2 size={14} />
+                        <HugeiconsIcon icon={Delete02Icon} size={14} />
                       </button>
                     </div>
                   </div>
@@ -149,7 +150,7 @@ export default function CartDrawer() {
                 Delivery is arranged with {store.name} after you order.
               </p>
               <Link href="/checkout" className="sf-cart-go" onClick={closeCart}>
-                Checkout <LuArrowRight size={16} />
+                Checkout <HugeiconsIcon icon={ArrowRight02Icon} size={16} />
               </Link>
 
               {confirming ? (
@@ -172,7 +173,7 @@ export default function CartDrawer() {
                 </div>
               ) : (
                 <button className="sf-cart-ghost" onClick={() => setConfirming(true)}>
-                  <LuTrash2 size={13} /> Clear cart
+                  <HugeiconsIcon icon={Delete02Icon} size={13} /> Clear cart
                 </button>
               )}
             </footer>

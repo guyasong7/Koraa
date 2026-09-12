@@ -19,20 +19,21 @@
  * help at that point is asking the shop for a new link.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  LuCircleAlert,
-  LuClock,
-  LuDownload,
-  LuFile,
-  LuLoader,
-  LuMail,
-  LuPhone,
-  LuStore,
-} from "react-icons/lu";
 
 import { apiOrigin, publicStorefrontApi, type DownloadManifest } from "@/lib/api";
 import { formatBytes } from "@/lib/format";
 import { STOREFRONT_DEFAULTS } from "@/components/storefront/theme";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  AlertCircleIcon,
+  Clock01Icon,
+  Download04Icon,
+  File01Icon,
+  Loading03Icon,
+  Mail01Icon,
+  Call02Icon,
+  Store01Icon,
+} from "@hugeicons/core-free-icons";
 
 /** What the buyer is told, per state. The heading doubles as the answer. */
 const STATE_COPY: Record<DownloadManifest["state"], { title: string; note: string }> = {
@@ -139,7 +140,7 @@ export default function DownloadClient({ token }: { token: string }) {
       <main className="dl-wrap">
         <style>{STYLES}</style>
         <div className="dl-card dl-centre">
-          <LuLoader size={26} className="dl-spin" />
+          <HugeiconsIcon icon={Loading03Icon} size={26} className="dl-spin" />
           <p className="dl-muted">Checking your link…</p>
         </div>
       </main>
@@ -152,7 +153,7 @@ export default function DownloadClient({ token }: { token: string }) {
         <style>{STYLES}</style>
         <div className="dl-card dl-centre">
           <span className="dl-badge dl-badge-bad">
-            <LuCircleAlert size={22} />
+            <HugeiconsIcon icon={AlertCircleIcon} size={22} />
           </span>
           <h1>Link not valid</h1>
           {/* No shop is known on a bad token — the API says nothing about a
@@ -184,7 +185,7 @@ export default function DownloadClient({ token }: { token: string }) {
             <img src={store.logo} alt={store.name} />
           ) : (
             <span className="dl-shop-fallback">
-              <LuStore size={16} /> {store.name}
+              <HugeiconsIcon icon={Store01Icon} size={16} /> {store.name}
             </span>
           )}
         </a>
@@ -192,7 +193,7 @@ export default function DownloadClient({ token }: { token: string }) {
 
       <div className="dl-card">
         <span className={`dl-badge${ready ? "" : " dl-badge-warn"}`}>
-          {ready ? <LuDownload size={22} /> : <LuClock size={22} />}
+          {ready ? <HugeiconsIcon icon={Download04Icon} size={22} /> : <HugeiconsIcon icon={Clock01Icon} size={22} />}
         </span>
         <h1>{copy.title}</h1>
         <p className="dl-product">{manifest.product_name}</p>
@@ -225,7 +226,7 @@ export default function DownloadClient({ token }: { token: string }) {
 
         {files.length === 0 ? (
           <p className="dl-empty">
-            <LuCircleAlert size={15} /> There are no files attached to this purchase yet. The shop
+            <HugeiconsIcon icon={AlertCircleIcon} size={15} /> There are no files attached to this purchase yet. The shop
             has been paid, so ask them to upload it and your link will start working.
           </p>
         ) : (
@@ -233,7 +234,7 @@ export default function DownloadClient({ token }: { token: string }) {
             {files.map(file => (
               <li key={file.id}>
                 <span className="dl-file-icon">
-                  <LuFile size={16} />
+                  <HugeiconsIcon icon={File01Icon} size={16} />
                 </span>
                 <span className="dl-file-meta">
                   <strong>{file.name}</strong>
@@ -245,7 +246,7 @@ export default function DownloadClient({ token }: { token: string }) {
                     href={`${apiOrigin()}${file.url}`}
                     onClick={scheduleRefresh}
                   >
-                    <LuDownload size={14} /> Download
+                    <HugeiconsIcon icon={Download04Icon} size={14} /> Download
                   </a>
                 ) : (
                   <span className="dl-get dl-get-off">Unavailable</span>
@@ -265,12 +266,12 @@ export default function DownloadClient({ token }: { token: string }) {
                     `Download link for ${manifest.reference}`,
                   )}`}
                 >
-                  <LuMail size={14} /> {store.email}
+                  <HugeiconsIcon icon={Mail01Icon} size={14} /> {store.email}
                 </a>
               )}
               {store.phone && (
                 <a href={`tel:${store.phone}`}>
-                  <LuPhone size={14} /> {store.phone}
+                  <HugeiconsIcon icon={Call02Icon} size={14} /> {store.phone}
                 </a>
               )}
             </div>

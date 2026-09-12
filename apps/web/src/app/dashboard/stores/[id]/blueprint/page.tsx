@@ -19,15 +19,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  LuArrowLeft,
-  LuArrowRight,
-  LuCheck,
-  LuMonitor,
-  LuSmartphone,
-  LuTablet,
-  LuSparkles,
-} from "react-icons/lu";
-import {
   blueprintApi,
   storefrontApi,
   type BlueprintCatalogue,
@@ -39,6 +30,16 @@ import {
 } from "@/lib/api";
 import { fontStack } from "@/components/StorefrontRenderer";
 import "./blueprint.css";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+  ArrowRight02Icon,
+  Tick02Icon,
+  MonitorIcon,
+  SmartPhone01Icon,
+  Tablet01Icon,
+  SparklesIcon,
+} from "@hugeicons/core-free-icons";
 
 // ── Steps ─────────────────────────────────────────────────────────────────────
 
@@ -68,7 +69,7 @@ function Card({
     <button type="button" className={`bp-card${on ? " on" : ""}`} onClick={onClick} aria-pressed={on}>
       {on && (
         <span className="bp-tick">
-          <LuCheck size={12} strokeWidth={3} />
+          <HugeiconsIcon icon={Tick02Icon} size={12} strokeWidth={3} />
         </span>
       )}
       {children}
@@ -336,7 +337,7 @@ export default function BlueprintWizard() {
   if (loading) {
     return (
       <div className="bp-center">
-        <LuSparkles size={22} />
+        <HugeiconsIcon icon={SparklesIcon} size={22} />
         <p>Preparing your blueprint…</p>
       </div>
     );
@@ -373,7 +374,7 @@ export default function BlueprintWizard() {
                 : setStepIndex((i) => i - 1)
             }
           >
-            <LuArrowLeft size={14} />
+            <HugeiconsIcon icon={ArrowLeft02Icon} size={14} />
             {stepIndex === 0 ? "Back to store" : STEPS[stepIndex - 1].label}
           </button>
 
@@ -454,7 +455,7 @@ export default function BlueprintWizard() {
                     aria-pressed={on}
                   >
                     <span className={`bp-box${on ? " on" : ""}`}>
-                      {on && <LuCheck size={12} strokeWidth={3} />}
+                      {on && <HugeiconsIcon icon={Tick02Icon} size={12} strokeWidth={3} />}
                     </span>
                     <span className="bp-row-txt">
                       <span className="bp-card-name">{s.name}</span>
@@ -502,12 +503,12 @@ export default function BlueprintWizard() {
           {last ? (
             <button className="btn btn-primary" onClick={handleApply} disabled={applying}>
               {applying ? "Applying…" : "Apply blueprint"}
-              {!applying && <LuCheck size={14} />}
+              {!applying && <HugeiconsIcon icon={Tick02Icon} size={14} />}
             </button>
           ) : (
             <button className="btn btn-primary" onClick={() => setStepIndex((i) => i + 1)}>
               Continue
-              <LuArrowRight size={14} />
+              <HugeiconsIcon icon={ArrowRight02Icon} size={14} />
             </button>
           )}
         </div>
@@ -517,11 +518,11 @@ export default function BlueprintWizard() {
         <div className="bp-devices">
           {(
             [
-              ["desktop", LuMonitor],
-              ["tablet", LuTablet],
-              ["mobile", LuSmartphone],
+              ["desktop", MonitorIcon],
+              ["tablet", Tablet01Icon],
+              ["mobile", SmartPhone01Icon],
             ] as const
-          ).map(([mode, Icon]) => (
+          ).map(([mode, icon]) => (
             <button
               key={mode}
               className={`bp-device${device === mode ? " on" : ""}`}
@@ -529,7 +530,7 @@ export default function BlueprintWizard() {
               aria-label={`${mode} preview`}
               aria-pressed={device === mode}
             >
-              <Icon size={17} />
+              <HugeiconsIcon icon={icon} size={17} />
             </button>
           ))}
         </div>

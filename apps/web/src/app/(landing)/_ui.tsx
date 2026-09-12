@@ -11,7 +11,11 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { LuMinus, LuPlus } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  MinusSignIcon,
+  PlusSignIcon,
+} from "@hugeicons/core-free-icons";
 
 /** One question. Collapsed by default; the whole row is the target. */
 export function FaqItem({ q, a }: { q: string; a: string }) {
@@ -28,7 +32,7 @@ export function FaqItem({ q, a }: { q: string; a: string }) {
       >
         <span>{q}</span>
         <span className="lp-faq__icon" aria-hidden="true">
-          {open ? <LuMinus size={20} /> : <LuPlus size={20} />}
+          {open ? <HugeiconsIcon icon={MinusSignIcon} size={20} /> : <HugeiconsIcon icon={PlusSignIcon} size={20} />}
         </span>
       </button>
       <AnimatePresence initial={false}>

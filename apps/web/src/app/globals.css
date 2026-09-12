@@ -1157,6 +1157,45 @@ button.stat-card:hover {
   --auth-form-width: 560px;
 }
 
+/* ─── Full-bleed variant ──────────────────────────────────────────
+   Onboarding only. The default shell holds a 12px frame so the card's
+   corners read as a card; this drops it so the surface is the window,
+   edge to edge, at every width.
+
+   Same treatment the 480px breakpoint already applies to every page on
+   this shell — frame closed, corners squared, side borders dropped —
+   just lifted to all widths for the pages that opt in. Below 480px the
+   two are identical, so nothing there changes.
+
+   A modifier rather than an edit to `.auth-split-shell` because
+   `register` shares that class and is not meant to move. */
+.auth-split-shell--full {
+  padding: 0;
+}
+
+.auth-split-shell--full .auth-split {
+  /* Nothing behind it to round against once the frame is gone, and the
+     top/bottom borders would be a line across the window edge. The
+     shadow goes with them: it is cast onto ground that is no longer
+     visible. */
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  box-shadow: none;
+  min-height: 100vh;
+}
+
+.auth-split-shell--full .auth-split__aside {
+  /* The 14px inset existed to sit the photo inside the card's rounded
+     corner. With no corner left, it reads as an unexplained gutter. */
+  padding: 0;
+}
+
+.auth-split-shell--full .auth-split__photo {
+  /* Follows the card down to square, for the same reason. */
+  border-radius: 0;
+}
+
 /* Its own stacking context, so the floating cards over the photo cannot
    escape the card's rounded corners. */
 .auth-split__aside {
@@ -1347,6 +1386,23 @@ button.stat-card:hover {
   bottom: 8%;
 }
 
+/* Carries a float card's icon. Both floats use it, so it is a class
+   rather than the inline block it started as. The tint and `currentColor`
+   are what tie the icon to the brand without hardcoding a colour on the
+   SVG itself. */
+.auth-split__float-badge {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-tint);
+  border: 1px solid var(--brand-tint-border);
+  color: var(--brand-text);
+}
+
 .auth-split__float-label {
   font-size: 0.6875rem;
   font-weight: 600;
@@ -1462,9 +1518,10 @@ button.stat-card:hover {
   font-weight: 650;
 }
 
-.auth-split__tile-emoji {
-  font-size: 1rem;
-  line-height: 1;
+/* The SVG carries its own dimensions from the `size` prop, so all this
+   owes the layout is a promise not to squash next to a long label like
+   "Fashion & Apparel". */
+.auth-split__tile-icon {
   flex-shrink: 0;
 }
 

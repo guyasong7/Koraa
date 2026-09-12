@@ -16,11 +16,17 @@
  * input they belong to.
  */
 import React, { useEffect, useRef, useState } from "react";
-import { LuCircleCheck, LuLoader, LuSend, LuTriangleAlert } from "react-icons/lu";
 import { publicStorefrontApi } from "../../lib/api";
 import { useStorefront } from "../StorefrontProvider";
 import { ENQUIRY_ANCHOR, ENQUIRY_EVENT, SectionProps, str } from "./shared";
 import type { ServiceFormField } from "../../types/storefront";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  CheckmarkCircle02Icon,
+  Loading03Icon,
+  Sent02Icon,
+  Alert02Icon,
+} from "@hugeicons/core-free-icons";
 
 /** Mirrors `enquiries.MAX_LENGTHS`, so a visitor is stopped before the 400. */
 const MAX_LENGTHS: Record<string, number> = {
@@ -245,7 +251,7 @@ export default function ContactForm({ s }: SectionProps) {
     return (
       <section className="sf-cf" id={ENQUIRY_ANCHOR}>
         <div className="sf-cf-i sf-cf-empty">
-          <LuTriangleAlert size={20} />
+          <HugeiconsIcon icon={Alert02Icon} size={20} />
           <p>
             This section shows your enquiry form. Add fields to it under
             <strong> Enquiry Form</strong> in your store menu and it will appear here.
@@ -287,7 +293,7 @@ export default function ContactForm({ s }: SectionProps) {
     return (
       <section className="sf-cf" id={ENQUIRY_ANCHOR}>
         <div className="sf-cf-i sf-cf-done">
-          <LuCircleCheck size={34} />
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={34} />
           <h2 className="sf-d">Thank you</h2>
           <p>{sent}</p>
           <button type="button" className="sf-cf-again" onClick={() => setSent(null)}>
@@ -310,7 +316,7 @@ export default function ContactForm({ s }: SectionProps) {
 
         {errors.__all__ && (
           <p className="sf-cf-banner" role="alert">
-            <LuTriangleAlert size={15} /> {errors.__all__}
+            <HugeiconsIcon icon={Alert02Icon} size={15} /> {errors.__all__}
           </p>
         )}
 
@@ -327,7 +333,7 @@ export default function ContactForm({ s }: SectionProps) {
 
           <div className="sf-cf-actions">
             <button type="submit" className="sf-cf-send" disabled={sending}>
-              {sending ? <LuLoader size={15} className="sf-spin" /> : <LuSend size={15} />}
+              {sending ? <HugeiconsIcon icon={Loading03Icon} size={15} className="sf-spin" /> : <HugeiconsIcon icon={Sent02Icon} size={15} />}
               {sending ? "Sending…" : service_form.submit_label || "Send enquiry"}
             </button>
             {store.phone && (

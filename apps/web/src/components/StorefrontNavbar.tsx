@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { LuShoppingCart, LuUser, LuSearch, LuGlobe, LuX, LuPackage } from "react-icons/lu";
 import Link from "next/link";
 import KoraaLogo from "@/components/KoraaLogo";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ShoppingCart01Icon,
+  UserIcon,
+  Search01Icon,
+  GlobalIcon,
+  Cancel01Icon,
+  Package01Icon,
+} from "@hugeicons/core-free-icons";
 
 export default function Navbar() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -28,14 +36,14 @@ export default function Navbar() {
               className="input" 
               style={{ paddingLeft: 44, borderRadius: 0, background: "var(--background)", border: "1px solid transparent" }}
             />
-            <LuSearch size={18} color="var(--text-muted)" style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)" }} />
+            <HugeiconsIcon icon={Search01Icon} size={18} color="var(--text-muted)" style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)" }} />
           </div>
         </div>
 
         {/* Right Actions */}
         <div className="nav-actions">
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <LuGlobe size={18} color="var(--text-secondary)" />
+            <HugeiconsIcon icon={GlobalIcon} size={18} color="var(--text-secondary)" />
             <select style={{ background: "transparent", border: "none", fontSize: 14, fontWeight: 500, color: "var(--text-primary)", cursor: "pointer", outline: "none" }}>
               <option value="en">EN</option>
               <option value="fr">FR</option>
@@ -43,13 +51,13 @@ export default function Navbar() {
           </div>
           
           <button onClick={() => setIsCartOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", position: "relative" }}>
-            <LuShoppingCart size={22} />
+            <HugeiconsIcon icon={ShoppingCart01Icon} size={22} />
             <span style={{ position: "absolute", top: -8, right: -8, background: "var(--brand-500)", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
           </button>
           
           <div style={{ position: "relative" }}>
             <button onClick={() => setIsAccountOpen(!isAccountOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)" }}>
-              <LuUser size={22} />
+              <HugeiconsIcon icon={UserIcon} size={22} />
             </button>
             
             {/* Account Dropdown */}
@@ -83,7 +91,7 @@ export default function Navbar() {
             <div style={{ padding: 24, borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 className="font-display" style={{ fontSize: 24, fontWeight: 700 }}>Your Cart (2)</h3>
               <button onClick={() => setIsCartOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)" }}>
-                <LuX size={24} />
+                <HugeiconsIcon icon={Cancel01Icon} size={24} />
               </button>
             </div>
             
@@ -91,7 +99,7 @@ export default function Navbar() {
             <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 32 }}>
               <div style={{ display: "flex", gap: 16 }}>
                 <div style={{ width: 80, height: 80, background: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <LuPackage size={24} color="var(--text-muted)" />
+                  <HugeiconsIcon icon={Package01Icon} size={24} color="var(--text-muted)" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -112,7 +120,7 @@ export default function Navbar() {
               
               <div style={{ display: "flex", gap: 16 }}>
                 <div style={{ width: 80, height: 80, background: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <LuPackage size={24} color="var(--text-muted)" />
+                  <HugeiconsIcon icon={Package01Icon} size={24} color="var(--text-muted)" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>

@@ -8,11 +8,18 @@ import {
 } from "@/lib/planCopy";
 import PurchaseDialog from "./PurchaseDialog";
 import { toast } from "@/lib/toast";
-import {
-  LuCheck, LuZap, LuStar, LuBuilding, LuShield, LuTriangleAlert,
-  LuRotateCcw, LuLoader,
-} from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Tick02Icon,
+  FlashIcon,
+  StarIcon,
+  Building01Icon,
+  ShieldIcon,
+  Alert02Icon,
+  RefreshIcon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
 
 /**
  * Presentation only. Every price, limit and feature flag comes from
@@ -26,11 +33,11 @@ import { useQuery } from "@tanstack/react-query";
  * table — the other place this catalogue is rendered, and the one it had
  * already drifted away from.
  */
-const PLAN_CHROME: Record<string, { color: string; icon: typeof LuShield; cta: string }> = {
-  free:       { color: "#6b7280",         icon: LuShield,   cta: "Get Started Free" },
-  starter:    { color: "#3b82f6",         icon: LuZap,      cta: "Start Selling" },
-  pro:        { color: "var(--brand-600)", icon: LuStar,     cta: "Go Pro" },
-  enterprise: { color: "var(--text-primary)", icon: LuBuilding, cta: "Contact Sales" },
+const PLAN_CHROME: Record<string, { color: string; icon: typeof ShieldIcon; cta: string }> = {
+  free:       { color: "#6b7280",         icon: ShieldIcon,   cta: "Get Started Free" },
+  starter:    { color: "#3b82f6",         icon: FlashIcon,      cta: "Start Selling" },
+  pro:        { color: "var(--brand-600)", icon: StarIcon,     cta: "Go Pro" },
+  enterprise: { color: "var(--text-primary)", icon: Building01Icon, cta: "Contact Sales" },
 };
 
 function formatDate(iso: string | null): string {
@@ -70,7 +77,7 @@ function DowngradeDialog({
       <div className="modal-panel" style={{ maxWidth: 440, borderRadius: "16px" }}>
         <div className="modal-body" style={{ padding: "22px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
           <div style={{ width: 52, height: 52, borderRadius: "50%", background: "color-mix(in srgb, var(--danger) 12%, transparent)", color: "var(--danger-text)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-            <LuTriangleAlert size={24} />
+            <HugeiconsIcon icon={Alert02Icon} size={24} />
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 10px 0", fontFamily: "var(--font-display)" }}>
             Give up the rest of your {planName} term?
@@ -108,7 +115,7 @@ function DowngradeDialog({
               transition: "all 0.2s",
             }}
           >
-            {busy ? <LuLoader size={17} className="spin" /> : "Downgrade anyway"}
+            {busy ? <HugeiconsIcon icon={Loading03Icon} size={17} className="spin" /> : "Downgrade anyway"}
           </button>
         </div>
       </div>
@@ -229,8 +236,8 @@ export default function BillingPage() {
           }}
         >
           {state.expiring_soon && !state.is_expired
-            ? <LuTriangleAlert size={20} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-            : <LuRotateCcw size={20} color="#dc2626" style={{ flexShrink: 0, marginTop: 2 }} />}
+            ? <HugeiconsIcon icon={Alert02Icon} size={20} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+            : <HugeiconsIcon icon={RefreshIcon} size={20} color="#dc2626" style={{ flexShrink: 0, marginTop: 2 }} />}
           <div>
             <p style={{ fontWeight: 700, fontSize: 16, margin: "0 0 4px" }}>
               {state.expiring_soon && !state.is_expired
@@ -248,12 +255,12 @@ export default function BillingPage() {
 
       {plansLoading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-          <LuLoader size={28} className="spin" color="var(--brand-500)" />
+          <HugeiconsIcon icon={Loading03Icon} size={28} className="spin" color="var(--brand-500)" />
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
           {plans.map(plan => {
-            const chrome = PLAN_CHROME[plan.key] ?? { color: "#6b7280", icon: LuShield, cta: "Choose plan" };
+            const chrome = PLAN_CHROME[plan.key] ?? { color: "#6b7280", icon: ShieldIcon, cta: "Choose plan" };
             const isCurrentPlan = currentPlan === plan.key;
             const isPro = plan.key === POPULAR_PLAN;
             const isContact = plan.key === CONTACT_SALES_PLAN;
@@ -306,7 +313,7 @@ export default function BillingPage() {
                     width: 38, height: 38, background: `${chrome.color}15`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    <chrome.icon size={19} color={chrome.color} />
+                    <HugeiconsIcon icon={chrome.icon} size={19} color={chrome.color} />
                   </div>
                   <div>
                     <h3 style={{ fontSize: 18, fontWeight: 700, color: isPro ? "#fff" : "var(--text-primary)", fontFamily: "Outfit, sans-serif", marginBottom: 0 }}>
@@ -339,7 +346,7 @@ export default function BillingPage() {
                 <ul style={{ listStyle: "none", padding: 0, margin: "0 0 28px", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
                   {planBullets(plan).map(f => (
                     <li key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, color: isPro ? "rgba(255,255,255,0.8)" : "var(--text-secondary)" }}>
-                      <LuCheck size={15} color={isPro ? "var(--brand-400)" : "var(--brand-600)"} style={{ marginTop: 2, flexShrink: 0 }} />
+                      <HugeiconsIcon icon={Tick02Icon} size={15} color={isPro ? "var(--brand-400)" : "var(--brand-600)"} style={{ marginTop: 2, flexShrink: 0 }} />
                       {f}
                     </li>
                   ))}

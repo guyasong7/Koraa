@@ -12,7 +12,6 @@
  * layout's own bespoke card open it without importing this file.
  */
 import React, { useEffect, useState } from "react";
-import { LuMail, LuShoppingBag, LuX } from "react-icons/lu";
 import { useStorefront } from "../StorefrontProvider";
 import {
   StockNote,
@@ -20,6 +19,12 @@ import {
   useCardAction,
   useQuickView,
 } from "./shared";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Mail01Icon,
+  ShoppingBag03Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 export default function ProductDialog() {
   const { product, close } = useQuickView();
@@ -62,7 +67,7 @@ export default function ProductDialog() {
       <div className="sf-pd-ov" onClick={close} />
       <div className="sf-pd">
         <button className="sf-pd-x" onClick={close} aria-label="Close">
-          <LuX size={18} />
+          <HugeiconsIcon icon={Cancel01Icon} size={18} />
         </button>
 
         <div className="sf-pd-media">
@@ -70,7 +75,7 @@ export default function ProductDialog() {
             {gallery.length > 0 ? (
               <img src={gallery[Math.min(shot, gallery.length - 1)]} alt={product.name} />
             ) : (
-              <LuShoppingBag size={52} color="rgba(0,0,0,0.12)" />
+              <HugeiconsIcon icon={ShoppingBag03Icon} size={52} color="rgba(0,0,0,0.12)" />
             )}
           </div>
           {gallery.length > 1 && (
@@ -127,7 +132,7 @@ export default function ProductDialog() {
                 if (!act.disabled) close();
               }}
             >
-              {act.kind === "enquire" ? <LuMail size={15} /> : <LuShoppingBag size={15} />}{" "}
+              {act.kind === "enquire" ? <HugeiconsIcon icon={Mail01Icon} size={15} /> : <HugeiconsIcon icon={ShoppingBag03Icon} size={15} />}{" "}
               {act.label}
             </button>
           )}

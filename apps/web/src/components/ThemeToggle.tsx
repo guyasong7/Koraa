@@ -2,7 +2,12 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { LuMoon, LuSun, LuMonitor } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Moon02Icon,
+  Sun01Icon,
+  MonitorIcon,
+} from "@hugeicons/core-free-icons";
 
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -19,17 +24,16 @@ export default function ThemeToggle() {
   }
 
   const modes = [
-    { id: "light", icon: LuSun, label: "Light" },
-    { id: "system", icon: LuMonitor, label: "System" },
-    { id: "dark", icon: LuMoon, label: "Dark" },
+    { id: "light", icon: Sun01Icon, label: "Light" },
+    { id: "system", icon: MonitorIcon, label: "System" },
+    { id: "dark", icon: Moon02Icon, label: "Dark" },
   ];
 
   return (
     <div style={{ display: "flex", gap: 4, background: "var(--surface)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
       {modes.map((mode) => {
-        const Icon = mode.icon;
         const isActive = theme === mode.id;
-        
+
         return (
           <button
             key={mode.id}
@@ -50,7 +54,7 @@ export default function ThemeToggle() {
               transition: "all 0.2s"
             }}
           >
-            <Icon size={14} />
+            <HugeiconsIcon icon={mode.icon} size={14} />
           </button>
         );
       })}

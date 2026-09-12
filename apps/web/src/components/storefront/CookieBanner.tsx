@@ -19,10 +19,14 @@
  * function without.
  */
 import { useEffect, useState } from "react";
-import { LuCookie, LuX } from "react-icons/lu";
 
 import { useStorefront } from "../StorefrontProvider";
 import { useSiteSettings } from "./siteSettings";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  CookieIcon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 const DEFAULT_TEXT =
   "This site uses cookies to keep your cart and to understand how the shop is used.";
@@ -114,7 +118,7 @@ export function CookieBanner() {
         lineHeight: 1.6,
       }}
     >
-      <LuCookie size={20} style={{ flexShrink: 0, marginTop: 2, opacity: 0.7 }} />
+      <HugeiconsIcon icon={CookieIcon} size={20} style={{ flexShrink: 0, marginTop: 2, opacity: 0.7 }} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: 0 }}>
@@ -185,7 +189,7 @@ export function CookieBanner() {
             flexShrink: 0,
           }}
         >
-          <LuX size={16} />
+          <HugeiconsIcon icon={Cancel01Icon} size={16} />
         </button>
       )}
     </div>

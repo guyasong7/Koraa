@@ -31,7 +31,13 @@ import {
   useFacet,
   useQuickViewTrigger,
 } from "../shared";
-import { LuArrowRight, LuCircleCheck, LuClock, LuPhone } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowRight02Icon,
+  CheckmarkCircle02Icon,
+  Clock01Icon,
+  Call02Icon,
+} from "@hugeicons/core-free-icons";
 
 const styles = `
 /* Hero — centred, no photograph */
@@ -108,7 +114,7 @@ function OfferingRow({ p, store }: { p: StorefrontProduct; store: SectionProps["
         <span className="sf-sv-price">{formatPrice(store, p.base_price)}</span>
         {act.kind !== "none" && (
           <button className="sf-sv-book" disabled={act.disabled} onClick={act.run}>
-            {act.label} {!act.disabled && <LuArrowRight size={14} />}
+            {act.label} {!act.disabled && <HugeiconsIcon icon={ArrowRight02Icon} size={14} />}
           </button>
         )}
       </div>
@@ -136,13 +142,13 @@ function ServiceHero({ s, store }: SectionProps) {
             ? <a className="sf-sv-cta" href={url}>{label}</a>
             : <button className="sf-sv-cta" onClick={() => requestEnquiry()}>{label}</button>}
           {store.phone && (
-            <a href={`tel:${store.phone}`} className="sf-sv-cta2"><LuPhone size={15} /> {store.phone}</a>
+            <a href={`tel:${store.phone}`} className="sf-sv-cta2"><HugeiconsIcon icon={Call02Icon} size={15} /> {store.phone}</a>
           )}
         </div>
         <div className="sf-sv-assure">
-          <span><LuCircleCheck size={14} /> Fixed quotes up front</span>
-          <span><LuClock size={14} /> Same-week availability</span>
-          <span><LuCircleCheck size={14} /> Work guaranteed</span>
+          <span><HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} /> Fixed quotes up front</span>
+          <span><HugeiconsIcon icon={Clock01Icon} size={14} /> Same-week availability</span>
+          <span><HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} /> Work guaranteed</span>
         </div>
       </div>
     </section>
@@ -193,7 +199,7 @@ function ServiceFeatured({ s, store }: SectionProps) {
               <p className="sf-sv-card-p">{formatPrice(store, p.base_price)}</p>
               {act.kind !== "none" && (
                 <button className="sf-sv-book" disabled={act.disabled} onClick={act.run}>
-                  {act.label} {!act.disabled && <LuArrowRight size={14} />}
+                  {act.label} {!act.disabled && <HugeiconsIcon icon={ArrowRight02Icon} size={14} />}
                 </button>
               )}
             </article>

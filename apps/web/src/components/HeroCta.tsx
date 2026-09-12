@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { LuArrowRight } from "react-icons/lu";
 
 import { useIsSignedIn } from "@/hooks/useIsSignedIn";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowRight02Icon,
+} from "@hugeicons/core-free-icons";
 
 /**
  * The landing page's primary call to action, pointed at wherever the visitor
@@ -20,7 +23,7 @@ export default function HeroCta({ className }: { className: string }) {
   return (
     <Link href={signedIn ? "/dashboard" : "/auth/register"} className={className}>
       {signedIn ? "Dashboard" : "Open a shop"}
-      <LuArrowRight size={18} aria-hidden="true" />
+      <HugeiconsIcon icon={ArrowRight02Icon} size={18} aria-hidden="true" />
     </Link>
   );
 }

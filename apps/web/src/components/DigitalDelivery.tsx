@@ -21,12 +21,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRef } from "react";
 import { toast } from "@/lib/toast";
-import {
-  LuDownload, LuFile, LuInfo, LuLoader, LuMail, LuTrash2, LuUpload, LuX,
-} from "react-icons/lu";
 
 import { productApi, type ProductFile } from "@/lib/api";
 import { formatBytes } from "@/lib/format";
+import { HugeiconsIcon } from "@hugeicons/react";
+import type { IconSvgElement } from "@hugeicons/react";
+import {
+  Download04Icon,
+  File01Icon,
+  InformationCircleIcon,
+  Loading03Icon,
+  Mail01Icon,
+  Delete02Icon,
+  Upload04Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 /** Mirrors `MAX_PRODUCT_FILE_BYTES` in `apps/products/views.py`. */
 const MAX_FILE_BYTES = 512 * 1024 * 1024;
@@ -64,17 +73,17 @@ function rejectionReason(file: File): string | null {
 
 function PanelShell({
   title,
-  icon: Icon,
+  icon,
   children,
 }: {
   title: string;
-  icon: React.ComponentType<{ size?: number; color?: string }>;
+  icon: IconSvgElement;
   children: React.ReactNode;
 }) {
   return (
     <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", marginBottom: 16 }}>
       <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
-        <Icon size={16} color="var(--brand-600)" />
+        <HugeiconsIcon icon={icon} size={16} color="var(--brand-600)" />
         <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{title}</span>
       </div>
       <div style={{ padding: 24 }}>{children}</div>
@@ -124,7 +133,7 @@ function FileRow({
         marginBottom: 8,
       }}
     >
-      <LuFile size={15} color="var(--text-muted)" />
+      <HugeiconsIcon icon={File01Icon} size={15} color="var(--text-muted)" />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 13, fontWeight: 600, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {name}
@@ -146,7 +155,7 @@ function FileRow({
           color: "var(--danger)",
         }}
       >
-        {removing ? <LuLoader size={12} className="spin" /> : pending ? <LuX size={12} /> : <LuTrash2 size={12} />}
+        {removing ? <HugeiconsIcon icon={Loading03Icon} size={12} className="spin" /> : pending ? <HugeiconsIcon icon={Cancel01Icon} size={12} /> : <HugeiconsIcon icon={Delete02Icon} size={12} />}
       </button>
     </div>
   );
@@ -213,7 +222,7 @@ export function DigitalFilesPanel({
   const nothingToSell = !isLoading && !uploaded.length && !pending.length;
 
   return (
-    <PanelShell title="Digital delivery" icon={LuDownload}>
+    <PanelShell title="Digital delivery" icon={Download04Icon}>
       {nothingToSell && (
         <div
           style={{
@@ -221,7 +230,7 @@ export function DigitalFilesPanel({
             border: "1px solid var(--warning)", background: "color-mix(in srgb, var(--warning) 8%, transparent)",
           }}
         >
-          <LuInfo size={15} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
+          <HugeiconsIcon icon={InformationCircleIcon} size={15} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
           <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
             Add at least one file. Until you do, this product cannot be bought — checkout
             refuses it rather than take money for something it cannot deliver.
@@ -231,7 +240,7 @@ export function DigitalFilesPanel({
 
       {isLoading && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
-          <LuLoader size={14} className="spin" /> Loading files…
+          <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> Loading files…
         </div>
       )}
 
@@ -261,7 +270,7 @@ export function DigitalFilesPanel({
           padding: "20px 16px", textAlign: "center", cursor: "pointer", marginBottom: 20,
         }}
       >
-        <LuUpload size={20} color="var(--text-muted)" style={{ margin: "0 auto 8px" }} />
+        <HugeiconsIcon icon={Upload04Icon} size={20} color="var(--text-muted)" style={{ margin: "0 auto 8px" }} />
         <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
           {productId ? "Click or drop files to upload" : "Choose the files buyers will download"}
         </p>
@@ -321,7 +330,7 @@ export function ServiceEnquiryPanel({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <PanelShell title="Service enquiries" icon={LuMail}>
+    <PanelShell title="Service enquiries" icon={Mail01Icon}>
       <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginBottom: 16 }}>
         <input
           type="checkbox"

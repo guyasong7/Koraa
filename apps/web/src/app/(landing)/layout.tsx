@@ -5,8 +5,14 @@ import LandingMotion from "@/components/LandingMotion";
 import SmoothScroll from "@/components/SmoothScroll";
 import KoraaLogo from "@/components/KoraaLogo";
 import { RAILS } from "@/components/RailLogos";
-import { FaFacebook, FaInstagram, FaWhatsapp, FaXTwitter } from "react-icons/fa6";
 import "./landing.css";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Facebook02Icon,
+  InstagramIcon,
+  WhatsappIcon,
+  NewTwitterIcon,
+} from "@hugeicons/core-free-icons";
 
 export const metadata: Metadata = {
   title: {
@@ -197,16 +203,16 @@ export default function LandingLayout({
             </div>
             <div className="lfoot__socials">
               <a href="https://facebook.com" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
-                <FaFacebook size={20} />
+                <HugeiconsIcon icon={Facebook02Icon} size={20} />
               </a>
               <a href="https://instagram.com" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
-                <FaInstagram size={20} />
+                <HugeiconsIcon icon={InstagramIcon} size={20} />
               </a>
               <a href="https://whatsapp.com" aria-label="WhatsApp" target="_blank" rel="noopener noreferrer">
-                <FaWhatsapp size={20} />
+                <HugeiconsIcon icon={WhatsappIcon} size={20} />
               </a>
               <a href="https://twitter.com" aria-label="X (Twitter)" target="_blank" rel="noopener noreferrer">
-                <FaXTwitter size={20} />
+                <HugeiconsIcon icon={NewTwitterIcon} size={20} />
               </a>
             </div>
           </div>

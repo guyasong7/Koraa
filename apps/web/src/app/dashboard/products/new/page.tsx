@@ -7,14 +7,29 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { storeApi, productApi, categoryApi, Category } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import Link from "next/link";
-import {
-  LuArrowLeft, LuLoader, LuPackage, LuSave, LuEye,
-  LuTag, LuBox, LuInfo, LuUpload, LuX, LuImage, LuCheck,
-  LuSparkles, LuFolder, LuPlus, LuTrash
-} from "react-icons/lu";
-import { FiBarChart2 as LuBarChart2 } from "react-icons/fi";
 import { useRef, useCallback } from "react";
 import { DigitalFilesPanel, ServiceEnquiryPanel } from "@/components/DigitalDelivery";
+import { HugeiconsIcon } from "@hugeicons/react";
+import type { IconSvgElement } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+  Loading03Icon,
+  Package01Icon,
+  FloppyDiskIcon,
+  ViewIcon,
+  Tag01Icon,
+  CubeIcon,
+  InformationCircleIcon,
+  Upload04Icon,
+  Cancel01Icon,
+  Image01Icon,
+  Tick02Icon,
+  SparklesIcon,
+  Folder01Icon,
+  PlusSignIcon,
+  Delete02Icon,
+  ChartColumnIcon,
+} from "@hugeicons/core-free-icons";
 interface ProductForm {
   name: string;
   description: string;
@@ -64,11 +79,11 @@ const PRODUCT_TYPES = [
 ];
 
 /* ─── Section wrapper ────────────────────────────────────────────── */
-function Section({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
+function Section({ title, icon, children }: { title: string; icon: IconSvgElement; children: React.ReactNode }) {
   return (
     <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", marginBottom: 16 }}>
       <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
-        <Icon size={16} color="var(--brand-text)" />
+        <HugeiconsIcon icon={icon} size={16} color="var(--brand-text)" />
         <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{title}</span>
       </div>
       <div style={{ padding: "24px" }}>
@@ -282,7 +297,7 @@ export default function NewProductPage() {
   if (!storeId) {
     return (
       <div style={{ padding: 48, textAlign: "center" }}>
-        <LuPackage size={40} color="var(--text-muted)" style={{ margin: "0 auto 16px" }} />
+        <HugeiconsIcon icon={Package01Icon} size={40} color="var(--text-muted)" style={{ margin: "0 auto 16px" }} />
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>No store selected</h2>
         <p style={{ color: "var(--text-secondary)", marginBottom: 20 }}>Please go to Products and select a store first.</p>
         <Link href="/dashboard/products" className="btn btn-primary">Go to Products</Link>
@@ -298,7 +313,7 @@ export default function NewProductPage() {
       <div style={{ position: "sticky", top: 0, zIndex: 20, background: "var(--surface-900)", borderBottom: "1px solid var(--border)", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href={`/dashboard/products?store=${storeId}`} style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)", textDecoration: "none", fontSize: 13 }}>
-            <LuArrowLeft size={15} /> Products
+            <HugeiconsIcon icon={ArrowLeft02Icon} size={15} /> Products
           </Link>
           <span style={{ color: "var(--border)", fontSize: 18 }}>/</span>
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>New Product</span>
@@ -311,11 +326,11 @@ export default function NewProductPage() {
         </div>
         <div className="top-action-buttons" style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-secondary btn-sm" onClick={() => handleSave("draft")} disabled={isPending}>
-            {isPending ? <LuLoader size={14} className="spin" /> : <LuSave size={14} />}
+            {isPending ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={FloppyDiskIcon} size={14} />}
             Save draft
           </button>
           <button className="btn btn-primary btn-sm" onClick={() => handleSave("active")} disabled={isPending}>
-            {isPending ? <LuLoader size={14} className="spin" /> : <LuEye size={14} />}
+            {isPending ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={ViewIcon} size={14} />}
             Publish
           </button>
         </div>
@@ -328,7 +343,7 @@ export default function NewProductPage() {
         <div>
 
           {/* Basic info */}
-          <Section title="Product Details" icon={LuPackage}>
+          <Section title="Product Details" icon={Package01Icon}>
             <Field label="Product name" required>
               <input
                 className="input"
@@ -359,7 +374,7 @@ export default function NewProductPage() {
           </Section>
 
           {/* Pricing */}
-          <Section title="Pricing" icon={LuTag}>
+          <Section title="Pricing" icon={Tag01Icon}>
             <div className="mobile-stack-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <Field label="Price" required hint={`In ${store?.currency ?? "your store's currency"}`}>
                 <div style={{ position: "relative" }}>
@@ -424,7 +439,7 @@ export default function NewProductPage() {
           )}
 
           {/* Inventory */}
-          <Section title="Inventory" icon={LuBox}>
+          <Section title="Inventory" icon={CubeIcon}>
             <div className="mobile-stack-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <Field label="SKU" hint="Stock Keeping Unit — your internal reference">
                 <input
@@ -476,7 +491,7 @@ export default function NewProductPage() {
           <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", marginBottom: 16 }}>
             <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <LuImage size={16} color="var(--brand-text)" />
+                <HugeiconsIcon icon={Image01Icon} size={16} color="var(--brand-text)" />
                 <span style={{ fontSize: 14, fontWeight: 700 }}>Product Images<span style={{ color: "#ef4444", marginLeft: 3 }}>*</span></span>
               </div>
               {/* Remove-background toggle */}
@@ -491,7 +506,7 @@ export default function NewProductPage() {
                       padding: "6px 12px", cursor: "pointer", transition: "background 0.2s",
                     }}
                   >
-                    {aiLoading ? <LuLoader size={14} className="spin" /> : <LuSparkles size={14} />}
+                    {aiLoading ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={SparklesIcon} size={14} />}
                     {aiLoading ? "Analyzing..." : "Auto-fill with AI"}
                   </button>
                 )}
@@ -509,7 +524,7 @@ export default function NewProductPage() {
                     }} />
                   </div>
                   <span style={{ color: "var(--text-secondary)", fontSize: 12 }}>Auto remove background</span>
-                  {removeBgDefault && <LuCheck size={13} color="var(--brand-text)" />}
+                  {removeBgDefault && <HugeiconsIcon icon={Tick02Icon} size={13} color="var(--brand-text)" />}
                 </label>
               </div>
             </div>
@@ -529,7 +544,7 @@ export default function NewProductPage() {
                   transition: "all .15s", marginBottom: pendingImages.length ? 16 : 0,
                 }}
               >
-                <LuUpload size={24} color="var(--text-muted)" style={{ margin: "0 auto 10px" }} />
+                <HugeiconsIcon icon={Upload04Icon} size={24} color="var(--text-muted)" style={{ margin: "0 auto 10px" }} />
                 <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
                   Drop images here or click to browse
                 </p>
@@ -569,7 +584,7 @@ export default function NewProductPage() {
                         onClick={() => removeImage(idx)}
                         style={{ position: "absolute", top: 4, right: 4, background: "var(--surface-900)", border: "1px solid var(--border)", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                       >
-                        <LuX size={12} />
+                        <HugeiconsIcon icon={Cancel01Icon} size={12} />
                       </button>
                     </div>
                   ))}
@@ -578,14 +593,14 @@ export default function NewProductPage() {
 
               {uploadingImages && (
                 <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--brand-text)" }}>
-                  <LuLoader size={15} className="spin" /> Processing images (removing backgrounds)…
+                  <HugeiconsIcon icon={Loading03Icon} size={15} className="spin" /> Processing images (removing backgrounds)…
                 </div>
               )}
             </div>
           </div>
 
           {/* SEO */}
-          <Section title="SEO" icon={LuBarChart2}>
+          <Section title="SEO" icon={ChartColumnIcon}>
             <Field label="SEO title" hint="Shown in search results (max 70 chars)">
               <input
                 className="input"
@@ -659,7 +674,7 @@ export default function NewProductPage() {
           {/* Organization */}
           <div style={{ background: "var(--surface-900)", border: "1px solid var(--border)", marginBottom: 16 }}>
             <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}><LuFolder size={14} /> Organization</span>
+              <span style={{ fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}><HugeiconsIcon icon={Folder01Icon} size={14} /> Organization</span>
             </div>
             <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -676,7 +691,7 @@ export default function NewProductPage() {
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
-                  <LuFolder size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
+                  <HugeiconsIcon icon={Folder01Icon} size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
                 </div>
                 <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Helps customers find products in your storefront.</p>
               </div>
@@ -707,7 +722,7 @@ export default function NewProductPage() {
           {/* Info box — only shown when no images queued */}
           {pendingImages.length === 0 && (
             <div style={{ background: "var(--brand-tint)", border: "1px solid var(--brand-tint-border)", padding: "14px 16px", display: "flex", gap: 10 }}>
-              <LuInfo size={15} color="var(--brand-text)" style={{ flexShrink: 0, marginTop: 1 }} />
+              <HugeiconsIcon icon={InformationCircleIcon} size={15} color="var(--brand-text)" style={{ flexShrink: 0, marginTop: 1 }} />
               <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
                 Add images below or save first and upload later.
               </p>
@@ -720,11 +735,11 @@ export default function NewProductPage() {
       {/* ── Bottom action bar (mobile) ── */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10, background: "var(--surface-900)", borderTop: "1px solid var(--border)", padding: "12px 24px", display: "flex", justifyContent: "flex-end", gap: 10 }} className="mobile-action-bar">
         <button className="btn btn-secondary" onClick={() => handleSave("draft")} disabled={isPending}>
-          {isPending ? <LuLoader size={14} className="spin" /> : <LuSave size={14} />}
+          {isPending ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={FloppyDiskIcon} size={14} />}
           Save draft
         </button>
         <button className="btn btn-primary" onClick={() => handleSave("active")} disabled={isPending}>
-          {isPending ? <LuLoader size={14} className="spin" /> : <LuEye size={14} />}
+          {isPending ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={ViewIcon} size={14} />}
           Publish
         </button>
       </div>

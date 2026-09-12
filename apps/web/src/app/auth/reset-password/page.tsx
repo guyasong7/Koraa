@@ -3,9 +3,14 @@
 import Link from "next/link";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LuArrowRight, LuEye, LuEyeOff } from "react-icons/lu";
 import KoraaLogo from "@/components/KoraaLogo";
 import { authApi } from "@/lib/api";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowRight02Icon,
+  ViewIcon,
+  ViewOffSlashIcon,
+} from "@hugeicons/core-free-icons";
 
 /**
  * Completes the Django-side password reset (POST /auth/password-reset/confirm/).
@@ -168,7 +173,7 @@ function ResetPasswordContent() {
                       alignItems: "center",
                     }}
                   >
-                    {show ? <LuEyeOff size={17} /> : <LuEye size={17} />}
+                    {show ? <HugeiconsIcon icon={ViewOffSlashIcon} size={17} /> : <HugeiconsIcon icon={ViewIcon} size={17} />}
                   </button>
                 </div>
               </div>
@@ -203,7 +208,7 @@ function ResetPasswordContent() {
                   </span>
                 ) : (
                   <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    Change password <LuArrowRight size={16} />
+                    Change password <HugeiconsIcon icon={ArrowRight02Icon} size={16} />
                   </span>
                 )}
               </button>

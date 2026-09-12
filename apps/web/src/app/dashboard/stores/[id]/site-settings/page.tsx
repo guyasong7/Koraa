@@ -24,29 +24,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import {
-  LuArrowLeft,
-  LuBot,
-  LuCircleCheck,
-  LuClock,
-  LuCookie,
-  LuDownload,
-  LuFileSpreadsheet,
-  LuGlobe,
-  LuImage,
-  LuImages,
-  LuLanguages,
-  LuLink,
-  LuLoader,
-  LuLock,
-  LuMegaphone,
-  LuPin,
-  LuRss,
-  LuSave,
-  LuShare2,
-  LuTriangleAlert,
-  LuUpload,
-} from "react-icons/lu";
 import { toast } from "@/lib/toast";
 
 import { productApi, storeApi, storefrontApi } from "@/lib/api";
@@ -58,21 +35,45 @@ import type {
   SiteSettingsResponse,
   StoreUpdateData,
 } from "@/lib/api";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+  BotIcon,
+  CheckmarkCircle02Icon,
+  Clock01Icon,
+  CookieIcon,
+  Download04Icon,
+  FileSpreadsheetIcon,
+  GlobalIcon,
+  Image01Icon,
+  Album02Icon,
+  LanguagesIcon,
+  Link01Icon,
+  Loading03Icon,
+  SquareLock02Icon,
+  Megaphone01Icon,
+  PinLocation01Icon,
+  RssIcon,
+  FloppyDiskIcon,
+  Share08Icon,
+  Alert02Icon,
+  Upload04Icon,
+} from "@hugeicons/core-free-icons";
 
-const PANEL_ICONS: Record<string, typeof LuGlobe> = {
-  availability: LuLock,
-  languages: LuLanguages,
-  regional: LuClock,
-  privacy: LuCookie,
-  favicon: LuImage,
-  social_links: LuLink,
-  social_sharing: LuShare2,
-  pinterest: LuPin,
-  import_export: LuFileSpreadsheet,
-  blog: LuRss,
-  promotion: LuMegaphone,
-  crawlers: LuBot,
-  images: LuImages,
+const PANEL_ICONS: Record<string, typeof GlobalIcon> = {
+  availability: SquareLock02Icon,
+  languages: LanguagesIcon,
+  regional: Clock01Icon,
+  privacy: CookieIcon,
+  favicon: Image01Icon,
+  social_links: Link01Icon,
+  social_sharing: Share08Icon,
+  pinterest: PinLocation01Icon,
+  import_export: FileSpreadsheetIcon,
+  blog: RssIcon,
+  promotion: Megaphone01Icon,
+  crawlers: BotIcon,
+  images: Album02Icon,
 };
 
 type Draft = Record<string, SettingValue>;
@@ -177,7 +178,7 @@ export default function SiteSettingsPage() {
 
       <div style={{ maxWidth: 1080, margin: "0 auto" }} className="site-settings-outer">
         <Link href={`/dashboard/stores/${id}`} style={backLink}>
-          <LuArrowLeft size={15} /> Back to store
+          <HugeiconsIcon icon={ArrowLeft02Icon} size={15} /> Back to store
         </Link>
 
         <div style={headerRow} className="site-settings-header">
@@ -192,7 +193,7 @@ export default function SiteSettingsPage() {
           </div>
           {!isMobile && (
             <button className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
-              {saving ? <LuLoader size={16} className="spin" /> : <LuSave size={16} />}
+              {saving ? <HugeiconsIcon icon={Loading03Icon} size={16} className="spin" /> : <HugeiconsIcon icon={FloppyDiskIcon} size={16} />}
               {dirty ? "Save changes" : "Saved"}
             </button>
           )}
@@ -200,7 +201,7 @@ export default function SiteSettingsPage() {
 
         {isLoading || !data || !panel ? (
           <div style={loadingBox}>
-            <LuLoader size={30} className="spin" color="var(--brand-500)" />
+            <HugeiconsIcon icon={Loading03Icon} size={30} className="spin" color="var(--brand-500)" />
           </div>
         ) : (
           <div className="site-settings-grid">
@@ -211,7 +212,7 @@ export default function SiteSettingsPage() {
               aria-label="Settings sections"
             >
               {data.panels.map(p => {
-                const Icon = PANEL_ICONS[p.key] ?? LuGlobe;
+                const icon = PANEL_ICONS[p.key] ?? GlobalIcon;
                 const on = p.key === active;
                 return (
                   <button
@@ -252,7 +253,7 @@ export default function SiteSettingsPage() {
                     }
                     aria-current={on ? "true" : undefined}
                   >
-                    <Icon size={isMobile ? 14 : 16} color={on ? "var(--brand-500)" : "var(--text-muted)"} />
+                    <HugeiconsIcon icon={icon} size={isMobile ? 14 : 16} color={on ? "var(--brand-500)" : "var(--text-muted)"} />
                     <span style={isMobile ? undefined : { flex: 1, minWidth: 0 }}>{p.title}</span>
                   </button>
                 );
@@ -303,7 +304,7 @@ export default function SiteSettingsPage() {
       {isMobile && dirty && (
         <div className="site-settings-sticky-save">
           <button className="btn btn-primary" onClick={save} disabled={saving} style={{ width: "100%" }}>
-            {saving ? <LuLoader size={16} className="spin" /> : <LuSave size={16} />}
+            {saving ? <HugeiconsIcon icon={Loading03Icon} size={16} className="spin" /> : <HugeiconsIcon icon={FloppyDiskIcon} size={16} />}
             Save changes
           </button>
         </div>
@@ -394,7 +395,7 @@ function PanelNote({ panel }: { panel: SettingPanel }) {
         lineHeight: 1.6,
       }}
     >
-      <LuTriangleAlert size={15} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
+      <HugeiconsIcon icon={Alert02Icon} size={15} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
       <span>{note}</span>
     </p>
   );
@@ -586,7 +587,7 @@ function FieldRow({
                 }}
                 aria-pressed={on}
               >
-                {on && <LuCircleCheck size={13} color="var(--brand-600)" />}
+                {on && <HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} color="var(--brand-600)" />}
                 {choice.label}
               </button>
             );
@@ -778,7 +779,7 @@ function AssetField({
               style={{ width: "100%", height: "100%", objectFit: square ? "contain" : "cover" }}
             />
           ) : (
-            <LuImage size={22} color="var(--text-disabled)" />
+            <HugeiconsIcon icon={Image01Icon} size={22} color="var(--text-disabled)" />
           )}
         </div>
 
@@ -788,7 +789,7 @@ function AssetField({
             onClick={() => input.current?.click()}
             disabled={busy}
           >
-            {busy ? <LuLoader size={14} className="spin" /> : <LuUpload size={14} />}
+            {busy ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={Upload04Icon} size={14} />}
             {current ? "Replace" : "Upload"}
           </button>
           <input
@@ -878,11 +879,11 @@ function ImportExport({ storeId }: { storeId: string }) {
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="btn btn-secondary btn-sm" onClick={() => download(false)} disabled={!!busy}>
-            {busy === "export" ? <LuLoader size={14} className="spin" /> : <LuDownload size={14} />}
+            {busy === "export" ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={Download04Icon} size={14} />}
             Export products
           </button>
           <button className="btn btn-secondary btn-sm" onClick={() => download(true)} disabled={!!busy}>
-            {busy === "template" ? <LuLoader size={14} className="spin" /> : <LuFileSpreadsheet size={14} />}
+            {busy === "template" ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={FileSpreadsheetIcon} size={14} />}
             Download a blank template
           </button>
         </div>
@@ -922,7 +923,7 @@ function ImportExport({ storeId }: { storeId: string }) {
               </p>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => run(false)} disabled={!!busy}>
-                  {busy === "check" ? <LuLoader size={14} className="spin" /> : <LuCircleCheck size={14} />}
+                  {busy === "check" ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />}
                   Check the file
                 </button>
                 <button
@@ -930,7 +931,7 @@ function ImportExport({ storeId }: { storeId: string }) {
                   onClick={() => run(true)}
                   disabled={!!busy || (report ? report.errors.length > 0 : false)}
                 >
-                  {busy === "commit" ? <LuLoader size={14} className="spin" /> : <LuUpload size={14} />}
+                  {busy === "commit" ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={Upload04Icon} size={14} />}
                   Import
                 </button>
                 <button
@@ -948,7 +949,7 @@ function ImportExport({ storeId }: { storeId: string }) {
             </>
           ) : (
             <button className="btn btn-secondary btn-sm" onClick={() => input.current?.click()}>
-              <LuUpload size={14} /> Choose a CSV
+              <HugeiconsIcon icon={Upload04Icon} size={14} /> Choose a CSV
             </button>
           )}
         </div>

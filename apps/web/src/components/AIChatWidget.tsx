@@ -2,10 +2,18 @@
 
 import { useState, useRef, useEffect } from "react";
 import { storeApi } from "@/lib/api";
-import { LuMessageSquare, LuX, LuSend, LuBot, LuUser, LuLoader } from "react-icons/lu";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Message01Icon,
+  Cancel01Icon,
+  Sent02Icon,
+  BotIcon,
+  UserIcon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
 
 interface Message {
   role: "user" | "assistant";
@@ -85,11 +93,11 @@ export default function AIChatWidget() {
             {/* Header */}
             <div style={{ background: "var(--brand-600)", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "white" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <LuBot size={20} />
+                <HugeiconsIcon icon={BotIcon} size={20} />
                 <span style={{ fontWeight: 600, fontSize: 14 }}>Koraa AI Assistant</span>
               </div>
               <button onClick={() => setIsOpen(false)} style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", display: "flex" }}>
-                <LuX size={18} />
+                <HugeiconsIcon icon={Cancel01Icon} size={18} />
               </button>
             </div>
 
@@ -98,7 +106,7 @@ export default function AIChatWidget() {
               {messages.map((msg, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", gap: 8, alignItems: "flex-end" }}>
                   <div style={{ width: 28, height: 28, borderRadius: 0, background: msg.role === "user" ? "var(--surface-700)" : "white", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {msg.role === "user" ? <LuUser size={14} color="var(--text-secondary)" /> : <LuBot size={14} color="var(--brand-600)" />}
+                    {msg.role === "user" ? <HugeiconsIcon icon={UserIcon} size={14} color="var(--text-secondary)" /> : <HugeiconsIcon icon={BotIcon} size={14} color="var(--brand-600)" />}
                   </div>
                   <div className="ai-msg-markdown" style={{
                     background: msg.role === "user" ? "var(--brand-600)" : "#ffffff",
@@ -118,10 +126,10 @@ export default function AIChatWidget() {
               {isLoading && (
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                   <div style={{ width: 28, height: 28, background: "var(--surface-900)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <LuBot size={14} color="var(--brand-600)" />
+                    <HugeiconsIcon icon={BotIcon} size={14} color="var(--brand-600)" />
                   </div>
                   <div style={{ background: "var(--surface-900)", padding: "10px 14px", border: "1px solid var(--border)" }}>
-                    <LuLoader size={14} className="spin" color="var(--text-muted)" />
+                    <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" color="var(--text-muted)" />
                   </div>
                 </div>
               )}
@@ -147,7 +155,7 @@ export default function AIChatWidget() {
                   border: "none", width: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.2s"
                 }}
               >
-                <LuSend size={16} />
+                <HugeiconsIcon icon={Sent02Icon} size={16} />
               </button>
             </div>
           </motion.div>
@@ -179,7 +187,7 @@ export default function AIChatWidget() {
         onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
         onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
       >
-        {isOpen ? <LuX size={22} /> : <LuMessageSquare size={22} />}
+        {isOpen ? <HugeiconsIcon icon={Cancel01Icon} size={22} /> : <HugeiconsIcon icon={Message01Icon} size={22} />}
       </button>
     </>
   );

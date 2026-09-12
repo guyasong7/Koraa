@@ -42,7 +42,13 @@ import {
   useHasSection,
   useQuickViewTrigger,
 } from "../shared";
-import { LuMail, LuPlus, LuShoppingBag, LuUtensils } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Mail01Icon,
+  PlusSignIcon,
+  ShoppingBag03Icon,
+  Restaurant02Icon,
+} from "@hugeicons/core-free-icons";
 
 const styles = `
 /* ── Chrome ─────────────────────────────────────────────────────────────
@@ -198,7 +204,7 @@ function MenuRow({ p, store }: { p: StorefrontProduct; store: SectionProps["stor
   return (
     <div className="sf-mn-row">
       <div className="sf-mn-thumb">
-        <ProductMedia product={p} placeholder={<LuUtensils size={20} color="rgba(0,0,0,0.2)" />} />
+        <ProductMedia product={p} placeholder={<HugeiconsIcon icon={Restaurant02Icon} size={20} color="rgba(0,0,0,0.2)" />} />
       </div>
       <div className="sf-mn-body">
         <div className="sf-mn-top">
@@ -218,7 +224,7 @@ function MenuRow({ p, store }: { p: StorefrontProduct; store: SectionProps["stor
           onClick={act.run}
           aria-label={act.kind === "enquire" ? `Enquire about ${p.name}` : `Add ${p.name}`}
         >
-          {act.kind === "enquire" ? <LuMail size={16} /> : <LuPlus size={17} />}
+          {act.kind === "enquire" ? <HugeiconsIcon icon={Mail01Icon} size={16} /> : <HugeiconsIcon icon={PlusSignIcon} size={17} />}
         </button>
       )}
     </div>
@@ -276,7 +282,7 @@ function MenuFeatured({ s, store }: SectionProps) {
         {toShow.map(p => (
           <article key={p.id} className="sf-mn-spec-c" onClick={action(p).run}>
             <div className="sf-mn-spec-i">
-              <ProductMedia product={p} placeholder={<LuUtensils size={26} color="rgba(0,0,0,0.18)" />} />
+              <ProductMedia product={p} placeholder={<HugeiconsIcon icon={Restaurant02Icon} size={26} color="rgba(0,0,0,0.18)" />} />
               <PinSaveButton product={p} store={store} />
             </div>
             <div className="sf-mn-spec-b">

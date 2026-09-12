@@ -6,18 +6,32 @@ import { ReactNode, useState, useEffect, Fragment } from "react";
 import { useAuthStore } from "@/stores/auth";
 import KoraaLogo from "@/components/KoraaLogo";
 import { toast } from "@/lib/toast";
-import {
-  LuMenu, LuLayoutDashboard, LuStore, LuPackage, LuShoppingCart,
-  LuUsers, LuSettings, LuLogOut, LuBell, LuGlobe, LuLoader,
-  LuStar, LuChevronRight, LuZap, LuX, LuTriangleAlert
-} from "react-icons/lu";
-import { FiBarChart2 as LuBarChart3 } from "react-icons/fi";
 import dynamic from "next/dynamic";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
 import AppProviders from "@/components/AppProviders";
 import SessionGuard from "@/components/SessionGuard";
 import UserAvatar from "@/components/UserAvatar";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Menu01Icon,
+  DashboardSquare01Icon,
+  Store01Icon,
+  Package01Icon,
+  ShoppingCart01Icon,
+  UserMultipleIcon,
+  Settings01Icon,
+  Logout03Icon,
+  Notification01Icon,
+  GlobalIcon,
+  Loading03Icon,
+  StarIcon,
+  ArrowRight01Icon,
+  FlashIcon,
+  Cancel01Icon,
+  Alert02Icon,
+  ChartColumnIcon,
+} from "@hugeicons/core-free-icons";
 
 /**
  * The chat bubble, out of the dashboard's initial JavaScript.
@@ -40,16 +54,16 @@ const AIChatWidget = dynamic(() => import("@/components/AIChatWidget"), {
 });
 
 const NAV = [
-  { label: "Overview",   href: "/dashboard",            icon: LuLayoutDashboard },
-  { label: "Stores",     href: "/dashboard/stores",     icon: LuStore },
-  { label: "Products",   href: "/dashboard/products",   icon: LuPackage },
-  { label: "Orders",     href: "/dashboard/orders",     icon: LuShoppingCart },
-  { label: "Customers",  href: "/dashboard/customers",  icon: LuUsers },
-  { label: "Analytics",  href: "/dashboard/analytics",  icon: LuBarChart3 },
+  { label: "Overview",   href: "/dashboard",            icon: DashboardSquare01Icon },
+  { label: "Stores",     href: "/dashboard/stores",     icon: Store01Icon },
+  { label: "Products",   href: "/dashboard/products",   icon: Package01Icon },
+  { label: "Orders",     href: "/dashboard/orders",     icon: ShoppingCart01Icon },
+  { label: "Customers",  href: "/dashboard/customers",  icon: UserMultipleIcon },
+  { label: "Analytics",  href: "/dashboard/analytics",  icon: ChartColumnIcon },
 ];
 
 const BOTTOM = [
-  { label: "Settings", href: "/dashboard/settings", icon: LuSettings },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings01Icon },
 ];
 
 /**
@@ -156,7 +170,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   if (!mounted) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface)" }}>
-      <LuLoader size={28} className="spin" color="var(--brand-500)" />
+      <HugeiconsIcon icon={Loading03Icon} size={28} className="spin" color="var(--brand-500)" />
     </div>
   );
   if (!isAuthenticated) return null;
@@ -199,7 +213,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                 style={{ display: "none", background: "var(--surface)", border: "none", borderRadius: "var(--radius-md)", padding: 6, cursor: "pointer", color: "var(--text-secondary)" }}
                 aria-label="Close menu"
               >
-                <LuX size={18} />
+                <HugeiconsIcon icon={Cancel01Icon} size={18} />
               </button>
             </div>
           </div>
@@ -209,29 +223,29 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", padding: "6px 22px 6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
               Navigation
             </p>
-            {NAV.map(({ label, href, icon: Icon }) => (
+            {NAV.map(({ label, href, icon }) => (
               <Link
                 key={href}
                 href={href}
                 className={`sidebar-nav-item ${isActive(href) ? "active" : ""}`}
                 aria-current={isActive(href) ? "page" : undefined}
               >
-                <Icon size={17} className="nav-icon" />
+                <HugeiconsIcon icon={icon} size={17} className="nav-icon" />
                 <span style={{ flex: 1 }}>{label}</span>
-                {isActive(href) && <LuChevronRight size={13} style={{ opacity: 0.6 }} />}
+                {isActive(href) && <HugeiconsIcon icon={ArrowRight01Icon} size={13} style={{ opacity: 0.6 }} />}
               </Link>
             ))}
           </div>
 
           {/* Bottom area */}
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-            {BOTTOM.map(({ label, href, icon: Icon }) => (
+            {BOTTOM.map(({ label, href, icon }) => (
               <Link
                 key={href}
                 href={href}
                 className={`sidebar-nav-item ${isActive(href) ? "active" : ""}`}
               >
-                <Icon size={17} className="nav-icon" />
+                <HugeiconsIcon icon={icon} size={17} className="nav-icon" />
                 <span>{label}</span>
               </Link>
             ))}
@@ -249,14 +263,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   background: "var(--surface)", border: "1px solid var(--border)", padding: "16px",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <LuStar size={16} color="var(--brand-600)" />
+                    <HugeiconsIcon icon={StarIcon} size={16} color="var(--brand-600)" />
                     <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>Upgrade to Starter</span>
                   </div>
                   <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: 12 }}>
                     More stores, a bigger catalogue and your own domain.
                   </p>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "var(--brand-600)", borderRadius: "var(--radius-sm)", padding: "9px", fontSize: 14, fontWeight: 600, color: "white" }}>
-                    <LuZap size={15} /> Upgrade
+                    <HugeiconsIcon icon={FlashIcon} size={15} /> Upgrade
                   </div>
                 </Link>
               </div>
@@ -269,14 +283,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   background: "var(--surface)", border: "1px solid var(--border)", padding: "16px",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <LuStar size={16} color="var(--brand-600)" />
+                    <HugeiconsIcon icon={StarIcon} size={16} color="var(--brand-600)" />
                     <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>Upgrade to Pro</span>
                   </div>
                   <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: 12 }}>
                     Lift the store and product limits altogether.
                   </p>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "var(--brand-600)", borderRadius: "var(--radius-sm)", padding: "9px", fontSize: 14, fontWeight: 600, color: "white" }}>
-                    <LuZap size={15} /> Get Pro
+                    <HugeiconsIcon icon={FlashIcon} size={15} /> Get Pro
                   </div>
                 </Link>
               </div>
@@ -312,7 +326,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                 className="hover-bg"
                 aria-label="Sign out"
               >
-                <LuLogOut size={16} />
+                <HugeiconsIcon icon={Logout03Icon} size={16} />
               </button>
             </div>
           </div>
@@ -329,7 +343,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                 style={{ display: "none", background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: "var(--radius-sm)", color: "var(--text-secondary)" }}
                 aria-label="Open menu"
               >
-                <LuMenu size={22} />
+                <HugeiconsIcon icon={Menu01Icon} size={22} />
               </button>
               {/* Breadcrumb trail, ending in the page's own title */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -341,7 +355,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                 </Link>
                 {crumbs.slice(0, -1).map((crumb) => (
                   <Fragment key={crumb.href}>
-                    <LuChevronRight size={15} color="var(--text-disabled)" style={{ flexShrink: 0 }} />
+                    <HugeiconsIcon icon={ArrowRight01Icon} size={15} color="var(--text-disabled)" style={{ flexShrink: 0 }} />
                     <Link
                       href={crumb.href}
                       style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, textDecoration: "none", textTransform: "capitalize", whiteSpace: "nowrap" }}
@@ -350,7 +364,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                     </Link>
                   </Fragment>
                 ))}
-                <LuChevronRight size={15} color="var(--text-disabled)" style={{ flexShrink: 0 }} />
+                <HugeiconsIcon icon={ArrowRight01Icon} size={15} color="var(--text-disabled)" style={{ flexShrink: 0 }} />
                 <h1
                   style={{
                     fontSize: 19, fontWeight: 700, margin: 0, color: "var(--text-primary)",
@@ -371,7 +385,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   borderRadius: "var(--radius-md)", padding: "7px 13px", fontSize: 13, fontWeight: 600,
                   color: "#d97706", textDecoration: "none", whiteSpace: "nowrap",
                 }}>
-                  <LuTriangleAlert size={15} />
+                  <HugeiconsIcon icon={Alert02Icon} size={15} />
                   <span className="verify-banner__text">Verify identity</span>
                 </Link>
               )}

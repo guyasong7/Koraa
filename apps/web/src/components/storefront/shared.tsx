@@ -8,7 +8,6 @@
  * falling back to `any` the way the original section components did.
  */
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { LuHeart, LuMail, LuPin, LuShoppingBag, LuX } from "react-icons/lu";
 import { useCartCount, useCartStore } from "../../stores/cart";
 import { useStorefrontTracker } from "../../lib/analytics";
 import { useStorefront } from "../StorefrontProvider";
@@ -20,6 +19,14 @@ import type {
   StorefrontProduct,
   StorefrontSection,
 } from "../../types/storefront";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  FavouriteIcon,
+  Mail01Icon,
+  PinLocation01Icon,
+  ShoppingBag03Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 /** Every section component — classic or variant — takes this. */
 export interface SectionProps {
@@ -317,7 +324,7 @@ export function CartButton({
       style={{ position: "relative", background: "none", border: "none", cursor: "pointer", font: "inherit" }}
       aria-label={label ?? `Open cart, ${shown} item${shown === 1 ? "" : "s"}`}
     >
-      <LuShoppingBag size={size} />
+      <HugeiconsIcon icon={ShoppingBag03Icon} size={size} />
       {/* Hidden at zero. An empty shop showed a permanent "0" badge, which
           reads as a broken counter rather than an empty basket. */}
       {shown > 0 && <span className={badgeClassName}>{shown > 99 ? "99+" : shown}</span>}
@@ -358,7 +365,7 @@ export function ProductMedia({
   const [open, setOpen] = useState(false);
 
   if (!product.image) {
-    return <>{placeholder ?? <LuShoppingBag size={48} color="rgba(0,0,0,0.07)" />}</>;
+    return <>{placeholder ?? <HugeiconsIcon icon={ShoppingBag03Icon} size={48} color="rgba(0,0,0,0.07)" />}</>;
   }
 
   return (
@@ -464,7 +471,7 @@ function Lightbox({
           cursor: "pointer",
         }}
       >
-        <LuX size={18} />
+        <HugeiconsIcon icon={Cancel01Icon} size={18} />
       </button>
       <p
         style={{
@@ -517,7 +524,7 @@ export function PinSaveButton({
       aria-label={`Save ${product.name} to Pinterest`}
       title="Save to Pinterest"
     >
-      <LuPin size={13} />
+      <HugeiconsIcon icon={PinLocation01Icon} size={13} />
     </button>
   );
 }
@@ -704,7 +711,7 @@ export function ProductCard({ p, store }: { p: StorefrontProduct; store: Store }
           aria-label="Save for later"
           onClick={event => event.stopPropagation()}
         >
-          <LuHeart size={14} />
+          <HugeiconsIcon icon={FavouriteIcon} size={14} />
         </button>
         <PinSaveButton product={p} store={store} />
       </div>
@@ -717,7 +724,7 @@ export function ProductCard({ p, store }: { p: StorefrontProduct; store: Store }
       </div>
       {act.kind !== "none" && (
         <button className="sf-add" disabled={act.disabled} onClick={act.run}>
-          {act.kind === "enquire" ? <LuMail size={13} /> : <LuShoppingBag size={13} />} {act.label}
+          {act.kind === "enquire" ? <HugeiconsIcon icon={Mail01Icon} size={13} /> : <HugeiconsIcon icon={ShoppingBag03Icon} size={13} />} {act.label}
         </button>
       )}
     </div>
@@ -728,7 +735,7 @@ export function ProductCard({ p, store }: { p: StorefrontProduct; store: Store }
 export function EmptyCatalog({ label = "No products yet." }: { label?: string }) {
   return (
     <div style={{ textAlign: "center", padding: "48px 20px", opacity: 0.5 }}>
-      <LuShoppingBag size={40} />
+      <HugeiconsIcon icon={ShoppingBag03Icon} size={40} />
       <p style={{ marginTop: 12 }}>{label}</p>
     </div>
   );

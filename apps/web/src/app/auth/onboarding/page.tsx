@@ -6,23 +6,42 @@ import { useAuthStore } from "@/stores/auth";
 import { merchantApi } from "@/lib/api";
 import KoraaLogo from "@/components/KoraaLogo";
 import { toast } from "@/lib/toast";
-import { LuArrowRight, LuArrowLeft, LuCheck, LuStore, LuSparkles } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowRight01Icon,
+  ArrowLeft01Icon,
+  Tick02Icon,
+  Store01Icon,
+  SparklesIcon,
+  ShoppingBag03Icon,
+  TShirtIcon,
+  PerfumeIcon,
+  Restaurant02Icon,
+  SmartPhone01Icon,
+  ComputerIcon,
+  FlashIcon,
+  PackageIcon,
+} from "@hugeicons/core-free-icons";
 
 /**
- * The emoji is split out of the label rather than sitting inside the
- * string, so the tile can size and space it on its own. Baked into the
- * text it inherited the label's 13px and sat on the text baseline, which
- * on Android renders it a good deal smaller than the surrounding glyphs.
+ * The icon is split out of the label rather than sitting inside the
+ * string, so the tile can size and space it on its own.
+ *
+ * These were emoji until the icon set landed. Emoji are a font, so they
+ * rendered at a different weight and baseline on every platform — on
+ * Android noticeably smaller than the surrounding glyphs — and could not
+ * take the tile's colour when selected. These inherit `currentColor`, so
+ * a chosen tile's icon turns with its label.
  */
 const BUSINESS_TYPES = [
-  { value: "retail", emoji: "🛍️", label: "Retail" },
-  { value: "fashion", emoji: "👗", label: "Fashion & Apparel" },
-  { value: "beauty", emoji: "💄", label: "Beauty" },
-  { value: "food", emoji: "🍽️", label: "Food & Drink" },
-  { value: "electronics", emoji: "📱", label: "Electronics" },
-  { value: "digital", emoji: "💻", label: "Digital" },
-  { value: "services", emoji: "⚡", label: "Services" },
-  { value: "other", emoji: "📦", label: "Other" },
+  { value: "retail", icon: ShoppingBag03Icon, label: "Retail" },
+  { value: "fashion", icon: TShirtIcon, label: "Fashion & Apparel" },
+  { value: "beauty", icon: PerfumeIcon, label: "Beauty" },
+  { value: "food", icon: Restaurant02Icon, label: "Food & Drink" },
+  { value: "electronics", icon: SmartPhone01Icon, label: "Electronics" },
+  { value: "digital", icon: ComputerIcon, label: "Digital" },
+  { value: "services", icon: FlashIcon, label: "Services" },
+  { value: "other", icon: PackageIcon, label: "Other" },
 ];
 
 const COUNTRIES = [
@@ -129,7 +148,7 @@ export default function OnboardingPage() {
   const slug = previewSlug(form.business_name);
 
   return (
-    <div className="auth-split-shell">
+    <div className="auth-split-shell auth-split-shell--full">
       <div className="auth-split">
         <div className="auth-split__form">
           <div className="auth-split__brand">
@@ -192,7 +211,11 @@ export default function OnboardingPage() {
                       aria-pressed={form.business_type === bt.value}
                       onClick={() => setForm({ ...form, business_type: bt.value })}
                     >
-                      <span className="auth-split__tile-emoji" aria-hidden="true">{bt.emoji}</span>
+                      <HugeiconsIcon
+                        icon={bt.icon}
+                        size={16}
+                        className="auth-split__tile-icon"
+                      />
                       {bt.label}
                     </button>
                   ))}
@@ -206,7 +229,7 @@ export default function OnboardingPage() {
                 disabled={!form.business_name.trim()}
                 style={{ marginTop: 10 }}
               >
-                Continue <LuArrowRight size={17} />
+                Continue <HugeiconsIcon icon={ArrowRight01Icon} size={17} />
               </button>
             </>
           )}
@@ -273,7 +296,7 @@ export default function OnboardingPage() {
                   className="btn btn-secondary"
                   onClick={() => setStep(0)}
                 >
-                  <LuArrowLeft size={16} /> Back
+                  <HugeiconsIcon icon={ArrowLeft01Icon} size={16} /> Back
                 </button>
                 <button
                   type="submit"
@@ -287,7 +310,7 @@ export default function OnboardingPage() {
                     </>
                   ) : (
                     <>
-                      <LuSparkles size={17} /> Launch my shop
+                      <HugeiconsIcon icon={SparklesIcon} size={17} /> Launch my shop
                     </>
                   )}
                 </button>
@@ -298,7 +321,7 @@ export default function OnboardingPage() {
           {step === 2 && (
             <div className="auth-split__done">
               <div className="auth-split__done-mark">
-                <LuCheck size={34} />
+                <HugeiconsIcon icon={Tick02Icon} size={34} />
               </div>
               <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>
                 {form.business_name.trim() || "Your shop"} is set up. Next stop:
@@ -323,21 +346,8 @@ export default function OnboardingPage() {
             } as React.CSSProperties}
           >
             <div className="auth-split__float auth-split__float--pay">
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  flexShrink: 0,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "var(--brand-tint)",
-                  border: "1px solid var(--brand-tint-border)",
-                  color: "var(--brand-text)",
-                }}
-              >
-                <LuStore size={16} />
+              <div className="auth-split__float-badge">
+                <HugeiconsIcon icon={Store01Icon} size={16} />
               </div>
               <div style={{ minWidth: 0 }}>
                 <p className="auth-split__float-label">Your storefront</p>
@@ -356,9 +366,9 @@ export default function OnboardingPage() {
             </div>
 
             <div className="auth-split__float auth-split__float--stat">
-              <span className="auth-split__tile-emoji" style={{ fontSize: "1.25rem" }}>
-                {chosenType?.emoji ?? "🛍️"}
-              </span>
+              <div className="auth-split__float-badge">
+                <HugeiconsIcon icon={chosenType?.icon ?? ShoppingBag03Icon} size={16} />
+              </div>
               <div>
                 <p className="auth-split__float-label">Selling</p>
                 <p className="auth-split__float-value">{chosenType?.label ?? "Retail"}</p>

@@ -16,21 +16,22 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  LuArrowLeft,
-  LuChevronLeft,
-  LuChevronRight,
-  LuInbox,
-  LuLoader,
-  LuMail,
-  LuPencil,
-  LuPhone,
-  LuTrash2,
-  LuTriangleAlert,
-} from "react-icons/lu";
 import { toast } from "@/lib/toast";
 
 import { storefrontApi, storeApi, type FormSubmission, type Paginated } from "@/lib/api";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  InboxIcon,
+  Loading03Icon,
+  Mail01Icon,
+  Edit02Icon,
+  Call02Icon,
+  Delete02Icon,
+  Alert02Icon,
+} from "@hugeicons/core-free-icons";
 
 function when(iso: string): string {
   const date = new Date(iso);
@@ -108,7 +109,7 @@ export default function EnquiriesPage() {
             color: "var(--text-muted)", fontSize: 14, textDecoration: "none", marginBottom: 20,
           }}
         >
-          <LuArrowLeft size={15} /> Back to store
+          <HugeiconsIcon icon={ArrowLeft02Icon} size={15} /> Back to store
         </Link>
 
         <div
@@ -128,7 +129,7 @@ export default function EnquiriesPage() {
             </p>
           </div>
           <Link className="btn btn-secondary" href={`/dashboard/stores/${id}/enquiry-form`}>
-            <LuPencil size={16} /> Edit the form
+            <HugeiconsIcon icon={Edit02Icon} size={16} /> Edit the form
           </Link>
         </div>
 
@@ -140,7 +141,7 @@ export default function EnquiriesPage() {
           </div>
         ) : !submissions.length ? (
           <div className="card" style={{ textAlign: "center", padding: "48px 24px" }}>
-            <LuInbox size={34} color="var(--text-muted)" style={{ margin: "0 auto 14px" }} />
+            <HugeiconsIcon icon={InboxIcon} size={34} color="var(--text-muted)" style={{ margin: "0 auto 14px" }} />
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>No enquiries yet</h2>
             <p style={{ color: "var(--text-secondary)", fontSize: 14, maxWidth: 420, margin: "0 auto 18px" }}>
               When someone fills in your form the answers arrive here and in your email, with
@@ -189,7 +190,7 @@ export default function EnquiriesPage() {
                             title="Stored here, but the notification email did not go out."
                             style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--warning)" }}
                           >
-                            <LuTriangleAlert size={12} /> not emailed
+                            <HugeiconsIcon icon={Alert02Icon} size={12} /> not emailed
                           </span>
                         )}
                       </div>
@@ -245,12 +246,12 @@ export default function EnquiriesPage() {
                               `Re: your enquiry to ${store?.name ?? "us"}`,
                             )}`}
                           >
-                            <LuMail size={14} /> Reply
+                            <HugeiconsIcon icon={Mail01Icon} size={14} /> Reply
                           </a>
                         )}
                         {submission.sender_phone && (
                           <a className="btn btn-secondary btn-sm" href={`tel:${submission.sender_phone}`}>
-                            <LuPhone size={14} /> {submission.sender_phone}
+                            <HugeiconsIcon icon={Call02Icon} size={14} /> {submission.sender_phone}
                           </a>
                         )}
                         <button
@@ -270,7 +271,7 @@ export default function EnquiriesPage() {
                           }}
                           disabled={remove.isPending}
                         >
-                          {remove.isPending ? <LuLoader size={14} className="spin" /> : <LuTrash2 size={14} />}
+                          {remove.isPending ? <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> : <HugeiconsIcon icon={Delete02Icon} size={14} />}
                           Delete
                         </button>
                       </div>
@@ -287,7 +288,7 @@ export default function EnquiriesPage() {
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={!data?.previous || isFetching}
                 >
-                  <LuChevronLeft size={14} /> Newer
+                  <HugeiconsIcon icon={ArrowLeft01Icon} size={14} /> Newer
                 </button>
                 <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Page {page}</span>
                 <button
@@ -295,7 +296,7 @@ export default function EnquiriesPage() {
                   onClick={() => setPage(p => p + 1)}
                   disabled={!data?.next || isFetching}
                 >
-                  Older <LuChevronRight size={14} />
+                  Older <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
                 </button>
               </div>
             )}

@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { LuArrowLeft } from "react-icons/lu";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  ArrowLeft02Icon,
+} from "@hugeicons/core-free-icons";
 
 /**
  * "Back to store" link for pages reached from a store's manage section.
@@ -55,7 +58,7 @@ function BackLink({ storeId, label }: { storeId: string; label: string }) {
         marginBottom: 20,
       }}
     >
-      <LuArrowLeft size={15} /> {label}
+      <HugeiconsIcon icon={ArrowLeft02Icon} size={15} /> {label}
     </Link>
   );
 }
