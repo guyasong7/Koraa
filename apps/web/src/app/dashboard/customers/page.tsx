@@ -16,48 +16,79 @@ export default function CustomersPage() {
   return (
     <>
       <PageTitle title="Customers — Koraa" />
-      <div className="mx-auto max-w-[1200px]">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 16,
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            marginBottom: 32,
+          }}
+        >
           <div>
-            {/* Font and line-height come from the global `h1` rule; these
-                utilities only restate what the old inline style overrode. */}
-            <h1 className="mb-1 text-2xl font-extrabold tracking-[-0.02em] sm:text-[28px]">
+            <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4, letterSpacing: "-0.02em" }}>
               Customers
             </h1>
-            <p className="text-[15px] text-text-secondary">
+            <p style={{ color: "var(--text-secondary)", fontSize: 15 }}>
               Understand and manage your customer relationships.
             </p>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
-            <HugeiconsIcon
-              icon={Loading03Icon}
-              size={32}
-              className="spin-fast text-brand-500"
-            />
-            <p className="text-sm font-medium text-text-secondary">
-              Loading customers…
-            </p>
-          </div>
+          <Spinner label="Loading customers…" />
         ) : (
-          <div className="rounded-xl border border-border bg-surface-900 px-5 py-14 text-center shadow-e2 sm:py-20">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--brand-500)_10%,transparent)]">
-              <HugeiconsIcon
-                icon={UserMultipleIcon}
-                size={32}
-                className="text-brand-500"
-              />
-            </div>
-            <h3 className="mb-2 text-xl font-bold">No customers yet</h3>
-            <p className="mx-auto max-w-[400px] text-text-secondary">
-              As customers purchase from your store, their details and order
-              history will automatically be saved here.
-            </p>
-          </div>
+          <EmptyState />
         )}
       </div>
     </>
+  );
+}
+
+function Spinner({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "40vh",
+        gap: 16,
+      }}
+    >
+      <HugeiconsIcon icon={Loading03Icon} size={32} className="spin" color="var(--brand-500)" />
+      <p style={{ color: "var(--text-secondary)", fontSize: 14, fontWeight: 500 }}>{label}</p>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="table-container" style={{ textAlign: "center", padding: "72px 24px" }}>
+      <div
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: "var(--radius-xl)",
+          background: "color-mix(in srgb, var(--brand-500) 10%, transparent)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 24px",
+        }}
+      >
+        <HugeiconsIcon icon={UserMultipleIcon} size={32} color="var(--brand-500)" />
+      </div>
+      <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+        No customers yet
+      </h3>
+      <p style={{ color: "var(--text-secondary)", maxWidth: 420, margin: "0 auto", lineHeight: 1.6 }}>
+        As customers purchase from your store, their details and order
+        history will automatically be saved here.
+      </p>
+    </div>
   );
 }
