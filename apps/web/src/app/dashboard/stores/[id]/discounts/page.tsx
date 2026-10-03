@@ -136,6 +136,10 @@ export default function DiscountsPage() {
     const payload: DiscountCodeCreate = {
       ...form,
       code: form.code.trim().toUpperCase(),
+      min_order_amount: form.min_order_amount ?? 0,
+      max_uses: form.max_uses ?? 0,
+      valid_from: form.valid_from || null,
+      valid_until: form.valid_until || null,
     };
 
     if (editingId) {
