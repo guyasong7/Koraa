@@ -64,6 +64,7 @@ type PayState =
   | { kind: "creating" }
   | { kind: "review"; order: CreatedOrder }
   | { kind: "charging"; order: CreatedOrder }
+  | { kind: "redirecting"; order: CreatedOrder; link: string }
   | { kind: "polling"; order: CreatedOrder; reference: string }
   | { kind: "returning"; orderId: string }
   | { kind: "paid"; order: CreatedOrder; status: OrderStatus }
@@ -96,6 +97,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
   const [state, setState] = useState<PayState>({ kind: "form" });
 
   const [discountCode, setDiscountCode] = useState("");
+  const [orderNotes, setOrderNotes] = useState("");
 
   const [momoPhone, setMomoPhone] = useState("");
   const [momoMedium, setMomoMedium] = useState<PaymentMedium | null>(null);
@@ -228,6 +230,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         postal_code: formData.postal_code.trim(),
         items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
         ...(discountCode.trim() ? { discount_code: discountCode.trim() } : {}),
+        ...(orderNotes.trim() ? { notes: orderNotes.trim() } : {}),
       });
       setState({ kind: "review", order: res.data });
     } catch (err: any) {
@@ -291,28 +294,23 @@ export default function CheckoutClient({ domain }: { domain: string }) {
   // ── Charge ──────────────────────────────────────────────────────────────
 
   const chargeOrder = async (order: CreatedOrder) => {
-    const msisdn = normaliseMsisdn(momoPhone);
-    if (!isPlausibleMsisdn(momoPhone)) {
-      setMomoError("Enter a Cameroonian mobile number (9 digits starting with 6).");
-      return;
-    }
-
     setState({ kind: "charging", order });
 
-    const payload: { phone: string; medium?: PaymentMedium } = {
-      phone: msisdn,
-    };
-    if (momoOverride && momoMedium) payload.medium = momoMedium;
-
     try {
-      const res = await publicStorefrontApi.chargeOrder(order.id, payload);
+      const res = await publicStorefrontApi.chargeOrder(order.id, {});
+
+      if (res.data.payment_link) {
+        setState({ kind: "redirecting", order, link: res.data.payment_link });
+        window.location.href = res.data.payment_link;
+        return;
+      }
 
       if (!res.data.charge_accepted) {
         setState({ kind: "unknown", order, reference: res.data.reference || "" });
         return;
       }
 
-      startPolling(order, res.data.reference || "");
+      setState({ kind: "unknown", order, reference: res.data.reference || "" });
     } catch (err: any) {
       const status = err.response?.status;
       const body = err.response?.data;
@@ -571,8 +569,8 @@ export default function CheckoutClient({ domain }: { domain: string }) {
 
   // ── The form and review ────────────────────────────────────────────────────
 
-  const busy = state.kind === "creating" || state.kind === "charging";
-  const onReview = state.kind === "review" || state.kind === "charging" || state.kind === "failed";
+  const busy = state.kind === "creating" || state.kind === "charging" || state.kind === "redirecting";
+  const onReview = state.kind === "review" || state.kind === "charging" || state.kind === "redirecting" || state.kind === "failed";
   const displayTotal = serverTotal !== null ? money(serverTotal) : money(cartEstimate);
 
   const field = (
@@ -671,22 +669,40 @@ export default function CheckoutClient({ domain }: { domain: string }) {
             {!onReview && (
               <div className="co-section">
                 <div className="co-section-title">
-                  <span className="co-step">3</span> Discount Code
+                  <span className="co-step">3</span> Order Details
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ marginBottom: 16 }}>
+                  <label className="co-label" htmlFor="co-notes">Special Instructions (Optional)</label>
+                  <textarea
+                    id="co-notes"
+                    placeholder="e.g. Size L, colour black, gift wrap please…"
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                    disabled={busy}
+                    className="co-input"
+                    rows={3}
+                    style={{ resize: "vertical", minHeight: 70 }}
+                  />
+                  <p style={{ fontSize: 12, opacity: 0.5, marginTop: 5 }}>
+                    Tell the seller about size, colour, custom text or anything else you need.
+                  </p>
+                </div>
+                <div>
+                  <label className="co-label" htmlFor="co-discount">Discount Code</label>
                   <input
+                    id="co-discount"
                     type="text"
                     placeholder="Enter code"
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
                     disabled={busy}
                     className="co-input"
-                    style={{ flex: 1, textTransform: "uppercase", letterSpacing: "0.05em" }}
+                    style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
                   />
+                  <p style={{ fontSize: 12, opacity: 0.5, marginTop: 5 }}>
+                    Have a discount code? Enter it above — it will be applied when we price your order.
+                  </p>
                 </div>
-                <p style={{ fontSize: 12, opacity: 0.5, marginTop: 6 }}>
-                  Have a discount code? Enter it above — it will be applied when we price your order.
-                </p>
               </div>
             )}
 
@@ -746,47 +762,14 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                   {formData.customer_email}{formData.customer_phone && ` • ${formData.customer_phone}`}
                 </div>
 
-                {/* ── MoMo phone + medium ─────────────────────────── */}
-                <div style={{ padding: 16, background: bg, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", marginBottom: 20 }}>
-                  <label className="co-label" htmlFor="co-momo">Mobile Money Number *</label>
-                  <input
-                    id="co-momo"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    placeholder="+237 6 70 00 00 00"
-                    value={momoPhone}
-                    disabled={busy}
-                    aria-invalid={momoError ? true : undefined}
-                    aria-describedby={momoError ? "co-momo-err" : undefined}
-                    className={`co-input${momoError ? " invalid" : ""}`}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setMomoPhone(v);
-                      setMomoError("");
-                      if (!momoOverride) setMomoMedium(inferMedium(v));
-                    }}
-                  />
-                  {momoError && <span className="co-err" id="co-momo-err">{momoError}</span>}
+                {orderNotes.trim() && (
+                  <div style={{ padding: 16, background: bg, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", marginBottom: 20, fontSize: 13, lineHeight: 1.6 }}>
+                    <strong>Your notes:</strong><br />
+                    {orderNotes.trim()}
+                  </div>
+                )}
 
-                  {momoMedium !== null && (
-                    <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
-                      {(["mobile money", "orange money"] as PaymentMedium[]).map((m) => (
-                        <label key={m} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
-                          <input
-                            type="radio"
-                            name="momo-medium"
-                            checked={momoMedium === m}
-                            disabled={busy}
-                            onChange={() => { setMomoMedium(m); setMomoOverride(true); }}
-                            style={{ accentColor: primary }}
-                          />
-                          {mediumLabel(m)}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {/* ── Proceed to Fapshi hosted checkout ──────────── */}
 
                 <div style={{ display: "flex", gap: 12 }}>
                   <button
@@ -805,8 +788,8 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                     onClick={() => chargeOrder(order)}
                     style={{ flex: 2, marginTop: 0 }}
                   >
-                    {state.kind === "charging" ? (
-                      <><HugeiconsIcon icon={Loading03Icon} size={16} className="co-spin" /> Preparing payment…</>
+                    {state.kind === "charging" || state.kind === "redirecting" ? (
+                      <><HugeiconsIcon icon={Loading03Icon} size={16} className="co-spin" /> Redirecting to payment…</>
                     ) : (
                       <><HugeiconsIcon icon={SquareLock02Icon} size={16} /> Pay {money(order.total_amount)}</>
                     )}

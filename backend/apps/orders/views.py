@@ -264,9 +264,9 @@ class StorefrontOrderChargeView(APIView):
     """
     POST /public/storefront/orders/{order_id}/pay/
 
-    Charges the buyer's mobile money number directly via Fapshi's direct_pay.
-    The buyer stays on the checkout page, approves the prompt on their handset,
-    and the frontend polls StorefrontOrderStatusView until settlement.
+    Redirects the buyer to Fapshi's hosted checkout page via ``initiate_pay``.
+    The buyer completes payment on Fapshi's page and is redirected back to the
+    storefront checkout with ``?orderId=`` where the frontend checks the result.
 
     Unauthenticated, like the rest of checkout: a Koraa storefront has no shopper
     accounts. The order id is a ``uuid4`` and the only thing this endpoint can do
@@ -288,24 +288,17 @@ class StorefrontOrderChargeView(APIView):
         if conflict is not None:
             return conflict
 
-        from .serializers import OrderChargeRequestSerializer
-        ser = OrderChargeRequestSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        phone = ser.validated_data["phone"]
-        medium = ser.validated_data.get("medium") or None
-
         store = order.store
         message = f"Order #{str(order.id)[:8]} at {store.name}"
+        redirect_url = f"{store.storefront_url}/checkout?orderId={order.id}"
 
         try:
-            trans_id = fapshi.direct_pay(
+            link, trans_id = fapshi.initiate_pay(
                 amount=order.total_amount,
-                phone=phone,
-                external_id=str(order.id),
-                name=order.customer_name,
                 email=order.customer_email,
+                redirect_url=redirect_url,
+                external_id=str(order.id),
                 message=message,
-                medium=medium,
             )
         except ImproperlyConfigured as exc:
             logger.error(
@@ -328,12 +321,8 @@ class StorefrontOrderChargeView(APIView):
             )
         except fapshi.FapshiUnavailable:
             logger.exception(
-                "Fapshi gave no answer charging order %s — the charge may exist", order.id
+                "Fapshi gave no answer for order %s — the link may exist", order.id
             )
-            Order.objects.filter(pk=order.pk, settled_at__isnull=True).update(
-                fapshi_status=UNCONFIRMED_CHARGE
-            )
-            order.refresh_from_db(fields=["fapshi_status"])
             return Response(
                 {
                     "error": "Payment provider did not respond. Please try again.",
@@ -343,10 +332,16 @@ class StorefrontOrderChargeView(APIView):
                 status=status.HTTP_202_ACCEPTED,
             )
 
-        Order.objects.filter(pk=order.pk).update(fapshi_trans_id=trans_id)
-        order.refresh_from_db(fields=["fapshi_trans_id"])
+        Order.objects.filter(pk=order.pk).update(
+            fapshi_trans_id=trans_id,
+            payment_link=link,
+        )
+        order.refresh_from_db(fields=["fapshi_trans_id", "payment_link"])
         return Response(
-            OrderChargeSerializer(order).data,
+            {
+                **OrderChargeSerializer(order).data,
+                "payment_link": link,
+            },
             status=status.HTTP_201_CREATED,
         )
 

@@ -1328,12 +1328,7 @@ export interface CreatedOrder {
 export type PaymentMedium = "mobile money" | "orange money";
 
 export interface ChargeRequest {
-  phone: string;
-  /**
-   * Omitted lets Fapshi detect the network from the prefix, which its own docs
-   * recommend over a caller-supplied guess. Sent only when a shopper overrode
-   * the pre-selection.
-   */
+  phone?: string;
   medium?: PaymentMedium;
 }
 
@@ -1347,6 +1342,7 @@ export interface ChargedOrder {
   currency: string;
   payment_status: PaymentState;
   charge_accepted: boolean;
+  payment_link?: string;
 }
 
 export interface OrderStatus {
