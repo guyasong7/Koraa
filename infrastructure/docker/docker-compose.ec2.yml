@@ -127,23 +127,16 @@ services:
     environment: *backend_environment
     expose:
       - "8000"
-    # The image's own HEALTHCHECK curls http://127.0.0.1:8000/api/schema/ with no
-    # X-Forwarded-Proto. In production SECURE_SSL_REDIRECT is on, so Django
-    # answers that with a 301 to https — and `curl -fsS` without -L treats a 301
-    # as success. The check passes without Django having resolved a URL, served a
-    # view, or touched the database, so it stays green through faults it exists to
-    # catch. Sending the header makes the redirect not apply and a 200 the only
-    # passing answer.
-    #
-    # Needs 127.0.0.1 in ALLOWED_HOSTS, or get_host() raises DisallowedHost and
-    # the container is permanently unhealthy. See backend/.env.prod.example.
+    # /api/health/ is a plain Django view (no DRF, no throttle) that checks DB
+    # and Redis connectivity. It never trips the anonymous rate limit the way
+    # /api/schema/ did. Needs 127.0.0.1 in ALLOWED_HOSTS.
     healthcheck:
       test:
         - CMD-SHELL
         - >-
           curl -fsS -o /dev/null
           -H 'X-Forwarded-Proto: https'
-          http://127.0.0.1:8000/api/schema/
+          http://127.0.0.1:8000/api/health/
       interval: 30s
       timeout: 5s
       start_period: 40s

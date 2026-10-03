@@ -10,6 +10,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.health import health
 from apps.analytics.urls import merchant_patterns as analytics_merchant_patterns
 from apps.analytics.urls import public_patterns as analytics_public_patterns
 from apps.orders.urls import merchant_patterns as orders_merchant_patterns
@@ -51,6 +52,9 @@ api_v1_patterns = [
 urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
+
+    # Health (plain Django view — no DRF, no throttle)
+    path("api/health/", health),
 
     # API
     path("api/v1/", include(api_v1_patterns)),

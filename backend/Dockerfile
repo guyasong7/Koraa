@@ -42,7 +42,7 @@ USER appuser
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8000/api/schema/ -o /dev/null || exit 1
+    CMD curl -fsS http://127.0.0.1:8000/api/health/ -o /dev/null || exit 1
 
 # Two workers per core plus one is the usual starting point; override
 # GUNICORN_WORKERS to match the host. --timeout covers the Fapshi calls, which
