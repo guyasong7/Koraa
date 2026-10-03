@@ -56,7 +56,7 @@ export default function DiscountsPage() {
 
   const { data: discounts, isLoading } = useQuery<DiscountCode[]>({
     queryKey: ["discounts", id],
-    queryFn: () => storeApi.listDiscounts(id).then((r) => r.data),
+    queryFn: () => storeApi.listDiscounts(id).then((r) => r.data?.results ?? r.data),
     enabled: !!id,
   });
 
