@@ -144,6 +144,16 @@ export const storeApi = {
   updateSiteSettings: (id: string, settings: Record<string, unknown>) =>
     api.patch<SiteSettingsResponse>(`/stores/${id}/site-settings/`, { settings }),
   aiChat: (message: string, history: any[]) => api.post("/stores/ai-chat/", { message, history }),
+  // Discount codes
+  listDiscounts: (storeId: string) => api.get<DiscountCode[]>(`/stores/${storeId}/discounts/`),
+  createDiscount: (storeId: string, data: DiscountCodeCreate) =>
+    api.post<DiscountCode>(`/stores/${storeId}/discounts/`, data),
+  getDiscount: (storeId: string, discountId: string) =>
+    api.get<DiscountCode>(`/stores/${storeId}/discounts/${discountId}/`),
+  updateDiscount: (storeId: string, discountId: string, data: Partial<DiscountCodeCreate>) =>
+    api.patch<DiscountCode>(`/stores/${storeId}/discounts/${discountId}/`, data),
+  deleteDiscount: (storeId: string, discountId: string) =>
+    api.delete(`/stores/${storeId}/discounts/${discountId}/`),
 };
 
 // ─── Products ─────────────────────────────────────────────────────────────
@@ -493,8 +503,8 @@ export const publicStorefrontApi = {
    *   charge **may or may not exist**. Do not present it as a failure and do not
    *   resend it; resending is the one way to take the money twice.
    */
-  chargeOrder: (orderId: string) =>
-    publicApi.post<ChargedOrder>(`/public/storefront/orders/${orderId}/pay/`),
+  chargeOrder: (orderId: string, data: ChargeRequest) =>
+    publicApi.post<ChargedOrder>(`/public/storefront/orders/${orderId}/pay/`, data),
   /**
    * Where a payment has got to. Safe to poll; the backend paces its own calls to
    * Fapshi, which allows only six a minute per transaction.
@@ -1288,6 +1298,8 @@ export interface CheckoutData {
   shipping_address: string;
   city: string;
   postal_code?: string;
+  notes?: string;
+  discount_code?: string;
   items: Array<{
     product_id: string;
     quantity: number;
@@ -1298,6 +1310,9 @@ export interface CheckoutData {
 export interface CreatedOrder {
   id: string;
   total_amount: string;
+  delivery_fee: string;
+  discount_code: string;
+  discount_amount: string;
   payment_status: PaymentState;
   items: Array<{
     id: string;
@@ -1326,9 +1341,12 @@ export interface ChargeRequest {
 export type PaymentState = "pending" | "paid" | "failed" | "refunded";
 
 export interface ChargedOrder {
-  payment_url: string;
-  trans_id: string;
-  order_id: string;
+  id: string;
+  reference: string;
+  total_amount: string;
+  currency: string;
+  payment_status: PaymentState;
+  charge_accepted: boolean;
 }
 
 export interface OrderStatus {
@@ -1339,6 +1357,36 @@ export interface OrderStatus {
   payment_status: PaymentState;
   /** Final either way. A failed payment is settled too — see `getOrderStatus`. */
   settled: boolean;
+}
+
+// ─── Discount code types ─────────────────────────────────────────────────
+
+export type DiscountType = "percentage" | "fixed";
+
+export interface DiscountCode {
+  id: string;
+  code: string;
+  discount_type: DiscountType;
+  discount_value: string;
+  min_order_amount: string | null;
+  max_uses: number | null;
+  used_count: number;
+  is_active: boolean;
+  valid_from: string | null;
+  valid_until: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscountCodeCreate {
+  code: string;
+  discount_type: DiscountType;
+  discount_value: number;
+  min_order_amount?: number | null;
+  max_uses?: number | null;
+  is_active?: boolean;
+  valid_from?: string | null;
+  valid_until?: string | null;
 }
 
 export interface ShowcaseStore {

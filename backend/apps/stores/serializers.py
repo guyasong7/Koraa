@@ -230,3 +230,46 @@ class StoreSlugCheckSerializer(serializers.Serializer):
         if Store.objects.filter(slug=value).exists():
             raise serializers.ValidationError("This slug is already taken.")
         return value
+
+
+# ── Discount codes ───────────────────────────────────────────────────────────
+
+from .discounts import DiscountCode
+
+
+class DiscountCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiscountCode
+        fields = [
+            "id", "code", "discount_type", "discount_value",
+            "min_order_amount", "max_uses", "used_count",
+            "is_active", "valid_from", "valid_until",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "used_count", "created_at", "updated_at"]
+
+
+class DiscountCodeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiscountCode
+        fields = [
+            "code", "discount_type", "discount_value",
+            "min_order_amount", "max_uses",
+            "is_active", "valid_from", "valid_until",
+        ]
+
+    def validate_code(self, value):
+        return value.strip().upper()
+
+    def validate_discount_value(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Discount value must be positive.")
+        return value
+
+    def validate(self, attrs):
+        if attrs.get("discount_type") == DiscountCode.DiscountType.PERCENTAGE:
+            if attrs.get("discount_value", 0) > 100:
+                raise serializers.ValidationError(
+                    {"discount_value": "Percentage cannot exceed 100."}
+                )
+        return attrs

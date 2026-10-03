@@ -17,7 +17,8 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id", "store", "customer_name", "customer_email", "customer_phone",
-            "shipping_address", "city", "postal_code", "total_amount",
+            "shipping_address", "city", "postal_code", "notes",
+            "total_amount", "delivery_fee", "discount_code", "discount_amount",
             "payment_status", "payment_link", "items", "created_at"
         ]
         read_only_fields = ["id", "payment_status", "payment_link", "total_amount", "created_at"]
@@ -35,6 +36,8 @@ class OrderCreateSerializer(serializers.Serializer):
     shipping_address = serializers.CharField()
     city = serializers.CharField(max_length=100)
     postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    discount_code = serializers.CharField(max_length=50, required=False, allow_blank=True, default="")
 
     # Previously a bare list of dicts, so a missing product_id or a negative
     # quantity reached the view and either crashed it or produced a credit.
@@ -193,7 +196,9 @@ class MerchantOrderListSerializer(serializers.ModelSerializer):
         fields = [
             "id", "reference", "store", "store_name", "store_slug", "currency",
             "customer_name", "customer_email", "customer_phone",
-            "city", "total_amount", "payment_status", "item_count", "created_at",
+            "city", "notes", "total_amount", "delivery_fee",
+            "discount_code", "discount_amount",
+            "payment_status", "item_count", "created_at",
         ]
 
     def get_reference(self, obj) -> str:
@@ -218,7 +223,7 @@ class MerchantOrderDetailSerializer(MerchantOrderListSerializer):
 
     class Meta(MerchantOrderListSerializer.Meta):
         fields = MerchantOrderListSerializer.Meta.fields + [
-            "shipping_address", "postal_code", "payment_link",
+            "shipping_address", "postal_code", "notes", "payment_link",
             "fapshi_trans_id", "items", "updated_at",
         ]
 

@@ -89,6 +89,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   "site-settings": "Site Settings",
   enquiries: "Enquiries",
   "enquiry-form": "Enquiry Form",
+  discounts: "Discounts",
   new: "New",
 };
 

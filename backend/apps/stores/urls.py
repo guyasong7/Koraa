@@ -9,6 +9,8 @@ from .views import (
     StoreSEOAuditView,
     StoreSiteSettingsView,
     StoreAIChatView,
+    StoreDiscountCodeListCreateView,
+    StoreDiscountCodeDetailView,
 )
 
 urlpatterns = [
@@ -23,5 +25,15 @@ urlpatterns = [
         "<uuid:pk>/site-settings/",
         StoreSiteSettingsView.as_view(),
         name="store-site-settings",
+    ),
+    path(
+        "<uuid:pk>/discounts/",
+        StoreDiscountCodeListCreateView.as_view(),
+        name="store-discounts-list-create",
+    ),
+    path(
+        "<uuid:pk>/discounts/<uuid:discount_id>/",
+        StoreDiscountCodeDetailView.as_view(),
+        name="store-discounts-detail",
     ),
 ]

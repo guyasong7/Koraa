@@ -11,7 +11,14 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { STOREFRONT_DEFAULTS } from "@/components/storefront/theme";
 import { formatPrice } from "@/components/storefront/shared";
-import { isPlausibleEmail } from "@/lib/momo";
+import {
+  isPlausibleEmail,
+  isPlausibleMsisdn,
+  inferMedium,
+  mediumLabel,
+  normaliseMsisdn,
+} from "@/lib/momo";
+import type { PaymentMedium } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -57,11 +64,15 @@ type PayState =
   | { kind: "creating" }
   | { kind: "review"; order: CreatedOrder }
   | { kind: "charging"; order: CreatedOrder }
-  | { kind: "redirecting"; order: CreatedOrder }
+  | { kind: "polling"; order: CreatedOrder; reference: string }
   | { kind: "returning"; orderId: string }
   | { kind: "paid"; order: CreatedOrder; status: OrderStatus }
   | { kind: "failed"; order: CreatedOrder; reason: string }
   | { kind: "unknown"; order: CreatedOrder; reference: string };
+
+const DELIVERY_FEE = 1000;
+const POLL_INTERVAL = 4000;
+const POLL_TIMEOUT = 120000;
 
 const REQUIRED_TEXT = "This field is required.";
 
@@ -84,7 +95,15 @@ export default function CheckoutClient({ domain }: { domain: string }) {
 
   const [state, setState] = useState<PayState>({ kind: "form" });
 
+  const [discountCode, setDiscountCode] = useState("");
+
+  const [momoPhone, setMomoPhone] = useState("");
+  const [momoMedium, setMomoMedium] = useState<PaymentMedium | null>(null);
+  const [momoOverride, setMomoOverride] = useState(false);
+  const [momoError, setMomoError] = useState("");
+
   const measured = useRef(false);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Handle return from Fapshi hosted checkout ─────────────────────────────
 
@@ -95,33 +114,30 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       setState({ kind: "returning", orderId });
       publicStorefrontApi.getOrderStatus(orderId).then((res) => {
         const s = res.data;
+        const stub: CreatedOrder = {
+          id: s.id, total_amount: s.total_amount, payment_status: s.payment_status,
+          delivery_fee: "0", discount_code: "", discount_amount: "0",
+          items: [], created_at: "",
+        };
         if (s.payment_status === "paid") {
           clearCart();
-          setState({
-            kind: "paid",
-            order: { id: s.id, total_amount: s.total_amount, payment_status: s.payment_status, items: [], created_at: "" },
-            status: s,
-          });
+          setState({ kind: "paid", order: stub, status: s });
         } else if (s.settled && s.payment_status === "failed") {
           setState({
             kind: "failed",
-            order: { id: s.id, total_amount: s.total_amount, payment_status: s.payment_status, items: [], created_at: "" },
+            order: stub,
             reason: "The payment was not completed. Nothing has been charged — you can try again.",
           });
         } else {
-          // Still pending — show the "still waiting" screen
-          setState({
-            kind: "unknown",
-            order: { id: s.id, total_amount: s.total_amount, payment_status: s.payment_status, items: [], created_at: "" },
-            reference: s.reference || "",
-          });
+          setState({ kind: "unknown", order: stub, reference: s.reference || "" });
         }
       }).catch(() => {
-        setState({
-          kind: "unknown",
-          order: { id: orderId, total_amount: "0", payment_status: "pending", items: [], created_at: "" },
-          reference: "",
-        });
+        const stub: CreatedOrder = {
+          id: orderId, total_amount: "0", payment_status: "pending",
+          delivery_fee: "0", discount_code: "", discount_amount: "0",
+          items: [], created_at: "",
+        };
+        setState({ kind: "unknown", order: stub, reference: "" });
       });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -211,6 +227,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         city: formData.city.trim(),
         postal_code: formData.postal_code.trim(),
         items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
+        ...(discountCode.trim() ? { discount_code: discountCode.trim() } : {}),
       });
       setState({ kind: "review", order: res.data });
     } catch (err: any) {
@@ -219,23 +236,83 @@ export default function CheckoutClient({ domain }: { domain: string }) {
         err.response?.data?.detail ||
         "We could not start your order. Please try again.";
       toast.error(detail);
+      if (err.response?.data?.discount_code || /discount/i.test(detail)) {
+        setDiscountCode("");
+      }
       setState({ kind: "form" });
     }
   };
 
+  // ── Polling ──────────────────────────────────────────────────────────────
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearTimeout(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  useEffect(() => stopPolling, []);
+
+  const startPolling = (order: CreatedOrder, reference: string) => {
+    setState({ kind: "polling", order, reference });
+    const started = Date.now();
+
+    const tick = async () => {
+      if (Date.now() - started > POLL_TIMEOUT) {
+        setState({ kind: "unknown", order, reference });
+        return;
+      }
+      try {
+        const res = await publicStorefrontApi.getOrderStatus(order.id);
+        const s = res.data;
+        if (s.settled && s.payment_status === "paid") {
+          clearCart();
+          setState({ kind: "paid", order, status: s });
+          return;
+        }
+        if (s.settled) {
+          setState({
+            kind: "failed",
+            order,
+            reason: "The payment was not completed. Nothing has been charged — you can try again.",
+          });
+          return;
+        }
+      } catch {
+        // Transient — keep polling.
+      }
+      pollRef.current = setTimeout(tick, POLL_INTERVAL);
+    };
+
+    pollRef.current = setTimeout(tick, POLL_INTERVAL);
+  };
+
+  // ── Charge ──────────────────────────────────────────────────────────────
+
   const chargeOrder = async (order: CreatedOrder) => {
+    const msisdn = normaliseMsisdn(momoPhone);
+    if (!isPlausibleMsisdn(momoPhone)) {
+      setMomoError("Enter a Cameroonian mobile number (9 digits starting with 6).");
+      return;
+    }
+
     setState({ kind: "charging", order });
 
-    try {
-      const res = await publicStorefrontApi.chargeOrder(order.id);
+    const payload: { phone: string; medium?: PaymentMedium } = {
+      phone: msisdn,
+    };
+    if (momoOverride && momoMedium) payload.medium = momoMedium;
 
-      if (res.status === 202 || !res.data.payment_url) {
-        setState({ kind: "unknown", order, reference: "" });
+    try {
+      const res = await publicStorefrontApi.chargeOrder(order.id, payload);
+
+      if (!res.data.charge_accepted) {
+        setState({ kind: "unknown", order, reference: res.data.reference || "" });
         return;
       }
 
-      setState({ kind: "redirecting", order });
-      window.location.href = res.data.payment_url;
+      startPolling(order, res.data.reference || "");
     } catch (err: any) {
       const status = err.response?.status;
       const body = err.response?.data;
@@ -472,7 +549,7 @@ export default function CheckoutClient({ domain }: { domain: string }) {
     );
   }
 
-  if (state.kind === "redirecting") {
+  if (state.kind === "polling") {
     return (
       <div style={{ ...shellStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
         {styles}
@@ -480,8 +557,13 @@ export default function CheckoutClient({ domain }: { domain: string }) {
           <div className="co-outcome-ring co-pulse" style={{ background: `${primary}20` }}>
             <HugeiconsIcon icon={Loading03Icon} size={30} color={primary} className="co-spin" />
           </div>
-          <h1>Redirecting to payment</h1>
-          <p>You are being taken to a secure payment page. Please do not close this tab.</p>
+          <h1>Approve on your phone</h1>
+          <p>
+            We sent a payment prompt of <strong>{money(state.order.total_amount)}</strong> to your
+            mobile money account. Open the notification on your handset and enter your PIN to confirm.
+          </p>
+          {state.reference && <div className="co-ref">{state.reference}</div>}
+          <p style={{ fontSize: 13, opacity: 0.55 }}>Do not close this tab — we are waiting for your provider.</p>
         </div>
       </div>
     );
@@ -587,6 +669,28 @@ export default function CheckoutClient({ domain }: { domain: string }) {
             </div>
 
             {!onReview && (
+              <div className="co-section">
+                <div className="co-section-title">
+                  <span className="co-step">3</span> Discount Code
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="Enter code"
+                    value={discountCode}
+                    onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                    disabled={busy}
+                    className="co-input"
+                    style={{ flex: 1, textTransform: "uppercase", letterSpacing: "0.05em" }}
+                  />
+                </div>
+                <p style={{ fontSize: 12, opacity: 0.5, marginTop: 6 }}>
+                  Have a discount code? Enter it above — it will be applied when we price your order.
+                </p>
+              </div>
+            )}
+
+            {!onReview && (
               <button className="co-btn" type="submit" disabled={items.length === 0 || busy}>
                 {state.kind === "creating" ? (
                   <><HugeiconsIcon icon={Loading03Icon} size={16} className="co-spin" /> Pricing your order…</>
@@ -623,8 +727,8 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                 )}
 
                 <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 20, lineHeight: 1.5 }}>
-                  You are about to pay <strong>{money(order.total_amount)}</strong>. You will be
-                  redirected to a secure payment page to complete the transaction with Mobile Money.
+                  You are about to pay <strong>{money(order.total_amount)}</strong>. Enter your
+                  Mobile Money number below and approve the prompt on your phone.
                 </p>
 
                 {(theme?.momo_phone || theme?.merchant_email) && (
@@ -640,6 +744,48 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                   {formData.firstName} {formData.lastName}<br />
                   {formData.shipping_address}, {formData.city}<br />
                   {formData.customer_email}{formData.customer_phone && ` • ${formData.customer_phone}`}
+                </div>
+
+                {/* ── MoMo phone + medium ─────────────────────────── */}
+                <div style={{ padding: 16, background: bg, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", marginBottom: 20 }}>
+                  <label className="co-label" htmlFor="co-momo">Mobile Money Number *</label>
+                  <input
+                    id="co-momo"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="+237 6 70 00 00 00"
+                    value={momoPhone}
+                    disabled={busy}
+                    aria-invalid={momoError ? true : undefined}
+                    aria-describedby={momoError ? "co-momo-err" : undefined}
+                    className={`co-input${momoError ? " invalid" : ""}`}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setMomoPhone(v);
+                      setMomoError("");
+                      if (!momoOverride) setMomoMedium(inferMedium(v));
+                    }}
+                  />
+                  {momoError && <span className="co-err" id="co-momo-err">{momoError}</span>}
+
+                  {momoMedium !== null && (
+                    <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
+                      {(["mobile money", "orange money"] as PaymentMedium[]).map((m) => (
+                        <label key={m} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                          <input
+                            type="radio"
+                            name="momo-medium"
+                            checked={momoMedium === m}
+                            disabled={busy}
+                            onChange={() => { setMomoMedium(m); setMomoOverride(true); }}
+                            style={{ accentColor: primary }}
+                          />
+                          {mediumLabel(m)}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: "flex", gap: 12 }}>
@@ -711,11 +857,23 @@ export default function CheckoutClient({ domain }: { domain: string }) {
                 <span>Subtotal</span>
                 <span style={{ fontWeight: 600 }}>{money(cartEstimate)}</span>
               </div>
+              {order && parseFloat(order.discount_amount) > 0 && (
+                <div className="co-row">
+                  <span>Discount ({order.discount_code})</span>
+                  <span style={{ fontWeight: 600, color: "#16a34a" }}>
+                    −{money(order.discount_amount)}
+                  </span>
+                </div>
+              )}
               <div className="co-row">
-                <span>Shipping</span>
-                <span style={{ color: primary, fontWeight: 600 }}>Calculated at delivery</span>
+                <span>Delivery</span>
+                {order ? (
+                  <span style={{ fontWeight: 600 }}>{money(order.delivery_fee)}</span>
+                ) : (
+                  <span style={{ color: primary, fontWeight: 600 }}>Calculated at next step</span>
+                )}
               </div>
-              {priceDiffers && (
+              {priceDiffers && !order?.discount_amount && (
                 <div className="co-row">
                   <span>Catalogue adjustment</span>
                   <span style={{ fontWeight: 600, color: "#d97706" }}>

@@ -17,11 +17,14 @@ from .serializers import (
     MerchantOrderDetailSerializer,
     MerchantOrderListSerializer,
     OrderCreateSerializer,
+    OrderChargeRequestSerializer,
+    OrderChargeSerializer,
     OrderSerializer,
     OrderStatusSerializer,
 )
 from apps.stores.access import accessible_stores
 from apps.stores.models import Store
+from apps.stores.discounts import DiscountCode
 from apps.products.models import Product, ProductVariant
 # `_initiate_fapshi_payment`, `_check_fapshi_status` and `_initiate_fapshi_payout`
 # used to be imported from `apps.payments.views` — three private functions
@@ -193,9 +196,38 @@ class StorefrontOrderCreateView(generics.CreateAPIView):
         try:
             with transaction.atomic():
                 priced_items = _price_and_reserve(store, data["items"])
-                total_amount = sum(
+                subtotal = sum(
                     li["price"] * li["quantity"] for li in priced_items
                 )
+
+                # Discount
+                discount_amount = 0
+                discount_code_str = data.get("discount_code", "").strip()
+                if discount_code_str:
+                    try:
+                        dc = DiscountCode.objects.get(
+                            store=store, code__iexact=discount_code_str
+                        )
+                    except DiscountCode.DoesNotExist:
+                        return Response(
+                            {"error": "Invalid discount code."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    if not dc.is_valid:
+                        return Response(
+                            {"error": "This discount code is no longer valid."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    if dc.min_order_amount and subtotal < dc.min_order_amount:
+                        return Response(
+                            {"error": f"Minimum order of {dc.min_order_amount} XAF required for this code."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    discount_amount = dc.compute_discount(subtotal)
+                    dc.increment_usage()
+
+                delivery_fee = 1000
+                total_amount = subtotal - discount_amount + delivery_fee
 
                 order = Order.objects.create(
                     store=store,
@@ -205,6 +237,10 @@ class StorefrontOrderCreateView(generics.CreateAPIView):
                     shipping_address=data["shipping_address"],
                     city=data["city"],
                     postal_code=data.get("postal_code", ""),
+                    notes=data.get("notes", ""),
+                    delivery_fee=delivery_fee,
+                    discount_code=discount_code_str,
+                    discount_amount=discount_amount,
                     total_amount=total_amount,
                 )
 
@@ -228,22 +264,14 @@ class StorefrontOrderChargeView(APIView):
     """
     POST /public/storefront/orders/{order_id}/pay/
 
-    Creates a Fapshi hosted checkout link for an order that already exists.
-    The shopper is redirected to Fapshi's own page to enter their number and
-    approve, then Fapshi redirects them back to the storefront.
+    Charges the buyer's mobile money number directly via Fapshi's direct_pay.
+    The buyer stays on the checkout page, approves the prompt on their handset,
+    and the frontend polls StorefrontOrderStatusView until settlement.
 
     Unauthenticated, like the rest of checkout: a Koraa storefront has no shopper
     accounts. The order id is a ``uuid4`` and the only thing this endpoint can do
     with one is *send money to Koraa*, so a guessed id is not a way to take
     anything. It is rate-limited all the same, because each call can reach Fapshi.
-
-    Two outcomes:
-
-    * **Created** — 201, a ``payment_url`` and ``trans_id`` are returned. The
-      frontend redirects the shopper to ``payment_url``.
-    * **Refused** — 400. Fapshi declined the request. The order stays pending.
-    * **No answer** — 202. Fapshi never confirmed, so the link may or may not
-      exist. Must not be shown as a failure.
     """
 
     permission_classes = [permissions.AllowAny]
@@ -260,18 +288,24 @@ class StorefrontOrderChargeView(APIView):
         if conflict is not None:
             return conflict
 
+        from .serializers import OrderChargeRequestSerializer
+        ser = OrderChargeRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        phone = ser.validated_data["phone"]
+        medium = ser.validated_data.get("medium") or None
+
         store = order.store
-        domain = store.custom_domain or f"{store.slug}.koraa.cm"
-        redirect_url = f"https://{domain}/checkout?orderId={order.id}"
         message = f"Order #{str(order.id)[:8]} at {store.name}"
 
         try:
-            link, trans_id = fapshi.initiate_pay(
+            trans_id = fapshi.direct_pay(
                 amount=order.total_amount,
-                email=order.customer_email,
-                redirect_url=redirect_url,
+                phone=phone,
                 external_id=str(order.id),
+                name=order.customer_name,
+                email=order.customer_email,
                 message=message,
+                medium=medium,
             )
         except ImproperlyConfigured as exc:
             logger.error(
@@ -312,11 +346,7 @@ class StorefrontOrderChargeView(APIView):
         Order.objects.filter(pk=order.pk).update(fapshi_trans_id=trans_id)
         order.refresh_from_db(fields=["fapshi_trans_id"])
         return Response(
-            {
-                "payment_url": link,
-                "trans_id": trans_id,
-                "order_id": str(order.id),
-            },
+            OrderChargeSerializer(order).data,
             status=status.HTTP_201_CREATED,
         )
 

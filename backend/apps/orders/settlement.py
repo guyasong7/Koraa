@@ -396,7 +396,7 @@ def _notify_merchant(order: Order) -> None:
             f"You received a new order from {order.customer_name} "
             f"for {order.total_amount} XAF.\n\nCheck your dashboard for details."
         ),
-        from_email=settings.NOTIFICATION_FROM_EMAIL,
+        from_email="orders@koraa.cm",
         recipient_list=[merchant.user.email],
         fail_silently=True,
         html_message=order_html,

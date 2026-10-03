@@ -25,6 +25,8 @@ from .serializers import (
     StoreUpdateSerializer,
     StoreSiteSettingsSerializer,
     StoreSlugCheckSerializer,
+    DiscountCodeSerializer,
+    DiscountCodeCreateSerializer,
 )
 
 
@@ -330,3 +332,45 @@ MERCHANT CONTEXT:
             import logging
             logging.getLogger(__name__).error(f"AI Chat failed: {str(e)}")
             return Response({"detail": "AI assistant is currently unavailable."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+# ── Discount codes ───────────────────────────────────────────────────────────
+
+from .discounts import DiscountCode
+
+
+class StoreDiscountCodeListCreateView(generics.ListCreateAPIView):
+    """GET/POST /stores/{id}/discounts/ — list or create discount codes."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return DiscountCodeCreateSerializer
+        return DiscountCodeSerializer
+
+    def get_queryset(self):
+        store = _manageable_store(self.request.user, self.kwargs["pk"])
+        return DiscountCode.objects.filter(store=store)
+
+    def perform_create(self, serializer):
+        store = _manageable_store(self.request.user, self.kwargs["pk"])
+        serializer.save(store=store)
+
+
+class StoreDiscountCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH/DELETE /stores/{id}/discounts/{discount_id}/"""
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DiscountCodeSerializer
+
+    def get_queryset(self):
+        store = _manageable_store(self.request.user, self.kwargs["pk"])
+        return DiscountCode.objects.filter(store=store)
+
+    def get_object(self):
+        qs = self.get_queryset()
+        obj = qs.filter(pk=self.kwargs["discount_id"]).first()
+        if obj is None:
+            raise NotFound("Discount code not found.")
+        return obj

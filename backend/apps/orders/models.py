@@ -17,6 +17,7 @@ from datetime import timedelta
 
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from apps.stores.models import Store
 from apps.products.models import Product
 
@@ -59,9 +60,23 @@ class Order(models.Model):
     shipping_address = models.TextField()
     city = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20, blank=True)
+    notes = models.TextField(
+        _("buyer notes"),
+        blank=True,
+        help_text="Colour, size, custom instructions — anything the buyer typed.",
+    )
 
     # Financials
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    delivery_fee = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="Flat delivery charge added on top of the line-item total.",
+    )
+    discount_code = models.CharField(max_length=50, blank=True)
+    discount_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="The amount subtracted from the subtotal before delivery fee.",
+    )
 
     # Payment Tracking
     payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
