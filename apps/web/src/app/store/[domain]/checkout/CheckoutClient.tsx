@@ -181,8 +181,10 @@ export default function CheckoutClient({ domain }: { domain: string }) {
           merchant_email: data.store.merchant_email || null,
         });
       }
-    }).catch(() => {
-      setShopBlocked("missing");
+    }).catch((err) => {
+      if (err.response?.status === 404) {
+        setShopBlocked("missing");
+      }
     });
   }, [domain]);
 
