@@ -32,6 +32,9 @@ import {
   Alert02Icon,
   Clock01Icon,
   AlertCircleIcon,
+  MinusSignIcon,
+  PlusSignIcon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons";
 
 type StoreTheme = {
@@ -78,7 +81,7 @@ const POLL_TIMEOUT = 120000;
 const REQUIRED_TEXT = "This field is required.";
 
 export default function CheckoutClient({ domain }: { domain: string }) {
-  const { items, getCartTotal, clearCart } = useCartStore();
+  const { items, getCartTotal, clearCart, updateQuantity, removeItem } = useCartStore();
   const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<StoreTheme | null>(null);
   const [shopBlocked, setShopBlocked] = useState<"locked" | "missing" | null>(null);
@@ -399,15 +402,15 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       .co-spin { animation: co-spin 0.9s linear infinite; }
       @keyframes co-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
       .co-pulse { animation: co-pulse 1.6s ease-in-out infinite; }
-      .co-nav { position: sticky; top: 0; z-index: 100; background: ${bg}; border-bottom: 1px solid rgba(0,0,0,0.08); backdrop-filter: blur(12px); }
-      .co-nav-i { max-width: 1200px; margin: 0 auto; padding: 0 32px; height: 64px; display: flex; align-items: center; justify-content: space-between; }
-      .co-logo { font-size: 20px; font-weight: 800; color: ${textColor}; text-decoration: none; }
-      .co-secure { display: flex; align-items: center; gap: 6px; font-size: 13px; color: ${textColor}; opacity: 0.5; }
-      .co-body { max-width: 1200px; margin: 0 auto; padding: 40px 32px; display: grid; grid-template-columns: 1fr 400px; gap: 40px; align-items: start; }
-      @media (max-width: 860px) { .co-body { grid-template-columns: 1fr; gap: 24px; } .co-summary { order: -1; position: static; } }
-      .co-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 32px; opacity: 0.6; }
+      .co-nav { position: sticky; top: 0; z-index: 100; background: ${bg}; border-bottom: 1px solid rgba(0,0,0,0.06); }
+      .co-nav-i { max-width: 600px; margin: 0 auto; padding: 0 20px; height: 56px; display: flex; align-items: center; gap: 14px; }
+      .co-nav-back { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; border: none; background: ${secondaryBg}; color: ${textColor}; cursor: pointer; flex-shrink: 0; transition: background 0.15s; }
+      .co-nav-back:hover { background: rgba(0,0,0,0.08); }
+      .co-nav-title { font-size: 20px; font-weight: 800; color: ${textColor}; }
+      .co-body { max-width: 600px; margin: 0 auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 20px; }
+      .co-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; opacity: 0.6; }
       .co-breadcrumb span.active { opacity: 1; font-weight: 600; color: ${primary}; }
-      .co-section { background: ${secondaryBg}; border: 1px solid rgba(0,0,0,0.07); border-radius: 12px; padding: 28px; margin-bottom: 20px; }
+      .co-section { background: ${secondaryBg}; border: 1px solid rgba(0,0,0,0.07); border-radius: 16px; padding: 24px; margin-bottom: 0; }
       .co-section-title { font-size: 15px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
       .co-step { width: 26px; height: 26px; border-radius: 50%; background: ${primary}; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
       .co-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -419,27 +422,34 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       .co-input.invalid { border-color: #dc2626; }
       .co-err { display: block; font-size: 12px; color: #dc2626; margin-top: 5px; font-weight: 500; }
       .co-hint { display: block; font-size: 12px; opacity: 0.55; margin-top: 5px; }
-      .co-btn { width: 100%; padding: 16px; background: ${primary}; color: #fff; border: none; border-radius: ${radius}; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: filter 0.2s, transform 0.15s; margin-top: 24px; }
+      .co-btn { width: 100%; padding: 16px; background: ${primary}; color: #fff; border: none; border-radius: ${radius}; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: filter 0.2s, transform 0.15s; margin-top: 12px; }
       .co-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
       .co-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
       .co-btn-ghost { background: transparent; color: ${textColor}; border: 1px solid rgba(0,0,0,0.2); }
-      .co-summary { background: ${secondaryBg}; border: 1px solid rgba(0,0,0,0.07); border-radius: 12px; padding: 28px; position: sticky; top: 84px; }
-      .co-summary-title { font-size: 16px; font-weight: 800; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.08); }
-      .co-item { display: flex; gap: 14px; margin-bottom: 16px; }
-      .co-item-img { width: 60px; height: 60px; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.05); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-      .co-item-info { flex: 1; }
-      .co-item-name { font-size: 14px; font-weight: 600; line-height: 1.35; }
-      .co-item-qty { font-size: 13px; opacity: 0.55; margin-top: 4px; }
-      .co-item-price { font-size: 14px; font-weight: 700; white-space: nowrap; }
-      .co-divider { border: none; border-top: 1px dashed rgba(0,0,0,0.1); margin: 20px 0; }
+      .co-summary { background: transparent; border: none; border-radius: 0; padding: 0; }
+      .co-summary-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; padding-bottom: 0; border-bottom: none; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.04em; }
+      .co-item { display: flex; gap: 14px; padding: 16px; background: ${secondaryBg}; border: 1px solid rgba(0,0,0,0.06); border-radius: 16px; margin-bottom: 12px; align-items: center; }
+      .co-item-img { width: 64px; height: 64px; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.04); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+      .co-item-info { flex: 1; min-width: 0; }
+      .co-item-name { font-size: 14px; font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .co-item-price { font-size: 15px; font-weight: 700; margin-top: 2px; color: ${primary}; }
+      .co-item-controls { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+      .co-qty { display: inline-flex; align-items: center; gap: 0; border-radius: 9999px; background: ${bg}; border: 1px solid rgba(0,0,0,0.1); overflow: hidden; }
+      .co-qty button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; background: transparent; color: ${textColor}; cursor: pointer; font-size: 14px; transition: background 0.15s; }
+      .co-qty button:hover:not(:disabled) { background: rgba(0,0,0,0.06); }
+      .co-qty button:disabled { opacity: 0.3; cursor: not-allowed; }
+      .co-qty span { min-width: 28px; text-align: center; font-size: 14px; font-weight: 600; }
+      .co-rm { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); background: transparent; color: ${textColor}; opacity: 0.5; cursor: pointer; transition: opacity 0.15s, background 0.15s; }
+      .co-rm:hover { opacity: 1; background: rgba(220,38,38,0.08); color: #dc2626; }
+      .co-divider { border: none; border-top: 1px dashed rgba(0,0,0,0.1); margin: 16px 0; }
       .co-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 10px; }
       .co-row span:first-child { opacity: 0.6; }
-      .co-total { display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: 800; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.1); }
+      .co-total { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: 800; margin-top: 12px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.1); }
       .co-total-amount { color: ${primary}; }
-      .co-back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: ${textColor}; opacity: 0.6; text-decoration: none; margin-bottom: 24px; transition: opacity 0.15s; }
+      .co-back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: ${textColor}; opacity: 0.6; text-decoration: none; margin-bottom: 16px; transition: opacity 0.15s; }
       .co-back:hover { opacity: 1; }
       .co-trust { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; opacity: 0.45; margin-top: 12px; }
-      .co-notice { display: flex; gap: 12px; padding: 16px; border-radius: 10px; font-size: 13.5px; line-height: 1.6; margin-bottom: 20px; }
+      .co-notice { display: flex; gap: 12px; padding: 16px; border-radius: 12px; font-size: 13.5px; line-height: 1.6; margin-bottom: 0; }
       .co-notice svg { flex-shrink: 0; margin-top: 2px; }
       .co-outcome { max-width: 520px; margin: 0 auto; padding: 56px 24px; text-align: center; }
       .co-outcome-ring { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
@@ -448,14 +458,13 @@ export default function CheckoutClient({ domain }: { domain: string }) {
       .co-ref { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; padding: 7px 12px; border-radius: 6px; background: rgba(0,0,0,0.06); margin-bottom: 28px; }
 
       @media (max-width: 600px) {
-        .co-body { padding: 20px 16px; gap: 24px; }
+        .co-body { padding: 16px; }
         .co-nav-i { padding: 0 16px; }
         .co-section { padding: 20px; }
         .co-outcome { padding: 40px 16px; }
-        .co-summary { padding: 20px; }
-        .co-summary-title { font-size: 15px; margin-bottom: 16px; padding-bottom: 12px; }
-        .co-item-img { width: 48px; height: 48px; }
-        .co-total { font-size: 16px; }
+        .co-item { padding: 12px; }
+        .co-item-img { width: 56px; height: 56px; }
+        .co-total { font-size: 18px; }
         .co-btn { padding: 14px; font-size: 15px; }
       }
     `}</style>
@@ -604,20 +613,94 @@ export default function CheckoutClient({ domain }: { domain: string }) {
 
       <nav className="co-nav">
         <div className="co-nav-i">
-          <Link href="/" className="co-logo">{theme?.name || domain}</Link>
-          <div className="co-secure">
-            <HugeiconsIcon icon={SquareLock02Icon} size={13} />
-            Secure Checkout
-          </div>
+          <Link href="/" className="co-nav-back" aria-label="Back to store">
+            <HugeiconsIcon icon={ArrowLeft02Icon} size={18} />
+          </Link>
+          <span className="co-nav-title">My Cart</span>
         </div>
       </nav>
 
       <div className="co-body">
-        <div>
-          <Link href="/" className="co-back">
-            <HugeiconsIcon icon={ArrowLeft02Icon} size={16} /> Continue Shopping
-          </Link>
+        {/* Cart Items */}
+        <div className="co-summary">
+          <div className="co-summary-title">
+            {items.reduce((t, i) => t + i.quantity, 0)} item{items.reduce((t, i) => t + i.quantity, 0) === 1 ? "" : "s"} in cart
+          </div>
 
+          {items.length === 0 ? (
+            <p style={{ opacity: 0.5, fontSize: 14 }}>Your cart is empty.</p>
+          ) : (
+            <>
+              {items.map((item, idx) => (
+                <div key={idx} className="co-item">
+                  <div className="co-item-img">
+                    {item.product.image ? (
+                      <img src={item.product.image} alt={item.product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <HugeiconsIcon icon={Package01Icon} size={22} style={{ opacity: 0.35 }} />
+                    )}
+                  </div>
+                  <div className="co-item-info">
+                    <div className="co-item-name">{item.product.name}</div>
+                    <div className="co-item-price">
+                      {money(parseFloat(item.product.base_price) * item.quantity)}
+                    </div>
+                    <div className="co-item-controls">
+                      <div className="co-qty">
+                        <button
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          aria-label={`Fewer ${item.product.name}`}
+                        >
+                          <HugeiconsIcon icon={MinusSignIcon} size={13} />
+                        </button>
+                        <span aria-live="polite">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          aria-label={`More ${item.product.name}`}
+                        >
+                          <HugeiconsIcon icon={PlusSignIcon} size={13} />
+                        </button>
+                      </div>
+                      <button
+                        className="co-rm"
+                        onClick={() => removeItem(item.product.id)}
+                        aria-label={`Remove ${item.product.name}`}
+                        title="Remove"
+                      >
+                        <HugeiconsIcon icon={Delete02Icon} size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <hr className="co-divider" />
+
+              <div className="co-row">
+                <span>Subtotal</span>
+                <span style={{ fontWeight: 700, fontSize: 18 }}>{money(cartEstimate)}</span>
+              </div>
+
+              {!onReview && (
+                <button
+                  className="co-btn"
+                  type="button"
+                  onClick={() => {
+                    const formEl = document.querySelector<HTMLFormElement>("form");
+                    if (formEl) formEl.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  disabled={items.length === 0}
+                >
+                  Proceed to Checkout
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Checkout form */}
+        <div>
           <div className="co-breadcrumb">
             <span>Cart</span>
             <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
@@ -804,81 +887,6 @@ export default function CheckoutClient({ domain }: { domain: string }) {
           <p className="co-trust">
             <HugeiconsIcon icon={SquareLock02Icon} size={12} /> Your payment is secured with 256-bit encryption
           </p>
-        </div>
-
-        {/* Right: Order Summary */}
-        <div className="co-summary">
-          <div className="co-summary-title">
-            <HugeiconsIcon icon={ShoppingBag03Icon} size={18} style={{ display: "inline", verticalAlign: "middle", marginRight: 8, color: primary }} />
-            Order Summary ({items.reduce((t, i) => t + i.quantity, 0)} items)
-          </div>
-
-          {items.length === 0 ? (
-            <p style={{ opacity: 0.5, fontSize: 14 }}>Your cart is empty.</p>
-          ) : (
-            <>
-              {items.map((item, idx) => (
-                <div key={idx} className="co-item">
-                  <div className="co-item-img">
-                    {item.product.image ? (
-                      <img src={item.product.image} alt={item.product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : (
-                      <HugeiconsIcon icon={Package01Icon} size={22} style={{ opacity: 0.35 }} />
-                    )}
-                  </div>
-                  <div className="co-item-info">
-                    <div className="co-item-name">{item.product.name}</div>
-                    <div className="co-item-qty">Qty: {item.quantity}</div>
-                  </div>
-                  <div className="co-item-price">
-                    {money(parseFloat(item.product.base_price) * item.quantity)}
-                  </div>
-                </div>
-              ))}
-
-              <hr className="co-divider" />
-
-              <div className="co-row">
-                <span>Subtotal</span>
-                <span style={{ fontWeight: 600 }}>{money(cartEstimate)}</span>
-              </div>
-              {order && parseFloat(order.discount_amount) > 0 && (
-                <div className="co-row">
-                  <span>Discount ({order.discount_code})</span>
-                  <span style={{ fontWeight: 600, color: "#16a34a" }}>
-                    −{money(order.discount_amount)}
-                  </span>
-                </div>
-              )}
-              <div className="co-row">
-                <span>Delivery</span>
-                {order ? (
-                  <span style={{ fontWeight: 600 }}>{money(order.delivery_fee)}</span>
-                ) : (
-                  <span style={{ color: primary, fontWeight: 600 }}>Calculated at next step</span>
-                )}
-              </div>
-              {priceDiffers && !order?.discount_amount && (
-                <div className="co-row">
-                  <span>Catalogue adjustment</span>
-                  <span style={{ fontWeight: 600, color: "#d97706" }}>
-                    {serverTotal! > cartEstimate ? "+" : "−"}
-                    {Math.abs(serverTotal! - cartEstimate).toLocaleString()}
-                  </span>
-                </div>
-              )}
-
-              <div className="co-total">
-                <span>Total</span>
-                <span className="co-total-amount">{displayTotal}</span>
-              </div>
-              {serverTotal === null && (
-                <span className="co-hint" style={{ marginTop: 10 }}>
-                  Confirmed against the shop&apos;s catalogue at the next step.
-                </span>
-              )}
-            </>
-          )}
         </div>
       </div>
     </div>
