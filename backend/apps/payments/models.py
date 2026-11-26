@@ -41,18 +41,33 @@ class Subscription(models.Model):
 class PaymentTransaction(models.Model):
     class Status(models.TextChoices):
         INITIATED = "initiated", "Initiated"
+        PENDING = "pending", "Pending"
         SUCCESSFUL = "successful", "Successful"
         FAILED = "failed", "Failed"
         EXPIRED = "expired", "Expired"
 
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name="transactions", null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payment_transactions")
-    fapshi_trans_id = models.CharField(max_length=100, unique=True)
+
+    # Support both subscription and template purchases
+    external_id = models.CharField(max_length=100, unique=True, help_text="Our reference (order-123, template-uuid, etc.)")
+    fapshi_trans_id = models.CharField(max_length=100, blank=True, db_index=True)
+    fapshi_transaction_id = models.CharField(max_length=100, blank=True, help_text="Alias for fapshi_trans_id")
+
     payment_link = models.URLField(blank=True)
-    amount = models.IntegerField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    currency = models.CharField(max_length=3, default="XAF")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIATED)
-    plan = models.CharField(max_length=20, choices=Plan.choices)
-    billing_cycle = models.CharField(max_length=10, default="monthly")
+
+    # Optional fields for subscriptions
+    plan = models.CharField(max_length=20, choices=Plan.choices, blank=True)
+    billing_cycle = models.CharField(max_length=10, default="monthly", blank=True)
+
+    # Payment provider
+    provider = models.CharField(max_length=20, default="fapshi")
+
+    # Metadata for flexible use (templates, orders, etc.)
+    metadata = models.JSONField(default=dict, blank=True)
 
     #: The idempotency marker for activation — the same role ``settled_at`` plays
     #: on ``Order``.
@@ -82,3 +97,79 @@ class PaymentTransaction(models.Model):
     def is_settled(self) -> bool:
         """Whether activation has already run. Read this, not ``status``."""
         return self.settled_at is not None
+
+
+class RevenueSplit(models.Model):
+    """
+    Track revenue splits for template sales.
+
+    For each template purchase, we create two records:
+    - One for platform (30%)
+    - One for creator (70%)
+    """
+
+    class RecipientType(models.TextChoices):
+        PLATFORM = "platform", "Platform"
+        CREATOR = "creator", "Creator"
+
+    class PayoutStatus(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+
+    import uuid
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    transaction = models.ForeignKey(
+        PaymentTransaction,
+        on_delete=models.CASCADE,
+        related_name="revenue_splits"
+    )
+
+    # Recipient
+    recipient = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="template_revenues",
+        help_text="Creator user (null for platform)"
+    )
+    recipient_type = models.CharField(
+        max_length=20,
+        choices=RecipientType.choices
+    )
+
+    # Amount
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default="XAF")
+
+    # Payout tracking
+    payout_status = models.CharField(
+        max_length=20,
+        choices=PayoutStatus.choices,
+        default=PayoutStatus.PENDING
+    )
+    payout_reference = models.CharField(max_length=100, blank=True)
+    payout_date = models.DateTimeField(null=True, blank=True)
+
+    # Metadata
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "revenue_splits"
+        indexes = [
+            models.Index(fields=["recipient", "payout_status"]),
+            models.Index(fields=["recipient_type", "payout_status"]),
+            models.Index(fields=["-created_at"]),
+        ]
+
+    def __str__(self):
+        recipient_name = (
+            self.recipient.email if self.recipient
+            else "Platform"
+        )
+        return f"{recipient_name} - {self.amount} {self.currency} ({self.payout_status})"

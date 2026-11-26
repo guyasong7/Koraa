@@ -47,6 +47,8 @@ api_v1_patterns = [
     path("payments/", include("apps.payments.urls")),
     # Notifications
     path("notifications/", include("apps.notifications.urls")),
+    # Themes & Templates marketplace
+    path("", include("apps.themes.urls")),
 ]
 
 urlpatterns = [
