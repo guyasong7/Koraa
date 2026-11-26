@@ -3,6 +3,16 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  PaintBoardIcon,
+  SparklesIcon,
+  Download01Icon,
+  Star01Icon,
+  Loading03Icon,
+  Search01Icon,
+  Filter01Icon,
+} from "@hugeicons/core-free-icons";
 
 interface Template {
   id: string;
@@ -33,6 +43,17 @@ interface Template {
   created_at: string;
   published_at: string;
 }
+
+const CATEGORIES = [
+  { label: "All Categories", value: "" },
+  { label: "Fashion", value: "fashion" },
+  { label: "Food & Beverage", value: "food" },
+  { label: "Electronics", value: "electronics" },
+  { label: "Beauty & Cosmetics", value: "beauty" },
+  { label: "General Store", value: "general" },
+  { label: "Minimal Design", value: "minimal" },
+  { label: "Bold Design", value: "bold" },
+];
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -67,103 +88,132 @@ export default function TemplatesPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <h1 className="text-4xl font-bold text-gray-900">
-            Storefront Templates
-          </h1>
-          <p className="mt-2 text-lg text-gray-600">
-            Beautiful, customizable templates for your online store
-          </p>
-        </div>
-      </header>
+  const featuredTemplates = templates.filter((t) => t.is_featured);
+  const regularTemplates = templates.filter((t) => !t.is_featured);
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search
-              </label>
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--surface)" }}>
+      {/* Hero Section */}
+      <section style={{ background: "var(--surface-900)", borderBottom: "1px solid var(--border)" }}>
+        <div className="sf-container" style={{ padding: "clamp(48px, 8vw, 80px) clamp(16px, 4vw, 32px)", maxWidth: 1400, margin: "0 auto" }}>
+          <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: "50px", fontSize: 13, fontWeight: 600, color: "var(--brand-400)", marginBottom: 24 }}>
+              <HugeiconsIcon icon={SparklesIcon} size={14} /> Marketplace
+            </div>
+            <h1 style={{ fontSize: "clamp(32px, 6vw, 56px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 16, fontFamily: "Outfit, sans-serif", letterSpacing: "-0.02em" }}>
+              Storefront Templates
+            </h1>
+            <p style={{ fontSize: "clamp(16px, 2.5vw, 20px)", color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 32 }}>
+              Beautiful, customizable templates for your online store. Apply instantly and start selling today.
+            </p>
+
+            {/* Search bar */}
+            <div style={{ position: "relative", maxWidth: 600, margin: "0 auto" }}>
+              <HugeiconsIcon icon={Search01Icon} size={20} color="var(--text-muted)" style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
               <input
                 type="text"
                 placeholder="Search templates..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={filter.search}
-                onChange={(e) =>
-                  setFilter({ ...filter, search: e.target.value })
-                }
+                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                style={{
+                  width: "100%",
+                  padding: "14px 20px 14px 48px",
+                  fontSize: 16,
+                  border: "1px solid var(--border)",
+                  borderRadius: "12px",
+                  background: "var(--surface-800)",
+                  color: "var(--text-primary)",
+                  outline: "none",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--brand-500)")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
               />
             </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
-              <select
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={filter.category}
-                onChange={(e) =>
-                  setFilter({ ...filter, category: e.target.value })
-                }
-              >
-                <option value="">All Categories</option>
-                <option value="fashion">Fashion</option>
-                <option value="food">Food & Beverage</option>
-                <option value="electronics">Electronics</option>
-                <option value="beauty">Beauty</option>
-                <option value="general">General</option>
-                <option value="minimal">Minimal</option>
-                <option value="bold">Bold</option>
-              </select>
-            </div>
-
-            {/* Price */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price
-              </label>
-              <select
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={filter.is_free}
-                onChange={(e) =>
-                  setFilter({ ...filter, is_free: e.target.value })
-                }
-              >
-                <option value="">All Templates</option>
-                <option value="true">Free</option>
-                <option value="false">Premium</option>
-              </select>
-            </div>
           </div>
+        </div>
+      </section>
+
+      <div className="sf-container" style={{ padding: "clamp(32px, 6vw, 64px) clamp(16px, 4vw, 32px)", maxWidth: 1400, margin: "0 auto" }}>
+        {/* Filters */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>
+            <HugeiconsIcon icon={Filter01Icon} size={18} /> Filter by:
+          </div>
+
+          {/* Category */}
+          <select
+            value={filter.category}
+            onChange={(e) => setFilter({ ...filter, category: e.target.value })}
+            style={{
+              padding: "8px 16px",
+              fontSize: 14,
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              background: "var(--surface-900)",
+              color: "var(--text-primary)",
+              cursor: "pointer",
+              outline: "none",
+              fontWeight: 500,
+            }}
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat.value} value={cat.value}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Price */}
+          <select
+            value={filter.is_free}
+            onChange={(e) => setFilter({ ...filter, is_free: e.target.value })}
+            style={{
+              padding: "8px 16px",
+              fontSize: 14,
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              background: "var(--surface-900)",
+              color: "var(--text-primary)",
+              cursor: "pointer",
+              outline: "none",
+              fontWeight: 500,
+            }}
+          >
+            <option value="">All Prices</option>
+            <option value="true">Free Only</option>
+            <option value="false">Premium Only</option>
+          </select>
+
+          {/* Results count */}
+          {!loading && (
+            <div style={{ marginLeft: "auto", fontSize: 14, color: "var(--text-muted)" }}>
+              {templates.length} {templates.length === 1 ? "template" : "templates"}
+            </div>
+          )}
         </div>
 
         {/* Loading */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            <p className="mt-2 text-gray-600">Loading templates...</p>
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <HugeiconsIcon icon={Loading03Icon} size={40} className="spin" color="var(--brand-500)" />
+            <p style={{ marginTop: 16, color: "var(--text-muted)", fontSize: 14 }}>Loading templates...</p>
           </div>
         )}
 
         {/* Featured Templates */}
-        {!loading && templates.some((t) => t.is_featured) && (
-          <section className="mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Featured Templates
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates
-                .filter((t) => t.is_featured)
-                .map((template) => (
-                  <TemplateCard key={template.id} template={template} />
-                ))}
+        {!loading && featuredTemplates.length > 0 && (
+          <section style={{ marginBottom: 64 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+              <HugeiconsIcon icon={SparklesIcon} size={24} color="var(--brand-500)" />
+              <h2 style={{ fontSize: 28, fontWeight: 800, margin: 0, fontFamily: "Outfit, sans-serif" }}>
+                Featured Templates
+              </h2>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 24 }}>
+              {featuredTemplates.map((template) => (
+                <TemplateCard key={template.id} template={template} featured />
+              ))}
             </div>
           </section>
         )}
@@ -171,16 +221,24 @@ export default function TemplatesPage() {
         {/* All Templates */}
         {!loading && (
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              All Templates
-            </h2>
+            {featuredTemplates.length > 0 && (
+              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 24, fontFamily: "Outfit, sans-serif" }}>
+                All Templates
+              </h2>
+            )}
             {templates.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg">
-                <p className="text-gray-600">No templates found</p>
+              <div style={{ textAlign: "center", padding: "80px 20px", background: "var(--surface-900)", borderRadius: "16px", border: "1px solid var(--border)" }}>
+                <div style={{ width: 80, height: 80, margin: "0 auto 20px", borderRadius: "50%", background: "var(--surface-800)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <HugeiconsIcon icon={PaintBoardIcon} size={40} color="var(--text-muted)" />
+                </div>
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>No templates found</h3>
+                <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+                  Try adjusting your filters or search terms
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {templates.map((template) => (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 24 }}>
+                {regularTemplates.map((template) => (
                   <TemplateCard key={template.id} template={template} />
                 ))}
               </div>
@@ -192,72 +250,96 @@ export default function TemplatesPage() {
   );
 }
 
-function TemplateCard({ template }: { template: Template }) {
+function TemplateCard({ template, featured = false }: { template: Template; featured?: boolean }) {
   return (
     <Link
       href={`/templates/${template.slug}`}
-      className="block bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"
+      style={{
+        display: "block",
+        background: "var(--surface-900)",
+        border: featured ? "2px solid var(--brand-500)" : "1px solid var(--border)",
+        borderRadius: "16px",
+        overflow: "hidden",
+        transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s",
+        textDecoration: "none",
+        color: "inherit",
+        position: "relative",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.transform = "translateY(-6px)";
+        (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 40px rgba(0,0,0,0.15)";
+        if (!featured) (e.currentTarget as HTMLElement).style.borderColor = "var(--brand-400)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+        (e.currentTarget as HTMLElement).style.boxShadow = "none";
+        if (!featured) (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+      }}
     >
       {/* Thumbnail */}
-      <div className="relative h-48 bg-gray-200">
+      <div style={{ position: "relative", width: "100%", height: 200, background: "var(--surface-700)" }}>
         {template.thumbnail ? (
           <Image
             src={template.thumbnail}
             alt={template.name}
             fill
-            className="object-cover"
+            style={{ objectFit: "cover" }}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            No preview
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+            <HugeiconsIcon icon={PaintBoardIcon} size={48} color="var(--text-muted)" />
           </div>
         )}
         {template.is_featured && (
-          <div className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded text-xs font-semibold">
-            ⭐ Featured
+          <div style={{ position: "absolute", top: 12, left: 12, padding: "6px 12px", background: "rgba(168,85,247,0.95)", backdropFilter: "blur(8px)", color: "white", fontSize: 12, fontWeight: 700, borderRadius: "8px", display: "flex", alignItems: "center", gap: 6 }}>
+            <HugeiconsIcon icon={SparklesIcon} size={14} /> Featured
           </div>
         )}
         {template.is_verified && (
-          <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-semibold">
+          <div style={{ position: "absolute", top: 12, right: 12, padding: "6px 12px", background: "rgba(59,130,246,0.95)", backdropFilter: "blur(8px)", color: "white", fontSize: 12, fontWeight: 700, borderRadius: "8px" }}>
             ✓ Verified
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">
+      <div style={{ padding: 20 }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, fontFamily: "Outfit, sans-serif", lineHeight: 1.3 }}>
           {template.name}
         </h3>
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 16, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
           {template.description}
         </p>
 
         {/* Author */}
-        <p className="text-xs text-gray-500 mb-3">
-          by {template.author.first_name || template.author.email}
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
+          by {template.author.first_name || template.author.email.split("@")[0]}
         </p>
 
         {/* Stats */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-          <div className="flex items-center gap-3">
-            <span>⬇️ {template.downloads}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, fontSize: 13, color: "var(--text-muted)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <HugeiconsIcon icon={Download01Icon} size={14} />
+            <span>{template.downloads}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <HugeiconsIcon icon={Star01Icon} size={14} color="var(--warning)" />
             <span>
-              ⭐ {template.rating_average.toFixed(1)} ({template.rating_count})
+              {template.rating_average.toFixed(1)} ({template.rating_count})
             </span>
           </div>
         </div>
 
         {/* Price & CTA */}
-        <div className="flex items-center justify-between">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 16, borderTop: "1px solid var(--border)" }}>
           {template.is_free ? (
-            <span className="text-green-600 font-semibold">FREE</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "var(--success)" }}>FREE</span>
           ) : (
-            <span className="text-gray-900 font-semibold">
+            <span style={{ fontSize: 16, fontWeight: 700, color: "var(--brand-500)" }}>
               {template.price} {template.currency}
             </span>
           )}
-          <span className="text-sm text-blue-600 font-medium">
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--brand-500)" }}>
             View Details →
           </span>
         </div>
