@@ -36,7 +36,7 @@ const ROOT_DOMAIN = process.env.KORAA_PUBLIC_ROOT_DOMAIN || "localhost:3000";
  */
 const RESERVED = new Set([
   "www", "api", "app", "admin", "dashboard", "auth",
-  "static", "cdn", "assets", "mail", "smtp", "ftp", "preview",
+  "static", "cdn", "assets", "mail", "smtp", "ftp", "preview", "staging",
 ]);
 
 /** True for hosts that can never be a merchant's custom domain. */
