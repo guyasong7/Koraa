@@ -3,17 +3,15 @@
 import PageTitle from "@/components/PageTitle";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
 import { storeApi } from "@/lib/api";
 import Link from "next/link";
-import { toast } from "@/lib/toast";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowLeft02Icon,
   Loading03Icon,
   PaintBoardIcon,
-  Tick02Icon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import axios from "axios";
@@ -37,8 +35,6 @@ export default function StoreTemplatesPage() {
   const params = useParams();
   const storeId = params.id as string;
   const { isAuthenticated } = useAuthStore();
-  const queryClient = useQueryClient();
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) router.replace("/login");
@@ -60,25 +56,6 @@ export default function StoreTemplatesPage() {
   });
 
   const templates: Template[] = templatesData?.results ?? templatesData ?? [];
-
-  const applyTemplateMutation = useMutation({
-    mutationFn: async (templateId: string) => {
-      // This will be implemented on the backend to apply template to store
-      const response = await axios.post(
-        `https://api.koraa.cm/api/v1/stores/${storeId}/apply-template/`,
-        { template_id: templateId }
-      );
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["store", storeId] });
-      toast.success("Template applied successfully! 🎉");
-      setSelectedTemplate(null);
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.detail || "Failed to apply template.");
-    },
-  });
 
   if (storeLoading) {
     return (
@@ -164,8 +141,9 @@ export default function StoreTemplatesPage() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
             {filteredTemplates.map(template => (
-              <div
+              <Link
                 key={template.id}
+                href={`/dashboard/stores/${storeId}/templates/${template.slug}`}
                 style={{
                   background: "var(--surface-900)",
                   border: "1px solid var(--border)",
@@ -173,6 +151,9 @@ export default function StoreTemplatesPage() {
                   overflow: "hidden",
                   transition: "transform 0.2s, box-shadow 0.2s",
                   cursor: "pointer",
+                  textDecoration: "none",
+                  color: "inherit",
+                  display: "block",
                 }}
                 onMouseEnter={e => {
                   (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
@@ -215,80 +196,16 @@ export default function StoreTemplatesPage() {
                         {template.price === 0 ? "Free" : `${template.price.toLocaleString()} XAF`}
                       </div>
                     </div>
-                    <button
-                      onClick={() => setSelectedTemplate(template)}
-                      className="btn btn-primary btn-sm"
-                      style={{ fontSize: 13, padding: "8px 16px" }}
-                    >
-                      Apply
-                    </button>
+                    <span className="btn btn-primary btn-sm" style={{ fontSize: 13, padding: "8px 16px" }}>
+                      View Details
+                    </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
       </div>
-
-      {/* Confirm modal */}
-      {selectedTemplate && (
-        <div
-          className="modal-overlay"
-          onClick={e => { if (e.target === e.currentTarget) setSelectedTemplate(null); }}
-        >
-          <div className="modal-panel" style={{ maxWidth: 480 }}>
-            <div className="modal-header">
-              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, fontFamily: "var(--font-display)" }}>
-                Apply Template
-              </h2>
-              <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: "8px 0 0 0" }}>
-                Apply "{selectedTemplate.name}" to your store
-              </p>
-            </div>
-
-            <div className="modal-body">
-              {selectedTemplate.price > 0 ? (
-                <div style={{ padding: "16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", marginBottom: 16 }}>
-                  <div style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 4 }}>Total</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "var(--brand-500)" }}>
-                    {selectedTemplate.price.toLocaleString()} XAF
-                  </div>
-                </div>
-              ) : (
-                <div style={{ padding: "16px", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "8px", marginBottom: 16, color: "#22c55e", fontSize: 14, fontWeight: 600 }}>
-                  ✓ This template is free!
-                </div>
-              )}
-
-              <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                This will apply the template design to <strong>{store.name}</strong>. Your existing products and settings will be preserved.
-              </p>
-            </div>
-
-            <div className="modal-footer">
-              <button
-                onClick={() => setSelectedTemplate(null)}
-                className="btn btn-secondary"
-                style={{ flex: 1 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => applyTemplateMutation.mutate(selectedTemplate.id)}
-                disabled={applyTemplateMutation.isPending}
-                className="btn btn-primary"
-                style={{ flex: 1, opacity: applyTemplateMutation.isPending ? 0.8 : 1 }}
-              >
-                {applyTemplateMutation.isPending ? (
-                  <><HugeiconsIcon icon={Loading03Icon} size={16} className="spin" /> Applying...</>
-                ) : (
-                  <><HugeiconsIcon icon={Tick02Icon} size={16} /> Confirm</>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
