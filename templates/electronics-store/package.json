@@ -1,0 +1,24 @@
+{
+  "name": "koraa-template-electronics",
+  "version": "1.0.0",
+  "description": "Modern electronics store template for Koraa",
+  "main": "index.tsx",
+  "scripts": {
+    "build": "echo 'Template ready'"
+  },
+  "dependencies": {
+    "@koraa/storefront-sdk": "file:../../packages/storefront-sdk"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "keywords": [
+    "koraa",
+    "template",
+    "electronics",
+    "ecommerce"
+  ],
+  "author": "Koraa Templates",
+  "license": "MIT"
+}

@@ -154,13 +154,4 @@ export function sanitizeProducts(products: any[]): Product[] {
   }));
 }
 
-export type {
-  Store,
-  Product,
-  CartItem,
-  TemplateMeta,
-  TemplateConfig,
-  KoraaTemplate,
-  LayoutProps,
-  TemplateContext,
-};
+// Types are already exported above
