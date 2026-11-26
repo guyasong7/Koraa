@@ -1414,8 +1414,11 @@ export interface Template {
   tags: string[];
   author: {
     id: string;
-    username: string;
-    full_name: string;
+    username?: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
   };
   rating_average: number;
   rating_count: number;
@@ -1423,6 +1426,8 @@ export interface Template {
   installations: number;
   created_at: string;
   updated_at: string;
+  published_at?: string;
+  is_purchased?: boolean;
   features: string[];
   compatible_with: string[];
 }

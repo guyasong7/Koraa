@@ -12,36 +12,7 @@ import {
   Search01Icon,
   FilterIcon,
 } from "@hugeicons/core-free-icons";
-
-interface Template {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  author: {
-    id: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-  };
-  template_type: string;
-  category: string;
-  tags: string[];
-  thumbnail: string;
-  demo_url: string;
-  is_free: boolean;
-  price: string;
-  currency: string;
-  is_featured: boolean;
-  is_verified: boolean;
-  downloads: number;
-  installations: number;
-  rating_average: number;
-  rating_count: number;
-  is_purchased: boolean;
-  created_at: string;
-  published_at: string;
-}
+import type { Template } from "@/lib/api";
 
 const CATEGORIES = [
   { label: "All Categories", value: "" },
@@ -321,7 +292,7 @@ function TemplateCard({ template, featured = false }: { template: Template; feat
 
         {/* Author */}
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-          by {template.author.first_name || template.author.email.split("@")[0]}
+          by {template.author.full_name || template.author.first_name || template.author.username || template.author.email?.split("@")[0] || "Unknown"}
         </p>
 
         {/* Stats */}
