@@ -49,7 +49,8 @@ export default function StoreTemplatesPage() {
   const { data: templatesData, isLoading: templatesLoading } = useQuery({
     queryKey: ["templates"],
     queryFn: async () => {
-      const response = await axios.get("https://api.koraa.cm/api/v1/templates/");
+      const { templateApi } = await import("@/lib/api");
+      const response = await templateApi.list();
       return response.data;
     },
     enabled: isAuthenticated,

@@ -1,0 +1,23 @@
+{
+  "name": "demo-electronics-store",
+  "version": "1.0.0",
+  "description": "Demo electronics storefront built with @koraa/storefront-sdk",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "keywords": ["koraa", "storefront", "electronics", "ecommerce"],
+  "author": "Koraa",
+  "license": "MIT",
+  "dependencies": {
+    "@koraa/storefront-sdk": "^1.0.1",
+    "@types/node": "^26.6.11",
+    "@types/react": "^19.3.3",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2"
+  }
+}

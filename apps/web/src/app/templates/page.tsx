@@ -70,16 +70,14 @@ export default function TemplatesPage() {
   const fetchTemplates = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filter.category) params.append("category", filter.category);
-      if (filter.is_free) params.append("is_free", filter.is_free);
-      if (filter.search) params.append("search", filter.search);
+      const params: Record<string, string> = {};
+      if (filter.category) params.category = filter.category;
+      if (filter.is_free) params.is_free = filter.is_free;
+      if (filter.search) params.search = filter.search;
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/templates/?${params}`
-      );
-      const data = await response.json();
-      setTemplates(data.results || data);
+      const { templateApi } = await import("@/lib/api");
+      const response = await templateApi.list(params);
+      setTemplates(response.data.results || response.data);
     } catch (error) {
       console.error("Failed to fetch templates:", error);
     } finally {
@@ -135,10 +133,11 @@ export default function TemplatesPage() {
 
       <div className="sf-container" style={{ padding: "clamp(32px, 6vw, 64px) clamp(16px, 4vw, 32px)", maxWidth: 1400, margin: "0 auto" }}>
         {/* Filters */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>
-            <HugeiconsIcon icon={FilterIcon} size={18} /> Filter by:
-          </div>
+        <div style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>
+              <HugeiconsIcon icon={FilterIcon} size={18} /> Filter by:
+            </div>
 
           {/* Category */}
           <select
@@ -186,10 +185,20 @@ export default function TemplatesPage() {
 
           {/* Results count */}
           {!loading && (
-            <div style={{ marginLeft: "auto", fontSize: 14, color: "var(--text-muted)" }}>
+            <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
               {templates.length} {templates.length === 1 ? "template" : "templates"}
             </div>
           )}
+          </div>
+
+          {/* Submit Template Button */}
+          <Link
+            href="/dashboard/templates/new"
+            className="btn btn-primary"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, padding: "10px 20px" }}
+          >
+            Submit Your Template
+          </Link>
         </div>
 
         {/* Loading */}

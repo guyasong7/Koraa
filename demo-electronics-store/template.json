@@ -1,0 +1,26 @@
+{
+  "id": "electronics-store-pro",
+  "name": "Electronics Store Pro",
+  "version": "1.0.0",
+  "author": {
+    "name": "Koraa",
+    "email": "templates@koraa.cm"
+  },
+  "description": "A modern, fully-responsive electronics storefront template with shopping cart functionality, clean design, and gradient hero section. Perfect for electronics, gadgets, and tech stores.",
+  "thumbnail": "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=800",
+  "categories": ["electronics"],
+  "tags": ["electronics", "modern", "responsive", "gradient", "shopping-cart", "tech", "gadgets"],
+  "price": 0,
+  "demo": "https://electronics-store-pro-demo.koraa.cm",
+  "features": [
+    "Fully responsive design",
+    "Shopping cart with add/remove functionality",
+    "Modern gradient hero section",
+    "Product grid with image galleries",
+    "Category filtering",
+    "TypeScript support",
+    "CSS Modules for scoped styling",
+    "Easy color customization",
+    "Mobile-optimized layout"
+  ]
+}

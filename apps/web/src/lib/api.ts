@@ -1393,3 +1393,75 @@ export interface ShowcaseStore {
   logo: string | null;
   url: string;
 }
+
+// ─── Templates ────────────────────────────────────────────────────────────
+
+export interface Template {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  thumbnail: string | null;
+  preview_images: string[];
+  demo_url: string | null;
+  price: number;
+  currency: string;
+  is_free: boolean;
+  is_featured: boolean;
+  is_verified: boolean;
+  template_type: "full_site" | "landing_page" | "product_page" | "checkout";
+  category: string;
+  tags: string[];
+  author: {
+    id: string;
+    username: string;
+    full_name: string;
+  };
+  rating_average: number;
+  rating_count: number;
+  downloads: number;
+  installations: number;
+  created_at: string;
+  updated_at: string;
+  features: string[];
+  compatible_with: string[];
+}
+
+export interface TemplateCreateData {
+  name: string;
+  description: string;
+  price?: number;
+  currency?: string;
+  template_type: "full_site" | "landing_page" | "product_page" | "checkout";
+  category?: string;
+  tags?: string[];
+  demo_url?: string;
+  thumbnail?: File;
+  preview_images?: File[];
+  source_files?: File;
+}
+
+export const templateApi = {
+  list: (params?: Record<string, any>) => api.get<Paginated<Template>>("/templates/", { params }),
+  get: (slug: string) => api.get<Template>(`/templates/${slug}/`),
+  create: (data: TemplateCreateData) => {
+    const fd = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === "preview_images" && Array.isArray(value)) {
+          value.forEach((file) => fd.append("preview_images", file));
+        } else if (value instanceof File) {
+          fd.append(key, value);
+        } else if (Array.isArray(value)) {
+          fd.append(key, JSON.stringify(value));
+        } else {
+          fd.append(key, String(value));
+        }
+      }
+    });
+    return api.post<Template>("/templates/", fd);
+  },
+  purchase: (slug: string) => api.post(`/templates/${slug}/purchase/`),
+  apply: (storeId: string, templateId: string) =>
+    api.post(`/stores/${storeId}/apply-template/`, { template_id: templateId }),
+};

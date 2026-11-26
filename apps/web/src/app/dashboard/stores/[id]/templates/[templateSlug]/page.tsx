@@ -66,7 +66,8 @@ export default function TemplateDetailPage() {
   const { data: template, isLoading } = useQuery({
     queryKey: ["template", templateSlug],
     queryFn: async () => {
-      const response = await axios.get(`https://api.koraa.cm/api/v1/templates/${templateSlug}/`);
+      const { templateApi } = await import("@/lib/api");
+      const response = await templateApi.get(templateSlug as string);
       return response.data;
     },
     enabled: !!templateSlug && isAuthenticated,
@@ -74,10 +75,8 @@ export default function TemplateDetailPage() {
 
   const applyTemplateMutation = useMutation({
     mutationFn: async (templateId: string) => {
-      const response = await axios.post(
-        `https://api.koraa.cm/api/v1/stores/${storeId}/apply-template/`,
-        { template_id: templateId }
-      );
+      const { templateApi } = await import("@/lib/api");
+      const response = await templateApi.apply(storeId as string, templateId);
       return response.data;
     },
     onSuccess: () => {
