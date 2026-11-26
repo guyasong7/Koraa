@@ -10,7 +10,7 @@ import {
   Download01Icon,
   Loading03Icon,
   Search01Icon,
-  Filter01Icon,
+  FilterIcon,
 } from "@hugeicons/core-free-icons";
 
 interface Template {
@@ -137,7 +137,7 @@ export default function TemplatesPage() {
         {/* Filters */}
         <div style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>
-            <HugeiconsIcon icon={Filter01Icon} size={18} /> Filter by:
+            <HugeiconsIcon icon={FilterIcon} size={18} /> Filter by:
           </div>
 
           {/* Category */}
