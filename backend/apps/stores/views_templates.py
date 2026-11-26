@@ -56,9 +56,8 @@ class ApplyTemplateView(APIView):
         # Check if template is free or already purchased
         if template.price > 0:
             purchase = TemplatePurchase.objects.filter(
-                buyer=request.user,
-                template=template,
-                status="completed"
+                user=request.user,
+                template=template
             ).first()
 
             if not purchase:
@@ -80,10 +79,9 @@ class ApplyTemplateView(APIView):
         # Create purchase record if free template and not already purchased
         if template.price == 0:
             TemplatePurchase.objects.get_or_create(
-                buyer=request.user,
+                user=request.user,
                 template=template,
                 defaults={
-                    "status": "completed",
                     "amount_paid": 0
                 }
             )
