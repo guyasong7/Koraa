@@ -33,6 +33,8 @@ const ROOT_DOMAIN = process.env.KORAA_PUBLIC_ROOT_DOMAIN || "localhost:3000";
 /**
  * Subdomains that belong to the platform, not to a merchant. Without this,
  * `www.koraa.cm` would be looked up as a store called "www".
+ *
+ * Note: "demo" is NOT reserved - it's used for template demos at demo.koraa.cm/store/[template-name]
  */
 const RESERVED = new Set([
   "www", "api", "app", "admin", "dashboard", "auth",
@@ -68,6 +70,12 @@ export function middleware(request: NextRequest) {
 
   if (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`) {
     // The platform itself — landing page, dashboard, auth.
+    return NextResponse.next();
+  }
+
+  // Special handling for demo.koraa.cm - allow /store/ paths through
+  if (host === `demo.${ROOT_DOMAIN}`) {
+    // demo.koraa.cm/store/electronics-store should work as-is
     return NextResponse.next();
   }
 
