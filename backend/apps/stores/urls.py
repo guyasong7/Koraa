@@ -12,6 +12,7 @@ from .views import (
     StoreDiscountCodeListCreateView,
     StoreDiscountCodeDetailView,
 )
+from .views_templates import ApplyTemplateView
 
 urlpatterns = [
     path("", StoreListCreateView.as_view(), name="store-list-create"),
@@ -35,5 +36,10 @@ urlpatterns = [
         "<uuid:pk>/discounts/<uuid:discount_id>/",
         StoreDiscountCodeDetailView.as_view(),
         name="store-discounts-detail",
+    ),
+    path(
+        "<uuid:pk>/apply-template/",
+        ApplyTemplateView.as_view(),
+        name="store-apply-template",
     ),
 ]

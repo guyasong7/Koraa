@@ -87,6 +87,7 @@ export default function StoreDetailPage() {
   const QUICK_LINKS = [
     { label: "Products", href: `/dashboard/products?store=${id}`, icon: Package01Icon, desc: "Manage your product catalogue" },
     { label: "Orders", href: `/dashboard/orders?store=${id}`, icon: ShoppingCart01Icon, desc: "View and fulfil orders" },
+    { label: "Templates", href: `/dashboard/stores/${id}/templates`, icon: PaintBoardIcon, desc: "Browse and apply professional templates" },
     { label: "Analytics", href: `/dashboard/analytics?store=${id}`, icon: ChartColumnIcon, desc: "Track store performance" },
     { label: "Discounts", href: `/dashboard/stores/${id}/discounts`, icon: Discount01Icon, desc: "Create and manage discount codes" },
     { label: "Enquiries", href: `/dashboard/stores/${id}/enquiries`, icon: InboxIcon, desc: "Leads sent through your enquiry form" },

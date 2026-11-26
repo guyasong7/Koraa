@@ -83,6 +83,14 @@ class Store(models.Model):
         blank=True,
         help_text="Stores color overrides, font choices, section ordering, etc.",
     )
+    template_applied = models.ForeignKey(
+        "themes.Template",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stores_using",
+        help_text="The marketplace template currently applied to this store",
+    )
 
     # Regional settings
     currency = models.CharField(
