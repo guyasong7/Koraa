@@ -17,7 +17,6 @@ import {
   SparklesIcon,
   UserIcon,
   Download01Icon,
-  Star01Icon,
   EyeIcon,
 } from "@hugeicons/core-free-icons";
 import axios from "axios";
