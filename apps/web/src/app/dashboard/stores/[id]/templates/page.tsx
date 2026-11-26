@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
-import { storeApi } from "@/lib/api";
+import { storeApi, type Template } from "@/lib/api";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -14,21 +14,6 @@ import {
   PaintBoardIcon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
-import axios from "axios";
-
-type Template = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  price: number;
-  author_name: string;
-  thumbnail: string;
-  category: string;
-  featured: boolean;
-  verified: boolean;
-  downloads_count: number;
-};
 
 export default function StoreTemplatesPage() {
   const router = useRouter();
@@ -56,7 +41,7 @@ export default function StoreTemplatesPage() {
     enabled: isAuthenticated,
   });
 
-  const templates: Template[] = templatesData?.results ?? templatesData ?? [];
+  const templates: Template[] = Array.isArray(templatesData) ? templatesData : templatesData?.results ?? [];
 
   if (storeLoading) {
     return (
@@ -174,7 +159,7 @@ export default function StoreTemplatesPage() {
                       <HugeiconsIcon icon={PaintBoardIcon} size={40} color="var(--text-muted)" />
                     </div>
                   )}
-                  {template.featured && (
+                  {template.is_featured && (
                     <div style={{ position: "absolute", top: 12, right: 12, padding: "4px 10px", background: "rgba(168,85,247,0.95)", color: "white", fontSize: 11, fontWeight: 700, borderRadius: "6px", display: "flex", alignItems: "center", gap: 4 }}>
                       <HugeiconsIcon icon={SparklesIcon} size={12} /> Featured
                     </div>
@@ -192,7 +177,7 @@ export default function StoreTemplatesPage() {
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid var(--border)" }}>
                     <div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 2 }}>by {template.author_name}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 2 }}>by {template.author.full_name || template.author.username || "Unknown"}</div>
                       <div style={{ fontSize: 16, fontWeight: 700, color: "var(--brand-500)" }}>
                         {template.price === 0 ? "Free" : `${template.price.toLocaleString()} XAF`}
                       </div>

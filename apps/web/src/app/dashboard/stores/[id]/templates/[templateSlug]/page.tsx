@@ -131,7 +131,7 @@ export default function TemplateDetailPage() {
                     <HugeiconsIcon icon={PaintBoardIcon} size={64} color="var(--text-muted)" />
                   </div>
                 )}
-                {template.featured && (
+                {template.is_featured && (
                   <div style={{ position: "absolute", top: 20, right: 20, padding: "8px 16px", background: "rgba(168,85,247,0.95)", color: "white", fontSize: 13, fontWeight: 700, borderRadius: "8px", display: "flex", alignItems: "center", gap: 6 }}>
                     <HugeiconsIcon icon={SparklesIcon} size={16} /> Featured
                   </div>
@@ -176,11 +176,11 @@ export default function TemplateDetailPage() {
               <div style={{ display: "flex", gap: 24, marginBottom: 32, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <HugeiconsIcon icon={Download01Icon} size={18} color="var(--text-muted)" />
-                  <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>{template.downloads_count} downloads</span>
+                  <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>{template.downloads} downloads</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <HugeiconsIcon icon={UserIcon} size={18} color="var(--text-muted)" />
-                  <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>by {template.author_name}</span>
+                  <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>by {template.author.full_name || template.author.username || "Unknown"}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ padding: "4px 12px", background: "var(--surface-800)", borderRadius: "6px", fontSize: 13, fontWeight: 600 }}>
@@ -190,13 +190,13 @@ export default function TemplateDetailPage() {
               </div>
 
               {/* Long description */}
-              {template.long_description && (
+              {template.description && (
                 <div style={{ marginBottom: 32 }}>
                   <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, fontFamily: "Outfit, sans-serif" }}>
                     About This Template
                   </h2>
                   <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, whiteSpace: "pre-line" }}>
-                    {template.long_description}
+                    {template.description}
                   </p>
                 </div>
               )}
@@ -231,17 +231,6 @@ export default function TemplateDetailPage() {
                     style={{ gap: 8 }}
                   >
                     <HugeiconsIcon icon={EyeIcon} size={16} /> View Demo
-                  </a>
-                )}
-                {template.documentation_url && (
-                  <a
-                    href={template.documentation_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-secondary"
-                    style={{ gap: 8 }}
-                  >
-                    Documentation
                   </a>
                 )}
               </div>
@@ -288,9 +277,9 @@ export default function TemplateDetailPage() {
                     <HugeiconsIcon icon={UserIcon} size={20} color="white" />
                   </div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 600 }}>{template.author_name}</div>
-                    {template.author_email && (
-                      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{template.author_email}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>{template.author.full_name || template.author.username || "Unknown"}</div>
+                    {template.author.email && (
+                      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{template.author.email}</div>
                     )}
                   </div>
                 </div>
