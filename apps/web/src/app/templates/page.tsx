@@ -8,7 +8,6 @@ import {
   PaintBoardIcon,
   SparklesIcon,
   Download01Icon,
-  Star01Icon,
   Loading03Icon,
   Search01Icon,
   Filter01Icon,
@@ -323,7 +322,7 @@ function TemplateCard({ template, featured = false }: { template: Template; feat
             <span>{template.downloads}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <HugeiconsIcon icon={Star01Icon} size={14} color="var(--warning)" />
+            <span style={{ color: "var(--warning)" }}>⭐</span>
             <span>
               {template.rating_average.toFixed(1)} ({template.rating_count})
             </span>
