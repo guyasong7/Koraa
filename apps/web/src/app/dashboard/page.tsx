@@ -2,7 +2,7 @@
 
 import PageTitle from "@/components/PageTitle";
 import { useAuthStore } from "@/stores/auth";
-import { storeApi, merchantApi, analyticsApi, Store } from "@/lib/api";
+import { storeApi, merchantApi, analyticsApi, Store, apiOrigin } from "@/lib/api";
 import { storefrontHost } from "@/lib/rootDomain";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -45,13 +45,21 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   suspended: { label: "Suspended", color: "#f87171", bg: "rgba(248,113,113,0.12)" },
 };
 
+function getImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return `${apiOrigin()}${url}`;
+  return `${apiOrigin()}/media/${url}`;
+}
+
 function StoreCard({ store }: { store: Store }) {
   const s = STATUS_CFG[store.status] ?? STATUS_CFG.draft;
+  const logoUrl = getImageUrl(store.logo);
   return (
     <div className="store-card">
       <div className="store-card-logo">
-        {store.logo
-          ? <img src={store.logo} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }} />
+        {logoUrl
+          ? <img src={logoUrl} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }} />
           : <HugeiconsIcon icon={GlobalIcon} size={20} color="var(--brand-500)" />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
