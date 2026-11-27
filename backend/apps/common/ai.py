@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 API_URL = config("AI_API_URL", default="https://emtf.aipm9527.site/v1/chat/completions")
 API_KEY = config("AI_API_KEY", default="sk-zugUfL82dTq9LKhJ7YtmaySxIwonTemDccg4RHFBAorL5XZM")
-API_MODEL = config("AI_API_MODEL", default="claude-sonnet-4-5")
+API_MODEL = config("AI_API_MODEL", default="claude-sonnet-5-5")
 
 #: A reply that starts by discussing the request instead of answering it.
 _LEAKED_REASONING = re.compile(
@@ -42,8 +42,8 @@ _LEAKED_REASONING = re.compile(
 
 # One model for both vision and chat. The env vars let you override or
 # add fallbacks as comma-separated names without touching code.
-_extra_vision = config("AI_VISION_MODELS", default="claude-opus-4-6")
-_extra_chat = config("AI_CHAT_MODELS", default="claude-opus-4-6")
+_extra_vision = config("AI_VISION_MODELS", default="claude-opus-5-5")
+_extra_chat = config("AI_CHAT_MODELS", default="claude-opus-5-5")
 
 VISION_MODELS = [API_MODEL] + [m.strip() for m in _extra_vision.split(",") if m.strip()]
 CHAT_MODELS = [API_MODEL] + [m.strip() for m in _extra_chat.split(",") if m.strip()]
