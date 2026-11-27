@@ -119,6 +119,7 @@ def chat_completion(models, messages, *, max_tokens, temperature=0.4,
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
+        "stream": False,
     }
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
